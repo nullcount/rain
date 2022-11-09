@@ -1,0 +1,8 @@
+[LND_NODE]
+grpc_host = 
+tls_cert_path = 
+macaroon_path =
+
+[KRAKEN]
+api_key = 
+api_secret =

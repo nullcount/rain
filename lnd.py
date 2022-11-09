@@ -1,6 +1,5 @@
 import base64
 import os
-from os.path import expanduser
 import codecs
 import grpc
 import sys
@@ -17,16 +16,19 @@ def debug(message):
     sys.stderr.write(message + "\n")
 
 
-class LND:
-    def __init__(self, lnd_dir, server, tls_cert_path=None, macaroon_path=None):
+class Lnd:
+    def __init__(self, LND_NODE_CONFIG):
+        grpc_host = LND_NODE_CONFIG['grpc_host']
+        tls_cert_path = LND_NODE_CONFIG['tls_cert_path']
+        macaroon_path = LND_NODE_CONFIG['macaroon_path']
+
         os.environ['GRPC_SSL_CIPHER_SUITES'] = 'HIGH+ECDSA'
-        lnd_dir = expanduser(lnd_dir)
-        combined_credentials = self.get_credentials(lnd_dir, tls_cert_path, macaroon_path)
+        combined_credentials = self.get_credentials(tls_cert_path, macaroon_path)
         channel_options = [
             ('grpc.max_message_length', MESSAGE_SIZE_MB),
             ('grpc.max_receive_message_length', MESSAGE_SIZE_MB)
         ]
-        grpc_channel = grpc.secure_channel(server, combined_credentials, channel_options)
+        grpc_channel = grpc.secure_channel(grpc_host, combined_credentials, channel_options)
         self.stub = lnrpc.LightningStub(grpc_channel)
         self.routerstub = routerrpc.RouterStub(grpc_channel)
         self.graph = None
@@ -43,20 +45,10 @@ class LND:
             self.valid = False
 
     @staticmethod
-    def get_credentials(lnd_dir, tls_cert_path, macaroon_path):
-        tls_certificate = open(tls_cert_path if tls_cert_path else os.path.join(lnd_dir, 'tls.cert'), 'rb').read()
+    def get_credentials(tls_cert_path, macaroon_path):
+        tls_certificate = open(tls_cert_path, 'rb').read()
         ssl_credentials = grpc.ssl_channel_credentials(tls_certificate)
-        if macaroon_path:
-            macaroon = codecs.encode(open(macaroon_path, 'rb').read(), 'hex')
-        else:
-            try:
-                macaroon = codecs.encode(
-                    open(os.path.join(lnd_dir, '/data/chain/bitcoin/mainnet/charge-lnd.macaroon'), 'rb').read(),
-                    'hex')
-            except:
-                macaroon = codecs.encode(
-                    open(os.path.join(lnd_dir, '/data/chain/bitcoin/mainnet/admin.macaroon'), 'rb').read(),
-                    'hex')
+        macaroon = codecs.encode(open(macaroon_path, 'rb').read(), 'hex')
         auth_credentials = grpc.metadata_call_credentials(lambda _, callback: callback([('macaroon', macaroon)], None))
         combined_credentials = grpc.composite_channel_credentials(ssl_credentials, auth_credentials)
         return combined_credentials

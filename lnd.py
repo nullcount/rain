@@ -262,3 +262,9 @@ class Lnd:
         balance_request = ln.WalletBalanceRequest()
         balance_response = self.stub.WalletBalance(balance_request)
         return balance_response
+
+    def get_onchain_address(self):
+        return
+
+    def get_lighting_invoice(self, amount):
+        return

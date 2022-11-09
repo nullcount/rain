@@ -53,3 +53,9 @@ class Kraken:
             "asset": "XBT",
             "method": "Bitcoin",
         }).json()['result'][0]['address']
+
+    def send_onchain(self):
+        return
+
+    def pay_invoice(self, invoice_code):
+        return

@@ -264,7 +264,19 @@ class Lnd:
         return balance_response
 
     def get_onchain_address(self):
-        return
+        """
+        WITNESS_PUBKEY_HASH = 0;
+        NESTED_PUBKEY_HASH = 1;
+        UNUSED_WITNESS_PUBKEY_HASH = 2;
+        UNUSED_NESTED_PUBKEY_HASH = 3;
+        TAPROOT_PUBKEY = 4;
+        UNUSED_TAPROOT_PUBKEY = 5;
+        """
+        new_address_request = ln.NewAddressRequest(type=2)
+        new_address_response = self.stub.NewAddress(new_address_request)
+        return new_address_response.address
 
-    def get_lighting_invoice(self, amount):
-        return
+    def add_lighting_invoice(self, amount):
+        add_invoice_request = ln.Invoice(value=amount)
+        invoice_response = self.stub.AddInvoice(add_invoice_request)
+        return invoice_response

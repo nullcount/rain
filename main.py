@@ -21,6 +21,8 @@ def main():
                                       int(1e6), 3, 100, 1, 1)
     my_pubkey = lnd.get_own_pubkey()
     channels = lnd.get_channels()
+    print(lnd.get_onchain_address())
+    print(lnd.add_lighting_invoice(1000).payment_request)
     """
 
 

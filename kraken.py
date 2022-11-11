@@ -1,12 +1,11 @@
 import time
-import os
 import requests
-
-
 import urllib.parse
 import hashlib
 import hmac
 import base64
+
+COIN_SATS = 100_000_000
 
 
 class Kraken:
@@ -14,6 +13,7 @@ class Kraken:
         self.api_url = "https://api.kraken.com/"
         self.api_key = KRAKEN_CONFIG['api_key']
         self.api_secret = KRAKEN_CONFIG['api_secret']
+        self.widthdraw_key = KRAKEN_CONFIG['widthdraw_key']
 
     @staticmethod
     def get_kraken_signature(urlpath, data, secret):
@@ -54,8 +54,38 @@ class Kraken:
             "method": "Bitcoin",
         }).json()['result'][0]['address']
 
-    def send_onchain(self):
-        return
+    def widthdraw_onchain(self, sats):
+        return self.kraken_request('/0/private/Withdraw', {
+            "nonce": str(int(1000*time.time())),
+            "asset": "XBT",
+            "key": self.widthdraw_key,
+            "amount": sats / COIN_SATS
+        })
+
+    def get_widthdraw_info(self, sats):
+        res = self.kraken_request('/0/private/WithdrawInfo', {
+            "nonce": str(int(1000*time.time())),
+            "asset": "XBT",
+            "key": self.widthdraw_key,
+            "amount": sats / COIN_SATS
+        }).json()['result']
+        return {
+                'amount': int(float(res['amount']) * COIN_SATS),
+                'fee': int(float(res['fee']) * COIN_SATS)
+        }
+
+    def get_recent_widthdraws(self):
+        return self.kraken_request('/0/private/WithdrawStatus', {
+            "nonce": str(int(1000*time.time())),
+            "asset": "XBT"
+        }).json()
+
+    def get_account_balance(self):
+        res = self.kraken_request('/0/private/Balance', {
+            "nonce": str(int(1000*time.time()))
+        }).json()
+        return int(float(res['result']['XXBT']) * COIN_SATS)
 
     def pay_invoice(self, invoice_code):
+        # TODO kraken hasn't implemented yet
         return

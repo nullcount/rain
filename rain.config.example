@@ -6,3 +6,4 @@ macaroon_path =
 [KRAKEN]
 api_key = 
 api_secret =
+widthdraw_key =

@@ -1,4 +1,4 @@
-import base64
+from operator import attrgetter
 import os
 import codecs
 import grpc
@@ -243,15 +243,15 @@ class Lnd:
         send_response = self.stub.SendCoins(send_request)
         return send_response
 
-    def open_channel(self, sat_per_vbyte, node_pubkey_string, local_funding_amount, target_conf, min_htlc_msat,
-                     base_fee, fee_rate, ):
+    def open_channel(self, CHAN_CONFIG):
+        peer_pubkey, local_funding_amount, sat_per_vbyte, target_conf, min_htlc_sat = attrgetter('peer_pubkey', 'local_funding_amount', 'sat_per_vbyte', 'target_conf', 'min_htlc_sat')(CHAN_CONFIG)
         open_channel_request = ln.OpenChannelRequest(
             sat_per_vbyte=sat_per_vbyte,
             # node_pubkey=base64.b64encode(bytes(node_pubkey_string,"ascii")),
-            node_pubkey_string=node_pubkey_string,
+            node_pubkey_string=peer_pubkey,
             local_funding_amount=local_funding_amount,
             target_conf=target_conf,
-            min_htlc_msat=min_htlc_msat,
+            min_htlc_msat=min_htlc_sat * 1_000,
             # base_fee=base_fee,
             # fee_rate=fee_rate,
         )
@@ -280,3 +280,22 @@ class Lnd:
         add_invoice_request = ln.Invoice(value=amount)
         invoice_response = self.stub.AddInvoice(add_invoice_request)
         return invoice_response
+
+    def get_unconfirmed_txns(self):
+        txs = self.get_txns(end_height=-1).transactions
+        return list(filter(lambda x: x.num_confirmations == 0, txs))
+
+    def get_unconfirmed_balance(self):
+        total = 0
+        txns = self.get_unconfirmed_txns()
+        if len(txns) > 0:
+            for tx in txns:
+                total += tx.amount
+        return total
+
+    def has_channel_with(self, peer_pubkey):
+        for chan in self.channels:
+            if chan.remote_pubkey == peer_pubkey:
+                return chan
+        return False
+

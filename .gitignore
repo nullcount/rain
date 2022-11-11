@@ -1,3 +1,4 @@
+logs/*.log
 rain.config
 *__pycache__/
 venv

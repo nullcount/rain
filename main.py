@@ -47,7 +47,7 @@ def main():
                 kraken.widthdraw_onchain(RAIN_AMT_SATS)
             else:
                 log.info("kraken widthdraw fee ({} sats) larger than expected".format(fee))
-        if unconfirmed + confirmed + MIN_ONCHAIN_BALANCE >= CHAN_CAP_SATS + MIN_ONCHAIN_BALANCE:
+        if unconfirmed + confirmed >= CHAN_CAP_SATS + MIN_ONCHAIN_BALANCE:
             log.info("waiting for all or some of {} unconfirmed sats to take action".format(unconfirmed))
 
 

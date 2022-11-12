@@ -17,7 +17,8 @@ def debug(message):
 
 
 class Lnd:
-    def __init__(self, LND_NODE_CONFIG):
+    def __init__(self, LND_NODE_CONFIG, logger):
+        self.log = logger
         grpc_host = LND_NODE_CONFIG['grpc_host']
         tls_cert_path = LND_NODE_CONFIG['tls_cert_path']
         macaroon_path = LND_NODE_CONFIG['macaroon_path']
@@ -245,6 +246,7 @@ class Lnd:
 
     def open_channel(self, CHAN_CONFIG):
         peer_pubkey, local_funding_amount, sat_per_vbyte, target_conf, min_htlc_sat = attrgetter('peer_pubkey', 'local_funding_amount', 'sat_per_vbyte', 'target_conf', 'min_htlc_sat')(CHAN_CONFIG)
+        self.log.info("LND open channel {} sats with peer: {}".format(local_funding_amount, peer_pubkey))
         open_channel_request = ln.OpenChannelRequest(
             sat_per_vbyte=sat_per_vbyte,
             # node_pubkey=base64.b64encode(bytes(node_pubkey_string,"ascii")),
@@ -258,10 +260,12 @@ class Lnd:
         channel_point = self.stub.OpenChannelSync(open_channel_request)
         return channel_point
 
-    def get_onchain_balance(self, ):
+    def get_onchain_balance(self):
         balance_request = ln.WalletBalanceRequest()
         balance_response = self.stub.WalletBalance(balance_request)
-        return balance_response
+        confirmed = balance_response.confirmed_balance
+        self.log.info("LND confirmed onchain balance: {} sats".format(confirmed))
+        return confirmed
 
     def get_onchain_address(self):
         """
@@ -274,7 +278,9 @@ class Lnd:
         """
         new_address_request = ln.NewAddressRequest(type=2)
         new_address_response = self.stub.NewAddress(new_address_request)
-        return new_address_response.address
+        addr = new_address_response.address
+        self.log.info("LND generated deposit address: {}".format(addr))
+        return addr
 
     def add_lighting_invoice(self, amount):
         add_invoice_request = ln.Invoice(value=amount)
@@ -291,6 +297,7 @@ class Lnd:
         if len(txns) > 0:
             for tx in txns:
                 total += tx.amount
+        self.log.info("LND unconfirmed balance: {} sats".format(total))
         return total
 
     def has_channel_with(self, peer_pubkey):

@@ -9,7 +9,8 @@ COIN_SATS = 100_000_000
 
 
 class Kraken:
-    def __init__(self, KRAKEN_CONFIG):
+    def __init__(self, KRAKEN_CONFIG, logger):
+        self.log = logger
         self.api_url = "https://api.kraken.com/"
         self.api_key = KRAKEN_CONFIG['api_key']
         self.api_secret = KRAKEN_CONFIG['api_secret']
@@ -40,6 +41,7 @@ class Kraken:
         return req
 
     def get_lightning_invoice(self):
+        # TODO kraken needs to implement
         return self.kraken_request('/0/private/DepositAddresses', {
             "nonce": str(int(1000*time.time())),
             "asset": "XBT",
@@ -48,13 +50,17 @@ class Kraken:
         }).json()
 
     def get_onchain_address(self):
-        return self.kraken_request('/0/private/DepositAddresses', {
+        res = self.kraken_request('/0/private/DepositAddresses', {
             "nonce": str(int(1000*time.time())),
             "asset": "XBT",
             "method": "Bitcoin",
-        }).json()['result'][0]['address']
+        }).json()
+        addr = res['result'][0]['address']
+        self.log.info("kraken deposit address: {}".format(addr))
+        return addr
 
     def widthdraw_onchain(self, sats):
+        self.log.info("kraken initiated {} sat widthdrawl".format(sats))
         return self.kraken_request('/0/private/Withdraw', {
             "nonce": str(int(1000*time.time())),
             "asset": "XBT",
@@ -69,10 +75,12 @@ class Kraken:
             "key": self.widthdraw_key,
             "amount": sats / COIN_SATS
         }).json()['result']
-        return {
+        obj = {
                 'amount': int(float(res['amount']) * COIN_SATS),
                 'fee': int(float(res['fee']) * COIN_SATS)
         }
+        self.log.info("kraken fee: {} sats widthdrawl amount: {} sats".format(obj['fee'], sats))
+        return obj
 
     def get_recent_widthdraws(self):
         return self.kraken_request('/0/private/WithdrawStatus', {
@@ -84,7 +92,9 @@ class Kraken:
         res = self.kraken_request('/0/private/Balance', {
             "nonce": str(int(1000*time.time()))
         }).json()
-        return int(float(res['result']['XXBT']) * COIN_SATS)
+        balance = int(float(res['result']['XXBT']) * COIN_SATS)
+        self.log.info("kraken account balance: {} sats".format(balance))
+        return balance
 
     def pay_invoice(self, invoice_code):
         # TODO kraken hasn't implemented yet

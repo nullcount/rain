@@ -1,4 +1,3 @@
-from operator import attrgetter
 import os
 import codecs
 import grpc
@@ -10,6 +9,7 @@ from grpc_generated import rpc_pb2_grpc as lnrpc, rpc_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
 
 MESSAGE_SIZE_MB = 50 * 1024 * 1024
+SAT_MSATS = 1_000
 
 
 def debug(message):
@@ -245,15 +245,14 @@ class Lnd:
         return send_response
 
     def open_channel(self, CHAN_CONFIG):
-        peer_pubkey, local_funding_amount, sat_per_vbyte, target_conf, min_htlc_sat = attrgetter('peer_pubkey', 'local_funding_amount', 'sat_per_vbyte', 'target_conf', 'min_htlc_sat')(CHAN_CONFIG)
-        self.log.info("LND open channel {} sats with peer: {}".format(local_funding_amount, peer_pubkey))
+        self.log.info("LND open channel {} sats with peer: {}".format(CHAN_CONFIG['local_funding_amount'], CHAN_CONFIG['peer_pubkey']))
         open_channel_request = ln.OpenChannelRequest(
-            sat_per_vbyte=sat_per_vbyte,
+            sat_per_vbyte=CHAN_CONFIG['sat_per_vbyte'],
             # node_pubkey=base64.b64encode(bytes(node_pubkey_string,"ascii")),
-            node_pubkey_string=peer_pubkey,
-            local_funding_amount=local_funding_amount,
-            target_conf=target_conf,
-            min_htlc_msat=min_htlc_sat * 1_000,
+            node_pubkey_string=CHAN_CONFIG['peer_pubkey'],
+            local_funding_amount=CHAN_CONFIG['local_funding_amount'],
+            #target_conf=CHAN_CONFIG['target_conf'],
+            min_htlc_msat=CHAN_CONFIG['min_htlc_sat'] * SAT_MSATS,
             # base_fee=base_fee,
             # fee_rate=fee_rate,
         )

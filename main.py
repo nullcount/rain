@@ -11,28 +11,24 @@ def main():
     CONFIG = Config().config
     LOOP_PUB = "021c97a90a411ff2b10dc2a8e32de2f29d2fa49d41bfbb52bd416e460db0747d0d"
     KRAKEN_PUB = "02f1a8c87607f415c8f22c00593002775941dea48869ce23096af27b0cfdcc0b69"
-
-    CHAN_CAP_SATS = 24_000_000 # capacity of LOOP and Kraken channel
-    MIN_ONCHAIN_BALANCE = 200_000 # maintain at least this much in the onchain wallet
-
+    CHAN_CAP_SATS = 24_000_000  # capacity of LOOP and Kraken channel
+    MIN_ONCHAIN_BALANCE = 200_000  # maintain at least this much in the onchain wallet
     LOOP_CHAN_CONFIG = {
         'peer_pubkey': LOOP_PUB,
         'local_funding_amount': CHAN_CAP_SATS,
         'sat_per_vbyte': 1,
-        'target_conf': 3,
         'min_htlc_sat': 1000
     }
 
     lnd = Lnd(CONFIG["LND_NODE"], log)
     kraken = Kraken(CONFIG["KRAKEN"], log)
-    all_chans = lnd.get_channels()
+    lnd.get_channels()
     loop_chan = lnd.has_channel_with(LOOP_PUB)
-    kraken_chan = lnd.has_channel_with(KRAKEN_PUB)
-    
+    kraken_chan = lnd.has_channel_with(KRAKEN_PUB) 
     confirmed = lnd.get_onchain_balance()
     unconfirmed = lnd.get_unconfirmed_balance()
     kraken_balance = kraken.get_account_balance()
-    kraken_pending_widthdraw_sats = kraken.get_pending_widthdraw_sats()    
+    kraken_pending_widthdraw_sats = kraken.get_pending_widthdraw_sats()
 
     if loop_chan:
         if kraken_chan.local_balance >= kraken_chan.capactiy * 0.8:
@@ -49,7 +45,7 @@ def main():
             return 1
         if kraken_balance >= CHAN_CAP_SATS:
             fee = kraken.get_widthdraw_info(kraken_balance)['fee']
-            if fee <= 1000: # expected flat fee for kraken BTC widthdraws
+            if fee <= 1000:  # expected flat fee for kraken BTC widthdraws
                 kraken.widthdraw_onchain(kraken_balance)
             else:
                 log.warning("kraken widthdraw fee ({} sats) larger than expected".format(fee))

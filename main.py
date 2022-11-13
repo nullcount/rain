@@ -26,26 +26,33 @@ def main():
 
     lnd = Lnd(CONFIG["LND_NODE"], log)
     kraken = Kraken(CONFIG["KRAKEN"], log)
-    lnd.get_channels()
+    all_chans = lnd.get_channels()
     loop_chan = lnd.has_channel_with(LOOP_PUB)
     kraken_chan = lnd.has_channel_with(KRAKEN_PUB)
 
     if loop_chan:
         if kraken_chan.local_balance >= kraken_chan.capactiy * 0.8:
             log.info("Depositing to Kraken over LN")
+            # TODO kraken needs to implement LN deposits
+            # need to get the max_htlc for the channel
+            #    and loop multiple deposits to kraken below the max_htlc
     else:
+        print(all_chans)
+        return 0
         confirmed = lnd.get_onchain_balance()
         unconfirmed = lnd.get_unconfirmed_balance()
+        kraken_balance = kraken.get_account_balance()
         if confirmed >= CHAN_CAP_SATS + MIN_ONCHAIN_BALANCE:
+            # 
             lnd.open_channel(LOOP_CHAN_CONFIG)
-        if kraken.get_account_balance() >= RAIN_AMT_SATS:
-            fee = kraken.get_widthdraw_info(CHAN_CAP_SATS)['fee']
-            if fee <= 1000:
-                kraken.widthdraw_onchain(RAIN_AMT_SATS)
+        if kraken_balance >= RAIN_AMT_SATS:
+            fee = kraken.get_widthdraw_info(kraken_balance)['fee']
+            if fee <= 1000: # expected flat fee for kraken BTC widthdraws
+                kraken.widthdraw_onchain(kraken_balance)
             else:
-                log.info("kraken widthdraw fee ({} sats) larger than expected".format(fee))
+                log.warning("kraken widthdraw fee ({} sats) larger than expected".format(fee))
         if unconfirmed + confirmed >= CHAN_CAP_SATS + MIN_ONCHAIN_BALANCE:
-            log.info("waiting for all or some of {} unconfirmed sats to take action".format(unconfirmed))
+            log.info("waiting for {} unconfirmed sats to take action".format(unconfirmed))
 
 
 if __name__ == "__main__":

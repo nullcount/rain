@@ -1,3 +1,4 @@
+import sys
 import time
 import requests
 import urllib.parse
@@ -25,6 +26,14 @@ class Kraken:
         sigdigest = base64.b64encode(mac.digest())
         return sigdigest.decode()
 
+    def check_errors(self, response, payload, endpoint):
+        if response['errors']:
+            for err in response['errors']:
+                self.log.error("kraken responded with error: {}".format(err))
+            self.log.error('using payload: {}'.format(payload))
+            self.log.error('from : {}'.format(endpoint))
+            sys.exit()
+
     def kraken_request(self, uri_path, data):
         headers = {}
         headers['API-Key'] = self.api_key
@@ -38,64 +47,65 @@ class Kraken:
             headers=headers,
             data=data
         )
+        self.check_errors(req, data, uri_path)
         return req
 
-    def get_lightning_invoice(self):
-        # TODO kraken needs to implement
-        return self.kraken_request('/0/private/DepositAddresses', {
-            "nonce": str(int(1000*time.time())),
-            "asset": "XBT",
-            "method": "Bitcoin Lightning",
-            "new": True
-        }).json()
-
     def get_onchain_address(self):
-        res = self.kraken_request('/0/private/DepositAddresses', {
+        payload = {
             "nonce": str(int(1000*time.time())),
             "asset": "XBT",
             "method": "Bitcoin",
-        }).json()
+        }
+        res = self.kraken_request('/0/private/DepositAddresses', payload).json()
         addr = res['result'][0]['address']
         self.log.info("kraken deposit address: {}".format(addr))
         return addr
 
     def widthdraw_onchain(self, sats):
-        self.log.info("kraken initiated {} sat widthdrawl".format(sats))
-        return self.kraken_request('/0/private/Withdraw', {
+        payload = {
             "nonce": str(int(1000*time.time())),
             "asset": "XBT",
             "key": self.widthdraw_key,
             "amount": sats / COIN_SATS
-        })
+        }
+        res = self.kraken_request('/0/private/Withdraw', payload)
+        self.log.info("kraken initiated {} sat widthdrawl".format(sats))
+        return res
 
     def get_widthdraw_info(self, sats):
-        res = self.kraken_request('/0/private/WithdrawInfo', {
+        payload = {
             "nonce": str(int(1000*time.time())),
             "asset": "XBT",
             "key": self.widthdraw_key,
             "amount": sats / COIN_SATS
-        }).json()['result']
-        obj = {
-                'amount': int(float(res['amount']) * COIN_SATS),
-                'fee': int(float(res['fee']) * COIN_SATS)
         }
-        self.log.info("kraken fee: {} sats widthdrawl amount: {} sats".format(obj['fee'], sats))
-        return obj
+        res = self.kraken_request('/0/private/WithdrawInfo', payload).json()['result']
+        fee_quote = {
+            'amount': int(float(res['amount']) * COIN_SATS),
+            'fee': int(float(res['fee']) * COIN_SATS)
+        }
+        self.log.info("kraken fee: {} sats widthdrawl amount: {} sats".format(fee_quote['fee'], sats))
+        return fee_quote
 
     def get_recent_widthdraws(self):
-        return self.kraken_request('/0/private/WithdrawStatus', {
+        payload = {
             "nonce": str(int(1000*time.time())),
             "asset": "XBT"
-        }).json()
+        }
+        res = self.kraken_request('/0/private/WithdrawStatus', payload).json()
+        return res
 
     def get_account_balance(self):
-        res = self.kraken_request('/0/private/Balance', {
-            "nonce": str(int(1000*time.time()))
-        }).json()
+        payload = {"nonce": str(int(1000*time.time()))}
+        res = self.kraken_request('/0/private/Balance', payload).json()
         balance = int(float(res['result']['XXBT']) * COIN_SATS)
         self.log.info("kraken account balance: {} sats".format(balance))
         return balance
 
     def pay_invoice(self, invoice_code):
         # TODO kraken hasn't implemented yet
+        return
+
+    def get_lightning_invoice(self):
+        # TODO kraken needs to implement
         return

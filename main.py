@@ -15,9 +15,10 @@ def main():
     MIN_ONCHAIN_BALANCE = 200_000  # maintain at least this much in the onchain wallet
     LOOP_CHAN_CONFIG = {
         'peer_pubkey': LOOP_PUB,
+        'address': "54.184.88.251:9735",
         'local_funding_amount': CHAN_CAP_SATS,
         'sat_per_vbyte': 1,
-        'min_htlc_sat': 1000
+        'min_htlc_sat': 1_000
     }
 
     lnd = Lnd(CONFIG["LND_NODE"], log)
@@ -52,6 +53,9 @@ def main():
             return 1
         if unconfirmed + confirmed >= CHAN_CAP_SATS + MIN_ONCHAIN_BALANCE:
             log.info("waiting for {} unconfirmed sats to take action".format(unconfirmed))
+            return 1
+        if unconfirmed < 0:
+            log.info("waiting for sent transaction {} sats to confirm".format(abs(unconfirmed)))
             return 1
 
 

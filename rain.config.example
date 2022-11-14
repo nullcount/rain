@@ -4,6 +4,9 @@ tls_cert_path =
 macaroon_path =
 
 [KRAKEN]
+# create a kraken API key with funding permissions
+# add a widthdrawl address to your account and name 
+# it `widthdraw_key` 
 api_key = 
 api_secret =
 widthdraw_key =

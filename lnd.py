@@ -35,6 +35,7 @@ class Lnd:
         self.graph = None
         self.info = None
         self.channels = None
+        self.peers = None
         self.node_info = {}
         self.chan_info = {}
         self.fwdhistory = {}
@@ -58,6 +59,27 @@ class Lnd:
         if self.info is None:
             self.info = self.stub.GetInfo(ln.GetInfoRequest())
         return self.info
+
+    def get_peers(self):
+        if self.peers is None:
+            self.peers = self.stub.ListPeers(ln.ListPeersRequest()).peers
+        return self.peers
+
+    def is_peer_with(self, peer_pubkey):
+        if self.peers is None:
+            self.get_peers()
+        for peer in self.peers:
+            if peer.pub_key == peer_pubkey:
+                self.log.info("LND is already peered with {}".format(peer_pubkey))
+                return True
+        return False
+
+    def add_peer(self, pubkey, address):
+        ln_addr = ln.LightningAddress(pubkey=pubkey, host=address)
+        connectRequest =  ln.ConnectPeerRequest(addr=ln_addr)
+        res = self.stub.ConnectPeer(connectRequest)
+        self.log.info("LND connected to peer {}@{}".format(pubkey, address))
+        return res
 
     def get_feereport(self):
         feereport = self.stub.FeeReport(ln.FeeReportRequest())
@@ -245,7 +267,8 @@ class Lnd:
         return send_response
 
     def open_channel(self, CHAN_CONFIG):
-        self.log.info("LND open channel {} sats with peer: {}".format(CHAN_CONFIG['local_funding_amount'], CHAN_CONFIG['peer_pubkey']))
+        if not self.is_peer_with(CHAN_CONFIG['peer_pubkey']):
+            self.add_peer(CHAN_CONFIG['peer_pubkey'], CHAN_CONFIG['address'])
         open_channel_request = ln.OpenChannelRequest(
             sat_per_vbyte=CHAN_CONFIG['sat_per_vbyte'],
             # node_pubkey=base64.b64encode(bytes(node_pubkey_string,"ascii")),
@@ -257,6 +280,7 @@ class Lnd:
             # fee_rate=fee_rate,
         )
         channel_point = self.stub.OpenChannelSync(open_channel_request)
+        self.log.info("LND open channel {} sats with peer: {}".format(CHAN_CONFIG['local_funding_amount'], CHAN_CONFIG['peer_pubkey']))
         return channel_point
 
     def get_onchain_balance(self):

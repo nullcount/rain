@@ -80,7 +80,6 @@ class Kraken:
             "amount": sats / COIN_SATS
         }
         res = self.kraken_request('/0/private/WithdrawInfo', payload)
-        print(res)
         fee_quote = {
             'amount': int(float(res['amount']) * COIN_SATS),
             'fee': int(float(res['fee']) * COIN_SATS)

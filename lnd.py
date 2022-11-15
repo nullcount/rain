@@ -1,3 +1,4 @@
+from operator import attrgetter
 import os
 import codecs
 import grpc
@@ -14,6 +15,24 @@ SAT_MSATS = 1_000
 
 def debug(message):
     sys.stderr.write(message + "\n")
+
+
+class Channel:
+    def __init__(self, peer_pubkey, local_funding_amount, address, sat_per_vbyte, target_conf, min_htlc_sat):
+        self.peer_pubkey = peer_pubkey
+        self.local_funding_amount = local_funding_amount
+        self.sat_per_vbyte = sat_per_vbyte
+        self.address = address
+        self.target_conf = target_conf
+        self.min_htlc_sat = min_htlc_sat
+
+    def get_attributes(self):
+        return attrgetter('peer_pubkey',
+                          'local_funding_amount',
+                          'sat_per_vbyte',
+                          'target_conf',
+                          'min_htlc_sat'
+                          )(self)
 
 
 class Lnd:
@@ -76,7 +95,7 @@ class Lnd:
 
     def add_peer(self, pubkey, address):
         ln_addr = ln.LightningAddress(pubkey=pubkey, host=address)
-        connectRequest =  ln.ConnectPeerRequest(addr=ln_addr)
+        connectRequest = ln.ConnectPeerRequest(addr=ln_addr)
         res = self.stub.ConnectPeer(connectRequest)
         self.log.info("LND connected to peer {}@{}".format(pubkey, address))
         return res
@@ -266,21 +285,23 @@ class Lnd:
         send_response = self.stub.SendCoins(send_request)
         return send_response
 
-    def open_channel(self, CHAN_CONFIG):
-        if not self.is_peer_with(CHAN_CONFIG['peer_pubkey']):
-            self.add_peer(CHAN_CONFIG['peer_pubkey'], CHAN_CONFIG['address'])
+    def open_channel(self, channel: Channel):
+        peer_pubkey, local_funding_amount, sat_per_vbyte, target_conf, min_htlc_sat = channel.get_attributes()
+        if not self.is_peer_with(channel.peer_pubkey):
+            self.add_peer(channel.peer_pubkey, channel.address)
         open_channel_request = ln.OpenChannelRequest(
-            sat_per_vbyte=CHAN_CONFIG['sat_per_vbyte'],
+            sat_per_vbyte=sat_per_vbyte,
             # node_pubkey=base64.b64encode(bytes(node_pubkey_string,"ascii")),
-            node_pubkey_string=CHAN_CONFIG['peer_pubkey'],
-            local_funding_amount=CHAN_CONFIG['local_funding_amount'],
-            #target_conf=CHAN_CONFIG['target_conf'],
-            min_htlc_msat=CHAN_CONFIG['min_htlc_sat'] * SAT_MSATS,
+            node_pubkey_string=peer_pubkey,
+            local_funding_amount=local_funding_amount,
+            target_conf=target_conf,
+            min_htlc_msat=min_htlc_sat * SAT_MSATS,
             # base_fee=base_fee,
             # fee_rate=fee_rate,
         )
         channel_point = self.stub.OpenChannelSync(open_channel_request)
-        self.log.info("LND open channel {} sats with peer: {}".format(CHAN_CONFIG['local_funding_amount'], CHAN_CONFIG['peer_pubkey']))
+        self.log.info("LND open channel {} sats with peer: {}".format(CHAN_CONFIG['local_funding_amount'],
+                                                                      CHAN_CONFIG['peer_pubkey']))
         return channel_point
 
     def get_onchain_balance(self):
@@ -328,4 +349,3 @@ class Lnd:
             if chan.remote_pubkey == peer_pubkey:
                 return chan
         return False
-

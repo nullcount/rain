@@ -1,4 +1,3 @@
-from operator import attrgetter
 import os
 import codecs
 import grpc
@@ -10,7 +9,7 @@ from grpc_generated import rpc_pb2_grpc as lnrpc, rpc_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
 
 MESSAGE_SIZE_MB = 50 * 1024 * 1024
-SAT_MSATS = 1_000
+SAT_MSATS = 1000
 
 
 def debug(message):
@@ -18,22 +17,22 @@ def debug(message):
 
 
 class Channel:
-    def __init__(self, peer_pubkey, local_funding_amount, address, sat_per_vbyte, target_conf, min_htlc_sat):
-        self.peer_pubkey = peer_pubkey
+    def __init__(self, node_pubkey, local_funding_amount, address, sat_per_vbyte, base_fee, fee_rate, min_htlc_sat):
+        self.node_pubkey = node_pubkey
         self.local_funding_amount = local_funding_amount
         self.sat_per_vbyte = sat_per_vbyte
-        self.address = address
-        self.target_conf = target_conf
         self.min_htlc_sat = min_htlc_sat
+        self.base_fee = base_fee
+        self.fee_rate = fee_rate
+        self.address = address
 
-    def get_attributes(self):
-        return attrgetter('peer_pubkey',
-                          'local_funding_amount',
-                          'sat_per_vbyte',
-                          'target_conf',
-                          'min_htlc_sat'
-                          )(self)
-
+    def get_open_req(self):
+        return ln.OpenChannelRequest(
+            node_pubkey_string=self.node_pubkey,
+            local_funding_amount=self.local_funding_amount,
+            sat_per_vbyte=self.sat_per_vbyte,
+            min_htlc_msat=self.min_htlc_sat * SAT_MSATS
+        )
 
 class Lnd:
     def __init__(self, LND_NODE_CONFIG, logger):
@@ -286,22 +285,10 @@ class Lnd:
         return send_response
 
     def open_channel(self, channel: Channel):
-        peer_pubkey, local_funding_amount, sat_per_vbyte, target_conf, min_htlc_sat = channel.get_attributes()
-        if not self.is_peer_with(channel.peer_pubkey):
-            self.add_peer(channel.peer_pubkey, channel.address)
-        open_channel_request = ln.OpenChannelRequest(
-            sat_per_vbyte=sat_per_vbyte,
-            # node_pubkey=base64.b64encode(bytes(node_pubkey_string,"ascii")),
-            node_pubkey_string=peer_pubkey,
-            local_funding_amount=local_funding_amount,
-            target_conf=target_conf,
-            min_htlc_msat=min_htlc_sat * SAT_MSATS,
-            # base_fee=base_fee,
-            # fee_rate=fee_rate,
-        )
-        channel_point = self.stub.OpenChannelSync(open_channel_request)
-        self.log.info("LND open channel {} sats with peer: {}".format(CHAN_CONFIG['local_funding_amount'],
-                                                                      CHAN_CONFIG['peer_pubkey']))
+        if not self.is_peer_with(channel.node_pubkey):
+            self.add_peer(channel.node_pubkey, channel.address)
+        channel_point = self.stub.OpenChannelSync(channel.get_open_req())
+        self.log.info(f"LND open channel {channel.local_funding_amount} sats with peer: {channel.node_pubkey}")
         return channel_point
 
     def get_onchain_balance(self):

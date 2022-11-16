@@ -1,12 +1,26 @@
 [LND_NODE]
+# connect an LND node using an admin macaroon for full autopilot
+#   if connecting a remote lnd, you may need to add extratls=<IP_OF_LND>
+#   to lnd.conf
 grpc_host = 
 tls_cert_path = 
 macaroon_path =
 
 [KRAKEN]
 # create a kraken API key with funding permissions
-# add a widthdrawl address to your account and name 
-# it `widthdraw_key` 
+#   add a widthdrawl address to your account and name 
+#   it `widthdraw_key` 
 api_key = 
 api_secret =
 widthdraw_key =
+
+[TELEGRAM]
+# send yourself a telegram updates about your node using a bot
+#   1. visit https://telegram.me/BotFather to begin chatting with the BotFather 
+#   2. /start and /newbot to create your bot, copy the api_token
+#   3. /start a chat with the bot and send the bot a plaintext message
+#   4. use this tool: https://codesandbox.io/s/get-telegram-chat-id-q3qkk
+#       to get the chat_id 
+api_token =
+chat_id = 
+

@@ -2,6 +2,7 @@ from config import Config
 from lnd import Lnd, Channel
 from kraken import Kraken
 from notify import Telegram, Logger
+from mempool import Mempool
 
 
 def main():
@@ -12,11 +13,16 @@ def main():
     LOOP_PUB = "021c97a90a411ff2b10dc2a8e32de2f29d2fa49d41bfbb52bd416e460db0747d0d"
     KRAKEN_PUB = "02f1a8c87607f415c8f22c00593002775941dea48869ce23096af27b0cfdcc0b69"
 
-    CHAN_CAP_SATS = 24_000_000  # capacity of LOOP and Kraken channel
-    MIN_ONCHAIN_BALANCE = 200_000  # maintain at least this much in the onchain wallet
+    CHAN_CAP_SATS = 100_000_000  # capacity of LOOP and Kraken channel
+    MIN_ONCHAIN_BALANCE = 200_000  # maintain at least this much in the onchain wallet    
+
+    lnd = Lnd(CONFIG["LND_NODE"], log)
+    kraken = Kraken(CONFIG["KRAKEN"], log)
+    mempool = Mempool(CONFIG["MEMPOOL"], log)
+    tg = Telegram(CONFIG['TELEGRAM'], log)
 
     loop_chan_details = Channel(
-        sat_per_vbyte=1,
+        sat_per_vbyte=mempool.get_reccommended_fee()['halfHourFee'],
         node_pubkey=LOOP_PUB,
         local_funding_amount=CHAN_CAP_SATS,
         base_fee=0,
@@ -24,10 +30,6 @@ def main():
         address="54.184.88.251:9735",
         min_htlc_sat=1000
     )
-
-    lnd = Lnd(CONFIG["LND_NODE"], log)
-    kraken = Kraken(CONFIG["KRAKEN"], log)
-    tg = Telegram(CONFIG['TELEGRAM'], log)
 
     lnd.get_channels()
     loop_chan = lnd.has_channel_with(LOOP_PUB)

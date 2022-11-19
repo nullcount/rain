@@ -24,3 +24,7 @@ widthdraw_key =
 api_token =
 chat_id = 
 
+[MEMPOOL]
+# use a mempool.space block explorer for mempool fee estimation
+#    use https://mempool.space/api/v1/ or your own instance 
+api_url = 

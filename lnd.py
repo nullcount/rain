@@ -99,7 +99,7 @@ class Lnd:
             else:
                 out_ppm.append(c.node2_policy.fee_rate_milli_msat)
                 in_ppm.append(c.node1_policy.fee_rate_milli_msat)
-        return {"incomming":{"min": min(in_ppm), "max": max(in_ppm), "avg": int(statistics.mean(in_ppm)), "med": int(statistics.median(in_ppm)), "std": int(statistics.stdev(in_ppm))}, "outgoing":{"min": min(out_ppm), "max": max(out_ppm), "avg": int(statistics.mean(out_ppm)), "med": int(statistics.median(out_ppm)), "std": int(statistics.stdev(out_ppm))}}
+        return {"in":{"min": min(in_ppm), "max": max(in_ppm), "avg": int(statistics.mean(in_ppm)), "med": int(statistics.median(in_ppm)), "std": int(statistics.stdev(in_ppm))}, "out":{"min": min(out_ppm), "max": max(out_ppm), "avg": int(statistics.mean(out_ppm)), "med": int(statistics.median(out_ppm)), "std": int(statistics.stdev(out_ppm))}}
 
     def get_peers(self):
         if self.peers is None:

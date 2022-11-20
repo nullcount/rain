@@ -4,6 +4,7 @@ import grpc
 import sys
 import re
 import time
+import statistics
 
 from grpc_generated import rpc_pb2_grpc as lnrpc, rpc_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
@@ -77,6 +78,28 @@ class Lnd:
         if self.info is None:
             self.info = self.stub.GetInfo(ln.GetInfoRequest())
         return self.info
+
+    def get_node_channels(self, nodeid):
+        g = self.get_graph()
+        channels = []
+        for c in g.edges:
+            if c.node1_pub == nodeid or c.node2_pub == nodeid:
+                channels.append(c)
+        return channels
+
+    def get_node_fee_report(self, nodeid):
+        channels = self.get_node_channels(nodeid)
+        in_ppm = []
+        out_ppm = []
+        for c in channels:
+            policy = []
+            if c.node1_pub == nodeid:
+                out_ppm.append(c.node1_policy.fee_rate_milli_msat)
+                in_ppm.append(c.node2_policy.fee_rate_milli_msat)
+            else:
+                out_ppm.append(c.node2_policy.fee_rate_milli_msat)
+                in_ppm.append(c.node1_policy.fee_rate_milli_msat)
+        return {"incomming":{"min": min(in_ppm), "max": max(in_ppm), "avg": int(statistics.mean(in_ppm)), "med": int(statistics.median(in_ppm)), "std": int(statistics.stdev(in_ppm))}, "outgoing":{"min": min(out_ppm), "max": max(out_ppm), "avg": int(statistics.mean(out_ppm)), "med": int(statistics.median(out_ppm)), "std": int(statistics.stdev(out_ppm))}}
 
     def get_peers(self):
         if self.peers is None:

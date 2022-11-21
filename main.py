@@ -18,11 +18,11 @@ def main():
 
     lnd = Lnd(CONFIG["LND_NODE"], log)
     kraken = Kraken(CONFIG["KRAKEN"], log)
-    mempool = Mempool(CONFIG["MEMPOOL"], log)
+    _mempool = Mempool(CONFIG["MEMPOOL"], log)
     tg = Telegram(CONFIG['TELEGRAM'], log)
 
     loop_chan_details = Channel(
-        sat_per_vbyte=mempool.get_reccommended_fee()['halfHourFee'],
+        sat_per_vbyte=_mempool.get_reccomended_fee()['halfHourFee'],
         node_pubkey=LOOP_PUB,
         local_funding_amount=CHAN_CAP_SATS,
         base_fee=0,

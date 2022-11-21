@@ -17,7 +17,7 @@ def debug(message):
     sys.stderr.write(message + "\n")
 
 
-class Channel:
+class ChannelTemplate:
     def __init__(self, node_pubkey, local_funding_amount, address, sat_per_vbyte, base_fee, fee_rate, min_htlc_sat):
         self.node_pubkey = node_pubkey
         self.local_funding_amount = local_funding_amount
@@ -307,7 +307,7 @@ class Lnd:
         send_response = self.stub.SendCoins(send_request)
         return send_response
 
-    def open_channel(self, channel: Channel):
+    def open_channel(self, channel: ChannelTemplate):
         if not self.is_peer_with(channel.node_pubkey):
             self.add_peer(channel.node_pubkey, channel.address)
         channel_point = self.stub.OpenChannelSync(channel.get_open_req())

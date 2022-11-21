@@ -1,5 +1,5 @@
 from config import Config
-from lnd import Lnd, Channel
+from lnd import Lnd, ChannelTemplate
 from kraken import Kraken
 from notify import Telegram, Logger
 from mempool import Mempool
@@ -21,7 +21,7 @@ def main():
     _mempool = Mempool(CONFIG["MEMPOOL"], log)
     tg = Telegram(CONFIG['TELEGRAM'], log)
 
-    loop_chan_details = Channel(
+    loop_chan_details = ChannelTemplate(
         sat_per_vbyte=_mempool.get_reccomended_fee()['halfHourFee'],
         node_pubkey=LOOP_PUB,
         local_funding_amount=CHAN_CAP_SATS,

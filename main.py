@@ -39,34 +39,38 @@ def main():
     kraken_balance = kraken.get_account_balance()
     kraken_pending_widthdraw_sats = kraken.get_pending_widthdraw_sats()
 
-    if loop_chan:
-        if kraken_chan.local_balance >= kraken_chan.capactiy * 0.8:
-    
-            tg.send_message("Kraken channel full! Time to make a deposit!")
-            log.info("Depositing to Kraken over LN")
-            # TODO kraken needs to implement LN deposits
-            # need to get the max_htlc for the channel
-            #    and loop multiple deposits to kraken below the max_htlc
-    else:
+    # open loop channel if it does not exist
+    if not loop_chan:
         if kraken_pending_widthdraw_sats:
             log.info("waiting for kraken widthdraw(s) to process: {} sats total".format(kraken_pending_widthdraw_sats))
             return 1
         if confirmed >= CHAN_CAP_SATS + MIN_ONCHAIN_BALANCE:
             lnd.open_channel(loop_chan_details)
             return 1
-        if kraken_balance >= CHAN_CAP_SATS:
-            fee = kraken.get_widthdraw_info(kraken_balance)['fee']
-            if fee <= 1000:  # expected flat fee for kraken BTC widthdraws
-                kraken.widthdraw_onchain(kraken_balance)
-            else:
-                log.warning("kraken widthdraw fee ({} sats) larger than expected".format(fee))
-            return 1
-        if unconfirmed + confirmed >= CHAN_CAP_SATS + MIN_ONCHAIN_BALANCE:
-            log.info("waiting for {} unconfirmed sats to take action".format(unconfirmed))
-            return 1
-        if unconfirmed < 0:
-            log.info("waiting for sent transaction {} sats to confirm".format(abs(unconfirmed)))
-            return 1
+
+    # deposit funds to kraken account if channel is depleted
+    if kraken_chan.local_balance >= kraken_chan.capactiy * 0.8:
+        tg.send_message("Kraken channel full! Time to make a deposit!")
+        log.info("Depositing to Kraken over LN")
+        # TODO kraken needs to implement LN deposits
+        # need to get the max_htlc for the channel and loop multiple deposits to kraken below the max_htlc
+
+    # withdraw LN-deposited sats onchain once they reach a threshold
+    if kraken_balance >= CHAN_CAP_SATS:
+        fee = kraken.get_widthdraw_info(kraken_balance)['fee']
+        if fee <= 1000:  # expected flat fee for kraken BTC widthdraws
+            kraken.widthdraw_onchain(kraken_balance)
+        else:
+            log.warning("kraken widthdraw fee ({} sats) larger than expected".format(fee))
+        return 1
+
+    # log misc info
+    if unconfirmed + confirmed >= CHAN_CAP_SATS + MIN_ONCHAIN_BALANCE:
+        log.info("waiting for {} unconfirmed sats to take action".format(unconfirmed))
+        return 1
+    if unconfirmed < 0:
+        log.info("waiting for sent transaction {} sats to confirm".format(abs(unconfirmed)))
+        return 1
 
 
 if __name__ == "__main__":

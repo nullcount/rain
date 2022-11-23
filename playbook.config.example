@@ -1,0 +1,50 @@
+[DEFAULT]
+# global config options that apply to every strategy
+
+# minimum sats to keep on your node's onchain wallet
+min_onchain_balance = 200_000
+
+[LOOP_KRAKEN]
+# sink/source strategy for automating sink/source channel pairs
+strategy = sink-source
+
+# node implementation info 
+node = LND
+node_config = LND_NODE
+
+# the fee priority as recommended by your mempool connection
+# options: minimumFee|economyFee|hourFee|halfHourFee|fastestFee
+mempool_fee = halfHourFee
+
+# notification adapter for getting messages related to this strategy
+# specify the config key for the api creds
+notify = telegram
+notify_config = TELEGRAM
+
+# pubkey of the source node - you must already have this channel open
+# this strategy will never close your source channel
+source_pub = 02f1a8c87607f415c8f22c00593002775941dea48869ce23096af27b0cfdcc0b69
+source = kraken
+source_config = KRAKEN
+
+# expected onchain widthdrawl fee for the source adapter 
+source_loop_fee = 1000
+
+# pubkey of the sink node
+# this strategy will open channels, and optionally close them (see: sink_close_ratio)
+sink_pub = 021c97a90a411ff2b10dc2a8e32de2f29d2fa49d41bfbb52bd416e460db0747d0d
+# max number of sats to 'lock-up' at once in sink channels for this strategy
+sink_budget = 100_000_000
+
+# the max number of channels to the sink node this script will maintain at once
+# useful for maximizing availibility, reduces downtime between closures 
+# max one channel will be 'enabled' at once -- all others flagged 'disabled'
+# fee updates apply to all channels the same
+num_sink_channels = 2
+
+# automatically close any sink node channel when the local balance falls below this ratio
+# e.x. 0.1 would close a 1M sat channel once 0.9M sats have been pushed through
+# set to 0.0 to effectively disable this script from automatically closing channels
+sink_close_ratio = 0.2
+
+

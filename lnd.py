@@ -355,7 +355,8 @@ class Lnd:
         return total
 
     def has_channel_with(self, peer_pubkey):
+        chans = []
         for chan in self.channels:
             if chan.remote_pubkey == peer_pubkey:
-                return chan
-        return False
+                chans.append(chan)
+        return chans

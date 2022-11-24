@@ -8,7 +8,7 @@ min_onchain_balance = 200_000
 # fee match strategy will set your fee ppm based on what other nodes are charging
 # for incomming routes to that node 
 strategy = fee-match
-
+execute = 1
 node = LND
 node_config = LND_NODE
 
@@ -21,7 +21,7 @@ match_key = in_corrected_avg
 
 # price your liquidity at a premium/discount relative to other nodes
 # e.x. 0.05 is a 5% premium and -0.1 is a 10% discount
-premium_factor = 0.05
+premium_factor = 0.5
 
 # avoid changing fees on every run of the strategy
 # set your tolerance and only update when the calculated
@@ -40,6 +40,7 @@ max_htlc_ratio = 0.4
 [SINK_SOOURCE_LOOP_KRAKEN]
 # sink/source strategy for automating sink/source channel pairs
 strategy = sink-source
+execute = 0
 
 # node implementation info 
 node = LND
@@ -57,6 +58,7 @@ notify_config = TELEGRAM
 # pubkey of the source node - you must already have this channel open
 # this strategy will never close your source channel
 source_pub = 02f1a8c87607f415c8f22c00593002775941dea48869ce23096af27b0cfdcc0b69
+source_host = 52.13.118.208:9735
 source = kraken
 source_config = KRAKEN
 
@@ -66,6 +68,7 @@ source_loop_fee = 1000
 # pubkey of the sink node
 # this strategy will open channels, and optionally close them (see: sink_close_ratio)
 sink_pub = 021c97a90a411ff2b10dc2a8e32de2f29d2fa49d41bfbb52bd416e460db0747d0d
+sink_host = 44.228.158.82:9735
 # max number of sats to 'lock-up' at once in sink channels for this strategy
 sink_budget = 100_000_000
 

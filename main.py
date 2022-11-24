@@ -17,8 +17,9 @@ def main():
 
     for key in CONFIG:
         if key != 'DEFAULT':
-            strategy = strategy_map[CONFIG[key]['strategy']](CONFIG[key], DEFAULTS, log)
-            strategy.execute()
+            if CONFIG[key]['execute'] == "1":
+                strategy = strategy_map[CONFIG[key]['strategy']](CONFIG[key], DEFAULTS, log)
+                strategy.execute()
 
 
 if __name__ == "__main__":

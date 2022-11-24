@@ -16,10 +16,10 @@ class Config:
 
 
 notify_map = {
-    "TELEGRAM": Telegram
+    "telegram": Telegram
 }
 source_map = {
-    "KRAKEN": Kraken
+    "kraken": Kraken
 }
 node_map = {
     "LND": Lnd

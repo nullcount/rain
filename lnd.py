@@ -102,7 +102,7 @@ class Lnd:
         # remove outliers
         corrected_in_ppm = list(filter(lambda x: x > 0 and x < 10_000, in_ppm))
         corrected_out_ppm = list(filter(lambda x: x > 0 and x < 10_000, out_ppm))
-        return {"in":{"min": min(in_ppm), "max": max(in_ppm), "avg": int(statistics.mean(in_ppm)), "corrected_avg": int(statistics.mean(corrected_in_ppm)), "med": int(statistics.median(in_ppm)), "std": int(statistics.stdev(in_ppm))}, "out":{"min": min(out_ppm), "max": max(out_ppm), "avg": int(statistics.mean(out_ppm)), "corrected_avg": int(statistics.mean(corrected_out_ppm)), "med": int(statistics.median(out_ppm)), "std": int(statistics.stdev(out_ppm))}}
+        return {"in_min": min(in_ppm), "in_max": max(in_ppm), "in_avg": int(statistics.mean(in_ppm)), "in_corrected_avg": int(statistics.mean(corrected_in_ppm)), "in_med": int(statistics.median(in_ppm)), "in_std": int(statistics.stdev(in_ppm)), "out_min": min(out_ppm), "out_max": max(out_ppm), "out_avg": int(statistics.mean(out_ppm)), "out_corrected_avg": int(statistics.mean(corrected_out_ppm)), "out_med": int(statistics.median(out_ppm)), "out_std": int(statistics.stdev(out_ppm))}
 
     def get_peers(self):
         if self.peers is None:

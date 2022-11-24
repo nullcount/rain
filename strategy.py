@@ -16,8 +16,15 @@ class FeeMatch:
         self.base_fee = strategy_config['base_fee']
         self.min_htlc_sat = strategy_config['min_htlc_sat']
         self.max_htlc_ratio = strategy_config['max_htlc_ratio']
-
         self.channels = self.node.get_channels()
+
+    def pick_ppm(self, new_ppm, old_ppm):
+        diff = abs(new_ppm - old_ppm)
+        tolerance = float(self.tolerance_factor) * old_ppm
+        print("diff: " + diff)
+        print("toll: " + tolerance)
+
+        return old_ppm if diff < tolerance else new_ppm
 
     def execute(self):
         for chan in self.channels:
@@ -32,23 +39,27 @@ class FeeMatch:
                 "max_htlc_msat": int(int(chan_info.capacity) * float(self.max_htlc_ratio)) * 1_000,
                 "fee_base_msat": int(self.base_fee) * 1_000
             }
-            needsUpdate = False
-            if new_policy['time_lock_delta'] != int(my_policy.time_lock_delta):
-                needsUpdate = True
-                print(f"Update <{chan.chan_id}> time_lock_delta from {my_policy.time_lock_delta} to {new_policy['time_lock_delta']}")
-            if new_policy['min_htlc'] != int(my_policy.min_htlc):
-                needsUpdate = True
-                print(f"Update <{chan.chan_id}> min_htlc from {my_policy.min_htlc} to {new_policy['min_htlc']}")
-            if new_policy['fee_rate_milli_msat'] != int(my_policy.fee_rate_milli_msat):
-                if (my_policy.fee_rate_milli_msat - int(new_policy['fee_rate_milli_msat'])) > float(self.tolerance_factor) * int(my_policy.fee_rate_milli_msat):
-                    needsUpdate = True
-                    print(f"Update <{chan.chan_id}> fee_ppm from {my_policy.fee_rate_milli_msat} to {new_policy['fee_rate_milli_msat']}")
-            if new_policy['fee_base_msat'] != int(my_policy.fee_base_msat):
-                needsUpdate = True
-                print(f"Update <{chan.chan_id}> base_fee from {my_policy.fee_base_msat} to {new_policy['fee_base_msat']}")
-            if new_policy['max_htlc_msat'] != int(my_policy.max_htlc_msat):
-                needsUpdate = True
-                print(f"Update <{chan.chan_id}> max_htlc_msat from {my_policy.max_htlc_msat} to {new_policy['max_htlc_msat']}")
+            old_policy = {
+                "time_lock_delta": int(my_policy.time_lock_delta),
+                "min_htlc": int(my_policy.min_htlc),
+                "fee_rate_milli_msat": int(my_policy.fee_rate_milli_msat),
+                "max_htlc_msat": int(my_policy.max_htlc_msat),
+                "fee_base_msat": int(my_policy.fee_base_msat)
+            }
+            message = { 
+                "time_lock_delta": f"Update <{chan.chan_id}> time_lock_delta from {my_policy['time_lock_delta']} to {new_policy['time_lock_delta']}",
+                "min_htlc": f"Update <{chan.chan_id}> min_htlc from {my_policy['min_htlc']} to {new_policy['min_htlc']}",
+                "fee_rate_milli_msat": f"Update <{chan.chan_id}> fee_ppm from {my_policy['fee_rate_milli_msat']} to {new_policy['fee_rate_milli_msat']}",
+                "max_htlc_msat": f"Update <{chan.chan_id}> max_htlc_msat from {my_policy['max_htlc_msat']} to {new_policy['max_htlc_msat']}",
+                "fee_base_msat": f"Update <{chan.chan_id}> base_fee from {my_policy['fee_base_msat']} to {new_policy['fee_base_msat']}" 
+            }
+            needs_update = False
+            for key in new_policy:
+                if new_policy[key] != old_policy[key]:
+                    if key == 'fee_rate_milli_msat':
+                        new_policy[key] = self.pick_ppm(new_policy[key], old_policy[key])    
+                    needsUpdate = True 
+                    print(message[key])
             if needsUpdate:
                 self.node.update_chan_policy(chan.chan_id, new_policy['fee_base_msat'], new_policy['fee_rate_milli_msat'], new_policy['min_htlc'], new_policy['max_htlc_msat'], new_policy['time_lock_delta'])
         

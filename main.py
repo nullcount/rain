@@ -1,6 +1,6 @@
 from config import Config
 from notify import Logger
-from strategy import SinkSource
+from strategy import SinkSource, FeeMatch
 
 
 def main():
@@ -12,6 +12,7 @@ def main():
 
     strategy_map = {
         'sink-source': SinkSource,
+        'fee-match': FeeMatch
     }
 
     for key in CONFIG:

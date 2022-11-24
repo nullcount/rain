@@ -24,5 +24,3 @@ source_map = {
 node_map = {
     "LND": Lnd
 }
-
-

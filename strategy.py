@@ -4,7 +4,25 @@ from mempool import Mempool
 
 CREDS = Config('rain.config').config
 
+class FeeMatch:
+    def __init__(self, strategy_config, default_config, log):
+        self.node = node_map[strategy_config['node']](CREDS[strategy_config['node_config']], log)
+        self.notify = notify_map[strategy_config['notify']](CREDS[strategy_config['notify_config']], log)
+        self.log = log
+        self.match_key = strategy_config['match_key']
+        self.premium_factor = strategy_config['premium_factor']
+        self.tolerance_factor = strategy_config['tolerance_factor']
+        self.cltv_delta = strategy_config['cltv_delta']
+        self.base_fee = strategy_config['base_fee']
+        self.min_htlc_sat = strategy_config['min_htlc_sat']
+        self.max_htlc_ratio = strategy_config['max_htlc_ratio']
 
+        self.channels = self.node.get_channels()
+
+    def exeute(self):
+        for chan in self.channels:
+            print(chan) 
+        
 class SinkSource:
     def __init__(self, strategy_config, default_config, log):
         self.notify = notify_map[strategy_config['notify']](CREDS[strategy_config['notify_config']], log)

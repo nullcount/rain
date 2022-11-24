@@ -4,7 +4,40 @@
 # minimum sats to keep on your node's onchain wallet
 min_onchain_balance = 200_000
 
-[LOOP_KRAKEN]
+[FEE_MATCH_CORRECTED_AVERAGE_PLUS_PREMIUM]
+# fee match strategy will set your fee ppm based on what other nodes are charging
+# for incomming routes to that node 
+strategy = fee-match
+
+node = LND
+node_config = LND_NODE
+
+notify = telegram
+notify_config = TELEGRAM
+
+# choose the stat to match with 
+# options: in_avg|out_avg|in_min|out_min|in_max|out_max|in_med|out_med|in_std|out_std|in_corrected_avg|out_corrected_avg
+match_key = in_corrected_avg
+
+# price your liquidity at a premium/discount relative to other nodes
+# e.x. 0.05 is a 5% premium and -0.1 is a 10% discount
+premium_factor = 0.05
+
+# avoid changing fees on every run of the strategy
+# set your tolerance and only update when the calculated
+# fee_ppm falls outside the bound
+tolerance_factor = 0.05
+
+# set other channel policies
+base_fee = 0 
+cltv_delta = 144 
+min_htlc_sat = 1000
+
+# sets max htlc as a ratio of channel capacity
+# set below 0.5 for resistance against probing
+max_htlc_ratio = 0.4
+
+[SINK_SOOURCE_LOOP_KRAKEN]
 # sink/source strategy for automating sink/source channel pairs
 strategy = sink-source
 
@@ -46,5 +79,4 @@ num_sink_channels = 2
 # e.x. 0.1 would close a 1M sat channel once 0.9M sats have been pushed through
 # set to 0.0 to effectively disable this script from automatically closing channels
 sink_close_ratio = 0.2
-
 

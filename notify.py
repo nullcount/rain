@@ -36,6 +36,3 @@ class Logger:
 
     def debug(self, message):
         self.log.debug(message)
-
-
-

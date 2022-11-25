@@ -2,7 +2,6 @@ import argparse
 import configparser
 from lnd import Lnd
 from kraken import Kraken
-from notify import Telegram
 
 
 class Config:
@@ -15,9 +14,6 @@ class Config:
         self.config.read(config_loc)
 
 
-notify_map = {
-    "telegram": Telegram
-}
 source_map = {
     "kraken": Kraken
 }

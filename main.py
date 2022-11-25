@@ -4,11 +4,12 @@ from strategy import SinkSource, FeeMatch
 
 
 def main():
-    log = Logger("logs/strategy.log")
-    log.info("Running...")
-
     CONFIG = Config('playbook.config.example').config
+    CREDS = Config('creds.config').config
     DEFAULTS = CONFIG['DEFAULT']
+
+    log = Logger("logs/strategy.log", CREDS['TELEGRAM'])
+    log.info("Running...")
 
     strategy_map = {
         'sink-source': SinkSource,

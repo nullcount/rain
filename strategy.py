@@ -1,13 +1,13 @@
-from config import Config, node_map, source_map, notify_map
+from config import Config, node_map, source_map
 from lnd import ChannelTemplate
 from mempool import Mempool
 
-CREDS = Config('rain.config').config
+CREDS = Config('creds.config').config
+
 
 class FeeMatch:
     def __init__(self, strategy_config, default_config, log):
         self.node = node_map[strategy_config['node']](CREDS[strategy_config['node_config']], log)
-        self.notify = notify_map[strategy_config['notify']](CREDS[strategy_config['notify_config']], log)
         self.log = log
         self.match_key = strategy_config['match_key']
         self.premium_factor = strategy_config['premium_factor']
@@ -58,17 +58,17 @@ class FeeMatch:
                         new_policy[key] = self.pick_ppm(new_policy[key], old_policy[key])
                         if new_policy[key] != old_policy[key]:   
                             needs_update = True
-                            print(message[key])
+                            self.log.info(message[key])
                     else:
                         needs_update = True
-                        print(message[key])
+                        self.log.info(message[key])
             if needs_update:
-                print('updating the graph, plz')
-                update = self.node.update_chan_policy(chan.chan_id, new_policy)
-                print(update)        
+                print("Broadcasting new channel policy!")
+                self.node.update_chan_policy(chan.chan_id, new_policy)
+
+
 class SinkSource:
     def __init__(self, strategy_config, default_config, log):
-        self.notify = notify_map[strategy_config['notify']](CREDS[strategy_config['notify_config']], log)
         self.source = source_map[strategy_config['source']](CREDS[strategy_config['source_config']], log)
         self.node = node_map[strategy_config['node']](CREDS[strategy_config['node_config']], log)
         self.log = log
@@ -107,12 +107,12 @@ class SinkSource:
         sats_in_source_channels = 0
         source_channels_capacity = 0
         for chan in self.source_channels:
-            sats_in_source_channles += chan.local_balance
+            sats_in_source_channels += chan.local_balance
             source_channels_capacity += chan.capacity
 
         if len(self.sink_channels) < self.num_sink_channels:
             self.log.info(f"Required sink channels not met. Target of {self.num_sink_chanels} channels, but found {len(self.sink_channels)}")
-            if unconfirmed < 0:
+            if self.unconfirmed < 0:
                 self.log.info(f"Found unconfirmed sent transaction of {abs(unconfirmed)} sats and assuming its a channel open.")
                 self.log.info(f"Waiting for unconfirmed sent transaction...")
                 return 1
@@ -125,8 +125,8 @@ class SinkSource:
                 sats_needed_for_channel = (self.sink_channel_template.local_funding_amount + self.min_onchain_balance) - self.confirmed
                 missing_sats = sats_needed_for_channel - self.confirmed
                 sats_accounted_for = 0
-                actions = [] 
-                # are there funds on the way on chain 
+                actions = []
+                # are there funds on the way on chain
                 if self.unconfirmed > 0:
                     self.log.info(f"Found {self.unconfirmed} unconfirmed sats")
                     sats_accounted_for += self.unconfirmed
@@ -138,7 +138,7 @@ class SinkSource:
                 if self.source_balance:
                     sats_accounted_for += self.source_balance
                     actions.append("WIDTHDRAW_FROM_SOURCE")
-                    fee = self.source.get_widthdraw_info(kraken_balance)['fee']
+                    fee = self.source.get_widthdraw_info(self.source_balance)['fee']
                     if fee <= self.source_loop_fee:
                         self.source.widthdraw_onchain(self.source_balance)
                     else:
@@ -152,7 +152,7 @@ class SinkSource:
                 if sats_accounted_for > missing_sats:
                     self.log.info(f"Found {sats_in_source_channels} sats in local balance of source channels")
                     self.log.info(f"Notifying the operator to deposit into source accounts")
-                    self.notify.send_message(f"Need {missing_sats} to open required channels for sink/source automation. Found {sats_in_source_channels} availible to {self.source_pub}")
+                    self.log.notify(f"Need {missing_sats} to open required channels for sink/source automation. Found {sats_in_source_channels} availible to {self.source_pub}")
                     # TODO kraken/nicehash needs to implement LN deposits API
         else:
             # required channels are opened and operational
@@ -160,10 +160,9 @@ class SinkSource:
             if sats_in_source_channels / source_channels_capacity > 0.8:
                 self.log.info(f"Source channels are above 50% full")
                 self.log.info(f"Notifying the operator to deposit into source accounts")
-                self.notify.send_message(f"Source channels are getting full, consider making a deposit to free up inbound")
+                self.log.notify(f"Source channels are getting full, consider making a deposit to free up inbound")
                 # TODO kraken/nicehash needs to implement LN deposits API
             for chan in self.sink_channels:
                 if chan.local_balance / chan.capacity < self.sink_close_ratio:
                     self.log.info('tryna close a channel')
-                    # TODO initiate a channel 
-
+                    # TODO initiate a channel

@@ -1,6 +1,8 @@
 logs/*.log
-rain.config
+creds.config
+playbook/config
 *__pycache__/
 venv
 .venv
 /.idea/*
+test.py

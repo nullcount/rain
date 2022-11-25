@@ -5,27 +5,26 @@
 min_onchain_balance = 200_000
 
 [FEE_MATCH_CORRECTED_AVERAGE_PLUS_PREMIUM]
-# fee match strategy will set your fee ppm based on what other nodes are charging
-# for incomming routes to that node 
+# fee match strategy will set your fee ppm 
+#   based on what other nodes are charging
+#   for incomming routes to that node 
 strategy = fee-match
 execute = 1
 node = LND
 node_config = LND_NODE
 
-notify = telegram
-notify_config = TELEGRAM
-
 # choose the stat to match with 
-# options: in_avg|out_avg|in_min|out_min|in_max|out_max|in_med|out_med|in_std|out_std|in_corrected_avg|out_corrected_avg
+#     options: in_avg|out_avg|in_min|out_min|in_max|out_max|in_med
+#         out_med|in_std|out_std|in_corrected_avg|out_corrected_avg
 match_key = in_corrected_avg
 
 # price your liquidity at a premium/discount relative to other nodes
-# e.x. 0.05 is a 5% premium and -0.1 is a 10% discount
+#     e.x. 0.05 is a 5% premium and -0.1 is a 10% discount
 premium_factor = -0.5
 
 # avoid changing fees on every run of the strategy
-# set your tolerance and only update when the calculated
-# fee_ppm falls outside the bound
+#     set your tolerance and only update when the calculated
+#     fee_ppm falls outside the bound
 tolerance_factor = 0.15
 
 # set other channel policies
@@ -34,7 +33,7 @@ cltv_delta = 144
 min_htlc_sat = 1000
 
 # sets max htlc as a ratio of channel capacity
-# set below 0.5 for resistance against probing
+#     set below 0.5 for resistance against probing
 max_htlc_ratio = 0.4
 
 [SINK_SOOURCE_LOOP_KRAKEN]
@@ -47,16 +46,11 @@ node = LND
 node_config = LND_NODE
 
 # the fee priority as recommended by your mempool connection
-# options: minimumFee|economyFee|hourFee|halfHourFee|fastestFee
+#     options: minimumFee|economyFee|hourFee|halfHourFee|fastestFee
 mempool_fee = halfHourFee
 
-# notification adapter for getting messages related to this strategy
-# specify the config key for the api creds
-notify = telegram
-notify_config = TELEGRAM
-
 # pubkey of the source node - you must already have this channel open
-# this strategy will never close your source channel
+#     this strategy will never close your source channel
 source_pub = 02f1a8c87607f415c8f22c00593002775941dea48869ce23096af27b0cfdcc0b69
 source_host = 52.13.118.208:9735
 source = kraken
@@ -66,20 +60,25 @@ source_config = KRAKEN
 source_loop_fee = 1000
 
 # pubkey of the sink node
-# this strategy will open channels, and optionally close them (see: sink_close_ratio)
+#     this strategy will open channels, and optionally close them 
+#     see: sink_close_ratio
 sink_pub = 021c97a90a411ff2b10dc2a8e32de2f29d2fa49d41bfbb52bd416e460db0747d0d
 sink_host = 44.228.158.82:9735
+
 # max number of sats to 'lock-up' at once in sink channels for this strategy
 sink_budget = 100_000_000
 
 # the max number of channels to the sink node this script will maintain at once
-# useful for maximizing availibility, reduces downtime between closures 
-# max one channel will be 'enabled' at once -- all others flagged 'disabled'
-# fee updates apply to all channels the same
+#     useful for maximizing availibility, reduces downtime between closures 
+#     max one channel will be 'enabled' at once -- all others flagged 'disabled'
+#     fee updates apply to all channels the same
 num_sink_channels = 2
 
-# automatically close any sink node channel when the local balance falls below this ratio
-# e.x. 0.1 would close a 1M sat channel once 0.9M sats have been pushed through
-# set to 0.0 to effectively disable this script from automatically closing channels
+# automatically close any sink node channel when
+#     the local balance falls below this ratio
+#     e.x. 0.1 would close a 1M sat channel once 
+#          0.9M sats have been pushed through
+#     set to 0.0 to effectively disable this script from 
+#     automatically closing channels
 sink_close_ratio = 0.2
 

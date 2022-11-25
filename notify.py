@@ -22,7 +22,7 @@ class Logger:
     def __init__(self, filename):
         logging.basicConfig(filename=filename, filemode='a', format='[%(asctime)s] %(levelname)-8s %(message)s') 
         self.log = logging.getLogger()
-        self.log.setLevel(logging.DEBUG)
+        self.log.setLevel(logging.INFO)
 
     def info(self, message):
         self.log.info(message)

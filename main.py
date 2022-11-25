@@ -4,8 +4,9 @@ from strategy import SinkSource, FeeMatch
 
 
 def main():
-    log = Logger("logs/strategy.log")
+    log = Logger("logs/strategy2.log")
     log.info("Running...")
+    print(log)
 
     CONFIG = Config('playbook.config.example').config
     DEFAULTS = CONFIG['DEFAULT']

@@ -21,10 +21,7 @@ class FeeMatch:
     def pick_ppm(self, new_ppm, old_ppm):
         diff = abs(new_ppm - old_ppm)
         tolerance = float(self.tolerance_factor) * old_ppm
-        print("diff: " + diff)
-        print("toll: " + tolerance)
-
-        return old_ppm if diff < tolerance else new_ppm
+        return new_ppm if diff > tolerance else old_ppm
 
     def execute(self):
         for chan in self.channels:
@@ -32,10 +29,11 @@ class FeeMatch:
             my_pubkey = self.node.get_own_pubkey()
             peer_pub = chan_info.node2_pub if chan_info.node1_pub == my_pubkey else chan_info.node1_pub
             my_policy = chan_info.node1_policy if chan_info.node1_pub == my_pubkey else chan_info.node2_policy
+            match_fee = self.node.get_node_fee_report(peer_pub)[self.match_key] 
             new_policy = {
                 "time_lock_delta": int(self.cltv_delta),
                 "min_htlc": int(self.min_htlc_sat) * 1_000,
-                "fee_rate_milli_msat": self.node.get_node_fee_report(peer_pub)[self.match_key],
+                "fee_rate_milli_msat": match_fee + int(match_fee * float(self.premium_factor)),
                 "max_htlc_msat": int(int(chan_info.capacity) * float(self.max_htlc_ratio)) * 1_000,
                 "fee_base_msat": int(self.base_fee) * 1_000
             }
@@ -47,22 +45,27 @@ class FeeMatch:
                 "fee_base_msat": int(my_policy.fee_base_msat)
             }
             message = { 
-                "time_lock_delta": f"Update <{chan.chan_id}> time_lock_delta from {my_policy['time_lock_delta']} to {new_policy['time_lock_delta']}",
-                "min_htlc": f"Update <{chan.chan_id}> min_htlc from {my_policy['min_htlc']} to {new_policy['min_htlc']}",
-                "fee_rate_milli_msat": f"Update <{chan.chan_id}> fee_ppm from {my_policy['fee_rate_milli_msat']} to {new_policy['fee_rate_milli_msat']}",
-                "max_htlc_msat": f"Update <{chan.chan_id}> max_htlc_msat from {my_policy['max_htlc_msat']} to {new_policy['max_htlc_msat']}",
-                "fee_base_msat": f"Update <{chan.chan_id}> base_fee from {my_policy['fee_base_msat']} to {new_policy['fee_base_msat']}" 
+                "time_lock_delta": f"Update <{chan.chan_id}> time_lock_delta from {old_policy['time_lock_delta']} to {new_policy['time_lock_delta']}",
+                "min_htlc": f"Update <{chan.chan_id}> min_htlc from {old_policy['min_htlc']} to {new_policy['min_htlc']}",
+                "fee_rate_milli_msat": f"Update <{chan.chan_id}> fee_ppm from {old_policy['fee_rate_milli_msat']} to {new_policy['fee_rate_milli_msat']}",
+                "max_htlc_msat": f"Update <{chan.chan_id}> max_htlc_msat from {old_policy['max_htlc_msat']} to {new_policy['max_htlc_msat']}",
+                "fee_base_msat": f"Update <{chan.chan_id}> base_fee from {old_policy['fee_base_msat']} to {new_policy['fee_base_msat']}" 
             }
             needs_update = False
             for key in new_policy:
                 if new_policy[key] != old_policy[key]:
                     if key == 'fee_rate_milli_msat':
-                        new_policy[key] = self.pick_ppm(new_policy[key], old_policy[key])    
-                    needsUpdate = True 
-                    print(message[key])
-            if needsUpdate:
-                self.node.update_chan_policy(chan.chan_id, new_policy['fee_base_msat'], new_policy['fee_rate_milli_msat'], new_policy['min_htlc'], new_policy['max_htlc_msat'], new_policy['time_lock_delta'])
-        
+                        new_policy[key] = self.pick_ppm(new_policy[key], old_policy[key])
+                        if new_policy[key] != old_policy[key]:   
+                            needs_update = True
+                            print(message[key])
+                    else:
+                        needs_update = True
+                        print(message[key])
+            if needs_update:
+                print('updating the graph, plz')
+                update = self.node.update_chan_policy(chan.chan_id, new_policy)
+                print(update)        
 class SinkSource:
     def __init__(self, strategy_config, default_config, log):
         self.notify = notify_map[strategy_config['notify']](CREDS[strategy_config['notify_config']], log)

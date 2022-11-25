@@ -21,12 +21,12 @@ match_key = in_corrected_avg
 
 # price your liquidity at a premium/discount relative to other nodes
 # e.x. 0.05 is a 5% premium and -0.1 is a 10% discount
-premium_factor = 0.5
+premium_factor = -0.5
 
 # avoid changing fees on every run of the strategy
 # set your tolerance and only update when the calculated
 # fee_ppm falls outside the bound
-tolerance_factor = 0.05
+tolerance_factor = 0.15
 
 # set other channel policies
 base_fee = 0 

@@ -202,7 +202,13 @@ class Lnd:
                 return None
         return self.chan_info[chanid]
 
-    def update_chan_policy(self, chanid, base_fee_msat, fee_ppm, min_htlc_msat, max_htlc_msat, time_lock_delta):
+    def update_chan_policy(self, chanid, policy):
+        base_fee_msat = policy['fee_base_msat']
+        fee_ppm = policy['fee_rate_milli_msat']
+        min_htlc_msat = policy['min_htlc']
+        max_htlc_msat = policy['max_htlc_msat']
+        time_lock_delta = policy['time_lock_delta']
+        
         chan_info = self.get_chan_info(chanid)
         if not chan_info:
             return None
@@ -211,15 +217,24 @@ class Lnd:
             output_index=int(chan_info.chan_point.split(':')[1])
         )
         my_policy = chan_info.node1_policy if chan_info.node1_pub == self.get_own_pubkey() else chan_info.node2_policy
-        return self.stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(
+        
+        base_fee_msat = (base_fee_msat if base_fee_msat is not None else my_policy.fee_base_msat)
+        fee_rate = fee_ppm if fee_ppm is not None else my_policy.fee_rate_milli_msat
+        min_htlc_msat = (min_htlc_msat if min_htlc_msat is not None else my_policy.min_htlc)
+        max_htlc_msat = (max_htlc_msat if max_htlc_msat is not None else my_policy.max_htlc_msat)
+        time_lock_delta = (time_lock_delta if time_lock_delta is not None else my_policy.time_lock_delta)
+    
+        self.log.info(f"base_fee_msat: {base_fee_msat} ppm: {fee_rate} min_htlc_msat: {min_htlc_msat} max_htlc_msat: {max_htlc_msat} time_lock_delta: {time_lock_delta}"))
+
+        res = self.stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(
             chan_point=channel_point,
-            base_fee_msat=(base_fee_msat if base_fee_msat is not None else my_policy.fee_base_msat),
-            fee_rate=fee_ppm / 1000000 if fee_ppm is not None else my_policy.fee_rate_milli_msat / 1000000,
-            min_htlc_msat=(min_htlc_msat if min_htlc_msat is not None else my_policy.min_htlc),
-            min_htlc_msat_specified=min_htlc_msat is not None,
-            max_htlc_msat=(max_htlc_msat if max_htlc_msat is not None else my_policy.max_htlc_msat),
-            time_lock_delta=(time_lock_delta if time_lock_delta is not None else my_policy.time_lock_delta)
+            base_fee_msat=base_fee_msat,
+            fee_rate=(fee_rate / 1_000_000),
+            min_htlc_msat=min_htlc_msat,
+            max_htlc_msat=max_htlc_msat,
+            time_lock_delta=time_lock_delta
         ))
+        return res
 
     def get_txns(self, start_height=None, end_height=None):
         return self.stub.GetTransactions(ln.GetTransactionsRequest(

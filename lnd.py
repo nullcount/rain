@@ -224,7 +224,7 @@ class Lnd:
         max_htlc_msat = (max_htlc_msat if max_htlc_msat is not None else my_policy.max_htlc_msat)
         time_lock_delta = (time_lock_delta if time_lock_delta is not None else my_policy.time_lock_delta)
     
-        self.log.info(f"base_fee_msat: {base_fee_msat} ppm: {fee_rate} min_htlc_msat: {min_htlc_msat} max_htlc_msat: {max_htlc_msat} time_lock_delta: {time_lock_delta}"))
+        self.log.info(f"base_fee_msat: {base_fee_msat} ppm: {fee_rate} min_htlc_msat: {min_htlc_msat} max_htlc_msat: {max_htlc_msat} time_lock_delta: {time_lock_delta}")
 
         res = self.stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(
             chan_point=channel_point,

@@ -14,6 +14,15 @@ api_key =
 api_secret =
 widthdraw_key =
 
+[NICEHASH]
+# create a nicehash API key with wallet permissions
+#   add a whitelisted widthdrawl address and label
+#   it `witdhdraw_key`
+api_key = 
+api_secret =
+org_id = 
+witdhdraw_key = 
+
 [TELEGRAM]
 # send yourself a telegram updates about your node using a bot
 #   1. visit https://telegram.me/BotFather to begin chatting with the BotFather 

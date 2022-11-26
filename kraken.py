@@ -29,7 +29,9 @@ class Kraken:
     def check_errors(self, response, payload, endpoint):
         if response['error']:
             for err in response['error']:
-                self.log.error("kraken responded with error: {}".format(err))
+                err_msg = f"kraken responded with error: {err}"
+                self.log.error(err_msg)
+                self.log.notify(err_msg)
             self.log.error('using payload: {}'.format(payload))
             self.log.error('from : {}'.format(endpoint))
             sys.exit()

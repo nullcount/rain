@@ -29,7 +29,7 @@ class FeeMatch:
             my_pubkey = self.node.get_own_pubkey()
             peer_pub = chan_info.node2_pub if chan_info.node1_pub == my_pubkey else chan_info.node1_pub
             my_policy = chan_info.node1_policy if chan_info.node1_pub == my_pubkey else chan_info.node2_policy
-            match_fee = self.node.get_node_fee_report(peer_pub)[self.match_key] 
+            match_fee = self.node.get_node_fee_report(peer_pub)[self.match_key]
             new_policy = {
                 "time_lock_delta": int(self.cltv_delta),
                 "min_htlc": int(self.min_htlc_sat) * 1_000,
@@ -44,19 +44,29 @@ class FeeMatch:
                 "max_htlc_msat": int(my_policy.max_htlc_msat),
                 "fee_base_msat": int(my_policy.fee_base_msat)
             }
-            message = { 
-                "time_lock_delta": f"Update <{chan.chan_id}> time_lock_delta from {old_policy['time_lock_delta']} to {new_policy['time_lock_delta']}",
-                "min_htlc": f"Update <{chan.chan_id}> min_htlc from {old_policy['min_htlc']} to {new_policy['min_htlc']}",
-                "fee_rate_milli_msat": f"Update <{chan.chan_id}> fee_ppm from {old_policy['fee_rate_milli_msat']} to {new_policy['fee_rate_milli_msat']}",
-                "max_htlc_msat": f"Update <{chan.chan_id}> max_htlc_msat from {old_policy['max_htlc_msat']} to {new_policy['max_htlc_msat']}",
-                "fee_base_msat": f"Update <{chan.chan_id}> base_fee from {old_policy['fee_base_msat']} to {new_policy['fee_base_msat']}" 
+            message = {
+                "time_lock_delta": f"Update <{chan.chan_id}> time_lock_delta \
+                        from {old_policy['time_lock_delta']} \
+                        to {new_policy['time_lock_delta']}",
+                "min_htlc": f"Update <{chan.chan_id}> min_htlc from \
+                        {old_policy['min_htlc']} to {new_policy['min_htlc']}",
+                "fee_rate_milli_msat": f"Update <{chan.chan_id}> fee_ppm from \
+                        {old_policy['fee_rate_milli_msat']} to \
+                        {new_policy['fee_rate_milli_msat']}",
+                "max_htlc_msat": f"Update <{chan.chan_id}> max_htlc_msat from \
+                        {old_policy['max_htlc_msat']} to \
+                        {new_policy['max_htlc_msat']}",
+                "fee_base_msat": f"Update <{chan.chan_id}> base_fee from \
+                        {old_policy['fee_base_msat']} to \
+                        {new_policy['fee_base_msat']}" 
             }
             needs_update = False
             for key in new_policy:
                 if new_policy[key] != old_policy[key]:
                     if key == 'fee_rate_milli_msat':
-                        new_policy[key] = self.pick_ppm(new_policy[key], old_policy[key])
-                        if new_policy[key] != old_policy[key]:   
+                        ppm = self.pick_ppm(new_policy[key], old_policy[key])
+                        new_policy[key] = ppm
+                        if new_policy[key] != old_policy[key]:
                             needs_update = True
                             self.log.info(message[key])
                     else:
@@ -92,7 +102,8 @@ class SinkSource:
         self.unconfirmed = self.node.get_unconfirmed_balance()
         self.source_balance = self.source.get_account_balance()
         self.source_pending_loop_out = self.source.get_pending_widthdraw_sats()
-        self.sat_per_vbyte = self.mempool.get_reccomended_fee()[self.mempool_fee]
+        self.sat_per_vbyte = self.mempool.get_fee()[self.mempool_fee]
+        self.sats_on_the_way = self.unconfirmed + self.source_pending_loop_out
 
         self.sink_channel_template = ChannelTemplate(
             sat_per_vbyte=self.sat_per_vbyte,
@@ -104,87 +115,113 @@ class SinkSource:
             min_htlc_sat=1000
         )
 
+        self.sats_required_for_sink_channel = \
+            self.sink_channel_template.local_funding_amount + \
+            self.min_onchain_balance
+        self.sats_in_source_channels = 0.0
+        self.source_channels_capacity = 0.0
+        for chan in self.source_channels:
+            self.sats_in_source_channels += chan.local_balance
+            self.source_channels_capacity += chan.capacity
+
+    def is_money_leaving_node(self):
+        return self.unconfirmed < 0
+
+    def has_enough_sats_for_new_sink_channel(self):
+        return self.sats_required_for_sink_channel < self.confirmed
+
+    def has_enough_sink_channels(self):
+        return len(self.sink_channels) < self.num_sink_channels
+
+    def has_source_channels_full(self):
+        return self.sats_in_source_channels / self.source_channels_capacity \
+                > 0.8
+
+    def has_source_channels_empty(self):
+        return self.sats_in_source_channels / self.source_channels_capacity \
+                < 0.2
+
+    def has_enough_sats_on_the_way(self):
+        return self.sats_required_for_sink_channel < self.sats_on_the_way \
+            + self.confirmed
+
+    def has_enough_sats_in_source_channels(self):
+        return self.sats_on_the_way + self.confirmed + self.source_balance + \
+                self.sats_in_source_channels \
+                > self.sats_required_for_sink_channel
+
+    def should_initiate_source_account_onchain_widthdrawl(self):
+        # we should only widthdraw on chain if we absolutely need the sats
+        # flat fees are incurred so try to be maximally efficient
+        # empty channels to source first
+        if self.source_balance == 0:
+            return False  # no money to widthdrawl
+        if self.source_pending_loop_out > 0:
+            return False  # money already widthdrawn recently
+        if self.sats_on_the_way + self.confirmed + self.source_balance > \
+                self.sats_required_for_sink_channel:  
+            # the funds in acct would be enough to open a channel
+            if self.has_source_channels_empty():
+                return True  # ready to init widthdrawl request
+            else:
+                self.empty_source_channels()
+        return False
+
+    def empty_source_channels(self):
+        # generate LN invoices from the source acct.
+        # pay them using source channels as first hop.
+        # TODO automate once source(s) support LN API
+        self.log.info("Notify the operator to manually deposit sats into \
+                source accounts")
+        self.log.notify(f"Found {self.sats_in_source_channels} sats ready to \
+                deposit into source account")
+
+    def close_empty_sink_channels(self):
+        for chan in self.sink_channels:
+            if chan.local_balance / chan.capacity < self.sink_close_ratio:
+                self.node.close_channel(chan.chan_id, self.sat_per_vbyte)
+
     def submit_widthdrawl_request(self):
         fee = self.source.get_widthdraw_fee(self.source_balance)
         if fee <= self.source_loop_fee:
             self.source.widthdraw_onchain(self.source_balance)
         else:
-            self.log.warning(f"Source withdraw fee higher than expected. Found: {fee} sats Expected: {self.source_loop_fee}")
+            self.log.warning(f"Source withdraw fee higher than expected. \
+                    Found: {fee} sats Expected: {self.source_loop_fee}")
 
     def execute(self):
-        sats_in_source_channels = 0
-        source_channels_capacity = 0
-        for chan in self.source_channels:
-            sats_in_source_channels += chan.local_balance
-            source_channels_capacity += chan.capacity
-        actions = []
-        # do we have enough sink channels open?
-        if len(self.sink_channels) < self.num_sink_channels:
-            self.log.info(f"Required sink channels not met. Target of {self.num_sink_channels} channels, but found {len(self.sink_channels)}")
-            if self.unconfirmed < 0:
-                self.log.info(f"Found unconfirmed sent transaction of {abs(unconfirmed)} sats and assuming its a channel open.")
-                self.log.info(f"Waiting for unconfirmed sent transaction...")
-                # just wait -- low time preference
-                return 1
-            # do we have enough sats on chain to open another sink channel?
-            channel_sats_required = self.sink_channel_template.local_funding_amount + self.min_onchain_balance
-            if self.confirmed > channel_sats_required:
+        if self.has_enough_sink_channels():
+            if self.has_source_channels_full():
+                self.empty_source_channels()
+            self.close_empty_sink_channels()
+        else:  # we need to open another sink channel
+            if self.is_money_leaving_node():
+                self.log.info(f"Found unconfirmed sent transaction of \
+                        {abs(self.unconfirmed)} sats. Assuming this is a \
+                        channel open transaction.")
+                self.log.info("Waiting for unconfirmed sent transaction \
+                        to confirm...")
+                return 1  # exit and wait until next execution
+            if self.has_enough_sats_for_new_sink_channel():
+                self.log.info("Attempting channel open...")
                 self.node.open_channel(self.sink_channel_template)
-            else:
-                missing_sats = (self.sink_channel_template.local_funding_amount + self.min_onchain_balance) - self.confirmed
-                sats_accounted_for = 0
-                self.log.info(f"Missing required sats to open another channel as specified. Required: {channel_sats_required} sats, but found {self.confirmed}")
-                self.log.info(f"Need to find {missing_sats} and move them on chain!")
-                # are there unconfirmed funds coming in our wallet?
-                if self.unconfirmed > 0:
-                    self.log.info(f"Found {self.unconfirmed} unconfirmed sats")
-                    sats_accounted_for += self.unconfirmed
-                # are there funds pending approval to widthdraw to our wallet?
-                if self.source_pending_loop_out:
-                    self.log.info(f"Found {self.source_pending_loop_out} sats requested to leave source")
-                    sats_accounted_for += self.source_pending_loop_out
-                # have we found all the sats yet? 
-                if sats_accounted_for > missing_sats:
-                    self.log.info(f"{sats_accounted_for} sats will arrive on chain")
-                    # just wait -- low time preference
-                    return 1
-                # are there funds sitting in the source account?
-                if self.source_balance:
-                    sats_accounted_for += self.source_balance
-                    self.log.info(f"{self.source_balance} sats in source account")
-                    actions.append("WIDTHDRAW_FROM_SOURCE")
-                # include funds in our local balance of source channels
-                sats_accounted_for += sats_in_source_channels
-                # have we found all the sats yet?
-                if sats_accounted_for > missing_sats:
-                    self.log.info(f"Found {sats_in_source_channels} sats in local balance of source channels")
-                    self.log.info(f"Notifying the operator to deposit into source accounts")
-                    self.log.notify(f"Need {missing_sats} to open required channels for sink/source automation. Found {sats_in_source_channels} availible to {self.source_pub}")
-                    actions.append("DEPOSIT_INTO_SOURCE")
-                else: # we need more sats!!!
-                    actions.append("ASK_FOR_MORE_CAPITAL")
-                    msg = f"Sink/Source strategy needs {missing_sats - sats_accounted_for} sats to open another source channel. Either adjust your config or seposit more sats"
-                    self.log.notify(msg)
-                    self.log.warning(msg)
-        else: # expected number of source channels are present    
-            # check if the source channels need drained
-            if sats_in_source_channels / source_channels_capacity > 0.8:
-                self.log.info(f"Source channels are above 50% full")
-                self.log.info(f"Notifying the operator to deposit into source accounts")
-                self.log.notify(f"Source channels are getting full, consider making a deposit to free up inbound")
-                actions.append("DEPOSIT_INTO_SOURCE")
-            # close empty sink channels
-            for chan in self.sink_channels:
-                if chan.local_balance / chan.capacity < self.sink_close_ratio:
-                    self.node.close_channel(chan.chan_id, self.sat_per_vbyte)
-
-        if "DEPOSIT_INTO_SOURCE" in actions:
-            # TODO deposit over LN into the source account
-            self.log.info("Should deposit into accounts...")
-        elif "WIDTHDRAW_FROM_SOURCE" in actions:
-            fee = self.source.get_widthdraw_fee(self.source_balance)
-            if fee <= self.source_loop_fee:
+                return 1  # exit and wait until next execution
+            if self.has_enough_sats_on_the_way():
+                self.log.info(f"Found enough sats to open channel in \
+                        unconfirmed: {self.unconfirmed} sats and \
+                        pending: {self.source_pending_loop_out} sats from \
+                        source account.")
+                return 1  # exit and wait until next execution
+            if self.should_initiate_source_account_onchain_widthdrawl():
                 self.source.widthdraw_onchain(self.source_balance)
-            else:
-                self.log.warning(f"Source withdraw fee higher than expected. Found: {fee} sats Expected: {self.source_loop_fee}")
- 
+                return 1
+            if self.has_enough_sats_in_source_channels():
+                self.empty_source_channels()
+                return 1
+            # if we make it here, we need more sats!!!
+            sats_found = self.confirmed + self.sats_on_the_way + \
+                self.source_balance
+            sats_needed = self.sats_required_for_sink_channel - sats_found
+            self.log.notify(f"Need {sats_needed} sats for sink-source \
+                    strategy to open channel. Found {sats_found} sats")
+            return 1

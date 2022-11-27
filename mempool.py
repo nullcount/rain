@@ -15,6 +15,6 @@ class Mempool:
         ).json()
         return req
 
-    def get_reccomended_fee(self):
+    def get_fee(self):
         return self.mempool_request("fees/recommended", {})
 

@@ -111,7 +111,7 @@ class SinkSource:
         self.sink_channel_template = ChannelTemplate(
             sat_per_vbyte=self.sat_per_vbyte,
             node_pubkey=self.sink_pub,
-            local_funding_amount=self.sink_budget / self.num_sink_channels,
+            local_funding_amount=int(self.sink_budget / self.num_sink_channels),
             base_fee=0,
             fee_rate=9999,
             address=self.sink_host,

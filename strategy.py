@@ -202,23 +202,23 @@ class SinkSource:
                 self.empty_source_channels()
             self.close_empty_sink_channels()
         else:  # we need to open another sink channel
-            execution_path.append(("3")
+            execution_path.append("3")
             if self.is_money_leaving_node() and not end:
-                execution_path.append(("4")
+                execution_path.append("4")
                 self.log.info(f"Found unconfirmed sent transaction of {abs(self.unconfirmed)} sats. Assuming this is a channel open transaction.")
                 self.log.info("Waiting for unconfirmed sent transaction to confirm...")
                 end = True  # exit and wait until next execution
             if self.has_enough_sats_for_new_sink_channel() and not end:
-                execution_path.append(("5")
+                execution_path.append("5")
                 self.log.info("Attempting channel open...")
                 self.node.open_channel(self.sink_channel_template)
                 end = True  # exit and wait until next execution
             if self.has_enough_sats_on_the_way() and not end:
-                execution_path.append(("6")
+                execution_path.append("6")
                 self.log.info(f"Found enough sats to open channel in unconfirmed: {self.unconfirmed} sats and pending: {self.source_pending_loop_out} sats from source account.")
                 end = True  # exit and wait until next execution
             if self.should_initiate_source_account_onchain_widthdrawl() and not end:
-                execution_path.append(('7')
+                execution_path.append('7')
                 self.source.widthdraw_onchain(self.source_balance)
                 end = True
             if self.has_enough_sats_in_source_channels() and not end:
@@ -227,11 +227,11 @@ class SinkSource:
                 end = True
             # if we make it here, we need more sats!!!
             if not end:
-                execution_path.append(("9")
+                execution_path.append("9")
                 sats_found = self.confirmed + self.sats_on_the_way + \
                     self.source_balance
                 sats_needed = self.sats_required_for_sink_channel - sats_found
                 self.log.notify(f"Need {sats_needed} sats for sink-source strategy to open channel. Found {sats_found} sats")
             self.log.info("Finished execution of sink/source strategy")
-            self.log.info(f"Execution path: {"".join(execution_path)}")
+            self.log.info(f"Execution path: {''.join(execution_path)}")
             return 1

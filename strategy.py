@@ -124,6 +124,9 @@ class SinkSource:
             self.sats_in_source_channels += chan.local_balance
             self.source_channels_capacity += chan.capacity
 
+    def dump_state(self):
+        return vars(self)
+
     def is_money_leaving_node(self):
         return self.unconfirmed < 0
 
@@ -159,7 +162,7 @@ class SinkSource:
         if self.source_pending_loop_out > 0:
             return False  # money already widthdrawn recently
         if self.sats_on_the_way + self.confirmed + self.source_balance > \
-                self.sats_required_for_sink_channel:  
+                self.sats_required_for_sink_channel:
             # the funds in acct would be enough to open a channel
             if self.has_source_channels_empty():
                 return True  # ready to init widthdrawl request

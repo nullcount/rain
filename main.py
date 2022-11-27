@@ -21,6 +21,7 @@ def main():
             if CONFIG[key]['execute'] == "1":
                 _strategy = strategy_map[CONFIG[key]['strategy']](CONFIG[key], DEFAULTS, log)
                 _strategy.execute()
+                log.info(_strategy.dump_state())
 
 
 if __name__ == "__main__":

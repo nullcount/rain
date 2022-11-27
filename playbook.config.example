@@ -80,5 +80,5 @@ num_sink_channels = 2
 #          0.9M sats have been pushed through
 #     set to 0.0 to effectively disable this script from 
 #     automatically closing channels
-sink_close_ratio = 0.2
+sink_close_ratio = 0.1
 

@@ -332,6 +332,9 @@ class Lnd:
         self.log.info(f"LND open channel {channel.local_funding_amount} sats with peer: {channel.node_pubkey}")
         return channel_point
 
+    def close_channel(self, chan_id, sat_per_vbyte):
+        return
+
     def get_onchain_balance(self):
         balance_request = ln.WalletBalanceRequest()
         balance_response = self.stub.WalletBalance(balance_request)

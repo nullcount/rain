@@ -74,7 +74,7 @@ class Kraken:
         self.log.info("kraken initiated {} sat widthdrawl".format(sats))
         return res
 
-    def get_widthdraw_info(self, sats):
+    def get_widthdraw_fee(self, sats):
         payload = {
             "nonce": str(int(1000*time.time())),
             "asset": "XBT",
@@ -87,13 +87,13 @@ class Kraken:
             'fee': int(float(res['fee']) * COIN_SATS)
         }
         self.log.info("kraken fee: {} sats widthdraw amount: {} sats".format(fee_quote['fee'], sats))
-        return fee_quote
+        return fee_quote['fee']
 
     def get_pending_widthdraw_sats(self):
         widthdraws = self.get_recent_widthdraws()
         pending_amt = 0
         for w in widthdraws:
-            if w['status'] in ['Initial', 'Pending']:
+            if w['status'] in ['Initial']: # Pending status is considered unconfirmed
                 pending_amt += int(float(w['amount']) * COIN_SATS)
                 self.log.info('kraken [{}] widthdraw #{} of {} sats'.format(w['status'].lower(), w['refid'], w['amount']))
         return pending_amt

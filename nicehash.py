@@ -98,16 +98,16 @@ class Nicehash:
         self.log.info("nicehash initiated {} sat widthdrawl".format(sats))
         return res
 
-    def get_widthdraw_info(self, sats):
+    def get_widthdraw_fee(self, sats):
         res = self.nicehash_request("GET", "/main/api/v2/public/service/fee/info", '', None)
         fee = int(float(res['withdrawal']['BITGO']['rules']['BTC']['intervals'][0]['element']['sndValue']) * COIN_SATS)
-        return {"fee": fee}
+        return fee
 
     def get_pending_widthdraw_sats(self):
         events = self.get_recent_widthdraws()['list']
         pending = 0
         for event in events:
-            if event['status']['description'] in ['SUBMITTED', 'ACCEPTED', 'PROCESSING']:
+            if event['status']['description'] in ['SUBMITTED', 'ACCEPTED']: # PROCESSING status is considered uncoinfirmed
                 pending += float(event['amount'])
         return int(pending * COIN_SATS)
 

@@ -1,3 +1,4 @@
+import sys
 from config import Config
 from notify import Logger
 from strategy import SinkSource, FeeMatch
@@ -21,7 +22,8 @@ def main():
             if CONFIG[key]['execute'] == "1":
                 _strategy = strategy_map[CONFIG[key]['strategy']](CONFIG[key], DEFAULTS, log)
                 _strategy.execute()
-                log.info(_strategy.dump_state())
+                if "--debug" in sys.argv:
+                    log.info(_strategy.dump_state())
 
 
 if __name__ == "__main__":

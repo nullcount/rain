@@ -38,4 +38,5 @@ class Logger:
         self.log.debug(message)
 
     def notify(self, message):
+        self.info(f"Notifying the operator: {message}")
         self.notify_connector.send_message(message)

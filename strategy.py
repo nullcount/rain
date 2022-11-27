@@ -17,6 +17,9 @@ class FeeMatch:
         self.min_htlc_sat = strategy_config['min_htlc_sat']
         self.max_htlc_ratio = strategy_config['max_htlc_ratio']
         self.channels = self.node.get_channels()
+    
+    def dump_state(self):
+        return vars(self)
 
     def pick_ppm(self, new_ppm, old_ppm):
         diff = abs(new_ppm - old_ppm)
@@ -134,15 +137,15 @@ class SinkSource:
         return self.sats_required_for_sink_channel < self.confirmed
 
     def has_enough_sink_channels(self):
-        return len(self.sink_channels) < self.num_sink_channels
+        return len(self.sink_channels) >= self.num_sink_channels
 
     def has_source_channels_full(self):
         return self.sats_in_source_channels / self.source_channels_capacity \
-                > 0.8
+                > (1.0 - self.sink_close_ratio)
 
     def has_source_channels_empty(self):
         return self.sats_in_source_channels / self.source_channels_capacity \
-                < 0.2
+                < self.sink_close_ratio
 
     def has_enough_sats_on_the_way(self):
         return self.sats_required_for_sink_channel < self.sats_on_the_way \
@@ -174,10 +177,8 @@ class SinkSource:
         # generate LN invoices from the source acct.
         # pay them using source channels as first hop.
         # TODO automate once source(s) support LN API
-        self.log.info("Notify the operator to manually deposit sats into \
-                source accounts")
-        self.log.notify(f"Found {self.sats_in_source_channels} sats ready to \
-                deposit into source account")
+        self.log.info("Notify the operator to manually deposit sats into source accounts")
+        self.log.notify(f"Found {self.sats_in_source_channels} sats ready to  deposit into source account")
 
     def close_empty_sink_channels(self):
         for chan in self.sink_channels:
@@ -189,42 +190,48 @@ class SinkSource:
         if fee <= self.source_loop_fee:
             self.source.widthdraw_onchain(self.source_balance)
         else:
-            self.log.warning(f"Source withdraw fee higher than expected. \
-                    Found: {fee} sats Expected: {self.source_loop_fee}")
+            self.log.warning(f"Source withdraw fee higher than expected. Found: {fee} sats Expected: {self.source_loop_fee}")
 
     def execute(self):
+        end = False
+        execution_path = []
         if self.has_enough_sink_channels():
+            execution_path.append("1")
             if self.has_source_channels_full():
+                execution_path.append("2")
                 self.empty_source_channels()
             self.close_empty_sink_channels()
         else:  # we need to open another sink channel
-            if self.is_money_leaving_node():
-                self.log.info(f"Found unconfirmed sent transaction of \
-                        {abs(self.unconfirmed)} sats. Assuming this is a \
-                        channel open transaction.")
-                self.log.info("Waiting for unconfirmed sent transaction \
-                        to confirm...")
-                return 1  # exit and wait until next execution
-            if self.has_enough_sats_for_new_sink_channel():
+            execution_path.append(("3")
+            if self.is_money_leaving_node() and not end:
+                execution_path.append(("4")
+                self.log.info(f"Found unconfirmed sent transaction of {abs(self.unconfirmed)} sats. Assuming this is a channel open transaction.")
+                self.log.info("Waiting for unconfirmed sent transaction to confirm...")
+                end = True  # exit and wait until next execution
+            if self.has_enough_sats_for_new_sink_channel() and not end:
+                execution_path.append(("5")
                 self.log.info("Attempting channel open...")
                 self.node.open_channel(self.sink_channel_template)
-                return 1  # exit and wait until next execution
-            if self.has_enough_sats_on_the_way():
-                self.log.info(f"Found enough sats to open channel in \
-                        unconfirmed: {self.unconfirmed} sats and \
-                        pending: {self.source_pending_loop_out} sats from \
-                        source account.")
-                return 1  # exit and wait until next execution
-            if self.should_initiate_source_account_onchain_widthdrawl():
+                end = True  # exit and wait until next execution
+            if self.has_enough_sats_on_the_way() and not end:
+                execution_path.append(("6")
+                self.log.info(f"Found enough sats to open channel in unconfirmed: {self.unconfirmed} sats and pending: {self.source_pending_loop_out} sats from source account.")
+                end = True  # exit and wait until next execution
+            if self.should_initiate_source_account_onchain_widthdrawl() and not end:
+                execution_path.append(('7')
                 self.source.widthdraw_onchain(self.source_balance)
-                return 1
-            if self.has_enough_sats_in_source_channels():
+                end = True
+            if self.has_enough_sats_in_source_channels() and not end:
+                execution_path.append("8")
                 self.empty_source_channels()
-                return 1
+                end = True
             # if we make it here, we need more sats!!!
-            sats_found = self.confirmed + self.sats_on_the_way + \
-                self.source_balance
-            sats_needed = self.sats_required_for_sink_channel - sats_found
-            self.log.notify(f"Need {sats_needed} sats for sink-source \
-                    strategy to open channel. Found {sats_found} sats")
+            if not end:
+                execution_path.append(("9")
+                sats_found = self.confirmed + self.sats_on_the_way + \
+                    self.source_balance
+                sats_needed = self.sats_required_for_sink_channel - sats_found
+                self.log.notify(f"Need {sats_needed} sats for sink-source strategy to open channel. Found {sats_found} sats")
+            self.log.info("Finished execution of sink/source strategy")
+            self.log.info(f"Execution path: {"".join(execution_path)}")
             return 1

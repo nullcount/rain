@@ -63,7 +63,7 @@ class FeeMatch:
                         needs_update = True
                         self.log.info(message[key])
             if needs_update:
-                self.log.info(("Broadcasting new channel policy!")
+                self.log.info("Broadcasting new channel policy!")
                 self.node.update_chan_policy(chan.chan_id, new_policy)
 
 
@@ -76,13 +76,13 @@ class SinkSource:
         self.sink_host = strategy_config['sink_host']
         self.source_pub = strategy_config['source_pub']
         self.source_host = strategy_config['source_host']
-        self.source_loop_fee = strategy_config['source_loop_fee']
-        self.sink_budget = strategy_config['sink_budget']
-        self.num_sink_chanels = strategy_config['num_sink_channels']
-        self.sink_channel_capacity = self.sink_budget / self.num_sink_chanels
+        self.source_loop_fee = int(strategy_config['source_loop_fee'])
+        self.sink_budget = int(strategy_config['sink_budget'])
+        self.num_sink_channels = int(strategy_config['num_sink_channels'])
+        self.sink_channel_capacity = self.sink_budget / self.num_sink_channels
         self.mempool_fee = strategy_config['mempool_fee']
-        self.sink_close_ratio = strategy_config['sink_close_ratio']
-        self.min_onchain_balance = default_config['min_onchain_balance']
+        self.sink_close_ratio = float(strategy_config['sink_close_ratio'])
+        self.min_onchain_balance = int(default_config['min_onchain_balance'])
 
         self.mempool = Mempool(CREDS["MEMPOOL"], self.log)
         self.node.get_channels()
@@ -120,7 +120,7 @@ class SinkSource:
         actions = []
         # do we have enough sink channels open?
         if len(self.sink_channels) < self.num_sink_channels:
-            self.log.info(f"Required sink channels not met. Target of {self.num_sink_chanels} channels, but found {len(self.sink_channels)}")
+            self.log.info(f"Required sink channels not met. Target of {self.num_sink_channels} channels, but found {len(self.sink_channels)}")
             if self.unconfirmed < 0:
                 self.log.info(f"Found unconfirmed sent transaction of {abs(unconfirmed)} sats and assuming its a channel open.")
                 self.log.info(f"Waiting for unconfirmed sent transaction...")
@@ -131,8 +131,7 @@ class SinkSource:
             if self.confirmed > channel_sats_required:
                 self.node.open_channel(self.sink_channel_template)
             else:
-                sats_needed_for_channel = (self.sink_channel_template.local_funding_amount + self.min_onchain_balance) - self.confirmed
-                missing_sats = sats_needed_for_channel - self.confirmed
+                missing_sats = (self.sink_channel_template.local_funding_amount + self.min_onchain_balance) - self.confirmed
                 sats_accounted_for = 0
                 self.log.info(f"Missing required sats to open another channel as specified. Required: {channel_sats_required} sats, but found {self.confirmed}")
                 self.log.info(f"Need to find {missing_sats} and move them on chain!")
@@ -146,12 +145,13 @@ class SinkSource:
                     sats_accounted_for += self.source_pending_loop_out
                 # have we found all the sats yet? 
                 if sats_accounted_for > missing_sats:
-                    self.log.info("Missing sats will arrive on chain")
+                    self.log.info(f"{sats_accounted_for} sats will arrive on chain")
                     # just wait -- low time preference
                     return 1
                 # are there funds sitting in the source account?
                 if self.source_balance:
                     sats_accounted_for += self.source_balance
+                    self.log.info(f"{self.source_balance} sats in source account")
                     actions.append("WIDTHDRAW_FROM_SOURCE")
                 # include funds in our local balance of source channels
                 sats_accounted_for += sats_in_source_channels

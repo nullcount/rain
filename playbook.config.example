@@ -9,7 +9,7 @@ min_onchain_balance = 200_000
 #   based on what other nodes are charging
 #   for incomming routes to that node 
 strategy = fee-match
-execute = 1
+execute = 0
 node = LND
 node_config = LND_NODE
 
@@ -39,7 +39,7 @@ max_htlc_ratio = 0.4
 [SINK_SOOURCE_LOOP_KRAKEN]
 # sink/source strategy for automating sink/source channel pairs
 strategy = sink-source
-execute = 0
+execute = 1
 
 # node implementation info 
 node = LND

@@ -106,6 +106,7 @@ class SinkSource:
         self.source_balance = self.source.get_account_balance()
         self.source_pending_loop_out = self.source.get_pending_widthdraw_sats()
         self.sat_per_vbyte = self.mempool.get_fee()[self.mempool_fee]
+        self.max_sat_per_vbyte = int(strategy_config['max_sat_per_vbyte'])
         self.sats_on_the_way = self.unconfirmed + self.source_pending_loop_out
 
         self.sink_channel_template = ChannelTemplate(
@@ -132,6 +133,9 @@ class SinkSource:
 
     def is_money_leaving_node(self):
         return self.unconfirmed < 0
+
+    def is_fee_in_budget(self):
+        return self.max_sat_per_vbyte < self.sat_per_vbyte
 
     def has_enough_sats_for_new_sink_channel(self):
         return self.sats_required_for_sink_channel < self.confirmed
@@ -183,7 +187,10 @@ class SinkSource:
     def close_empty_sink_channels(self):
         for chan in self.sink_channels:
             if chan.local_balance / chan.capacity < self.sink_close_ratio:
-                self.node.close_channel(chan.chan_id, self.sat_per_vbyte)
+                if self.is_fee_in_budget():
+                    self.node.close_channel(chan.chan_id, self.sat_per_vbyte)
+                else:
+                    self.log.notify(f"Channel close avoided: using {self.mempool_fee} at {self.sat_per_vbyte} sat/vbyte with max fee of {self.max_sat_per_vbyte} sat/vbyte")
 
     def submit_widthdrawl_request(self):
         fee = self.source.get_widthdraw_fee(self.source_balance)
@@ -211,8 +218,11 @@ class SinkSource:
             if self.has_enough_sats_for_new_sink_channel() and not end:
                 execution_path.append("5")
                 self.log.info("Attempting channel open...")
-                self.node.open_channel(self.sink_channel_template)
-                end = True  # exit and wait until next execution
+                if self.is_fee_in_budget():
+                    self.node.open_channel(self.sink_channel_template)
+                    end = True  # exit and wait until next execution
+                else:
+                    self.log.notify(f"Channel open avoided: using {self.mempool_fee} at {self.sat_per_vbyte} sat/vbyte with max fee of {self.max_sat_per_vbyte} sat/vbyte")
             if self.has_enough_sats_on_the_way() and not end:
                 execution_path.append("6")
                 self.log.info(f"Found enough sats to open channel in unconfirmed: {self.unconfirmed} sats and pending: {self.source_pending_loop_out} sats from source account.")

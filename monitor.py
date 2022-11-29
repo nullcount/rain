@@ -14,7 +14,7 @@ from lnd import Lnd
 from notify import Logger
 
 CREDS = Config("creds.config").config
-log = Logger("logs/monitor.log")
+log = Logger("logs/monitor.log", CREDS['TELEGRAM'])
 mynode = Lnd(CREDS['LND_NODE'], log)
 
 mychannels = {}

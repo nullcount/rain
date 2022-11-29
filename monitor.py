@@ -190,6 +190,9 @@ def main():
             elif outcome == 'settle_event':
                 note = '✅'
 
+            if eventtype == "FORWARD":
+                log.notify(f"✅ FORWARD {inalias} ➜ {outalias} for {fee} sats")
+
             print(eventtype,
                   in_htlc_id, out_htlc_id,
                   timetext, amount,'for', fee,

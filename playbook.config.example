@@ -49,6 +49,10 @@ node_config = LND_NODE
 #     options: minimumFee|economyFee|hourFee|halfHourFee|fastestFee
 mempool_fee = halfHourFee
 
+# specify the maximum fee to pay for opening channels
+#   if mempool_fee returns a higher value no channels will be opened/closed
+max_sat_per_vbyte = 31
+
 # pubkey of the source node - you must already have this channel open
 #     this strategy will never close your source channel
 source_pub = 02f1a8c87607f415c8f22c00593002775941dea48869ce23096af27b0cfdcc0b69

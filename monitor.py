@@ -9,10 +9,13 @@ import time
 import csv
 import traceback
 import argparse
+from config import Config
+from lnd import Lnd
+from notify import Logger
 
-from nodeinterface import NodeInterface
-
-mynode = NodeInterface.fromconfig()
+CREDS = Config("creds.config").config
+log = Logger("logs/monitor.log")
+mynode = Lnd(CREDS['LND_NODE'], log)
 
 mychannels = {}
 lastchannelfetchtime = 0
@@ -30,7 +33,7 @@ def getChanInfo(chanid):
     if uptodate and chanid in mychannels:
         return mychannels[chanid]
 
-    for chan in mynode.ListChannels().channels:
+    for chan in mynode.get_channels():
         mychannels[chan.chan_id] = chan
 
     lastchannelfetchtime = time.time()
@@ -38,7 +41,7 @@ def getChanInfo(chanid):
     if chanid in mychannels:
         return mychannels[chanid]
 
-    for chan in mynode.ClosedChannels().channels:
+    for chan in mynode.get_closed_channels():
         mychannels[chan.chan_id] = chan
 
     if chanid in mychannels:
@@ -51,7 +54,7 @@ def getAlias4ChanID(chanid):
     chan = getChanInfo(chanid)
     if chan is None:
         return chanid
-    alias = mynode.getAlias(chan.remote_pubkey)
+    alias = mynode.get_node_alias(chan.remote_pubkey)
     return alias
 
 def getFailureAttribute(einfo, attr):
@@ -71,9 +74,9 @@ def subscribeEventsPersistent():
     failures = 0
 
     while True:
-        events = mynode.router.SubscribeHtlcEvents()
+        events = mynode.subscribe_htlc_events()
         try:
-            _ = mynode.GetInfo() # test connection
+            _ = mynode.get_info() # test connection
             failures = 0
             print('Connected to LND. Waiting for first event...')
             for e in events:
@@ -112,7 +115,7 @@ def main():
     if args.persist:
         events = subscribeEventsPersistent()
     else:
-        events = mynode.router.SubscribeHtlcEvents()
+        events = mynode.subscribe_htlc_events()
         print('Now listening for events')
 
     for i, event in enumerate(events):
@@ -178,8 +181,7 @@ def main():
 
                 note += f'❌ Failure(wire: {wire_failure}, detail: {failure_detail}, string: {failure_string})'
 
-
-            elif outcome == 'settle_event' and  eventtype == 'FORWARD':
+            elif outcome == 'settle_event' and eventtype == 'FORWARD':
                 note = '✅ Forward successful.'
                 if fwdcachekey in forward_event_cache:
                     # This data is only found in forward_event, need to fetch it from cache

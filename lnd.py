@@ -35,6 +35,7 @@ class ChannelTemplate:
             min_htlc_msat=self.min_htlc_sat * SAT_MSATS
         )
 
+
 class Lnd:
     def __init__(self, LND_NODE_CONFIG, logger):
         self.log = logger
@@ -117,6 +118,10 @@ class Lnd:
                 self.log.info("LND is already peered with {}".format(peer_pubkey))
                 return True
         return False
+
+    def subscribe_htlc_events(self):
+        req = router.SubscribeHtlcEventsRequest()
+        return self.routerstub.SubscribeHtlcEvents(req)
 
     def add_peer(self, pubkey, address):
         ln_addr = ln.LightningAddress(pubkey=pubkey, host=address)
@@ -250,6 +255,9 @@ class Lnd:
     def get_own_pubkey(self):
         return self.get_info().identity_pubkey
 
+    def get_node_alias(self, pubkey):
+        return self.stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=pubkey)).node.alias
+
     def get_edges(self):
         return self.get_graph().edges
 
@@ -258,6 +266,12 @@ class Lnd:
             request = ln.ListChannelsRequest()
             self.channels = self.stub.ListChannels(request).channels
         return self.channels
+    
+    def get_closed_channels(self):
+        if self.closed_channels is None:
+            req = ln.ClosedChannelsRequest()
+            self.closed_channels = self.stub.ClosedChannels(req).channels
+        return self.closed_channels
 
     # Get all channels shared with a node
     def get_shared_channels(self, peerid):

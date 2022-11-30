@@ -190,7 +190,7 @@ def main():
             elif outcome == 'settle_event':
                 note = '✅'
 
-            if eventtype == "FORWARD":
+            if eventtype == "FORWARD" and "successful" in note:
                 log.notify(f"✅ FORWARD {inalias} ➜ {outalias} for {fee} sats")
 
             print(eventtype,
@@ -205,7 +205,7 @@ def main():
                   note,
                     )
 
-            with open('htlcstream.csv', 'a', newline='') as f:
+            with open('csv/htlcstream.csv', 'a', newline='') as f:
                 writer = csv.writer(f)
 
                 if i % 30 == 0:

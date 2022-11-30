@@ -125,8 +125,11 @@ class Nicehash:
         # TODO nicehash needs to implement LN widthdrawls
         return
 
-    def get_lightning_invoice(self):
+    def get_lightning_invoice(self, sats):
+        url = f"/main/api/v2/accounting/depositAddresses?currency=BTC&walletType=LIGHTNING&amount={float(sats) / COIN_SATS}"
+        print(url)
+        res = self.nicehash_request("GET", url, '', None)
         # TODO nicehash needs to implement LN deposits
-        return 
+        return res
 
         

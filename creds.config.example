@@ -16,8 +16,9 @@ widthdraw_key =
 
 [NICEHASH]
 # create a nicehash API key with wallet permissions
-#   add a whitelisted widthdrawl address and label
-#   it `witdhdraw_key`
+#   add a whitelisted widthdrawl address and use the API to find the withdrawlAddressId
+#   use https://www.nicehash.com/docs/rest/get-main-api-v2-accounting-withdrawalAddresses
+#   with your API keys witdhdraw_key should look like xxxxxxxx-xxxx-xxxx-xxxxx-xxxxxxxxxxxx
 api_key = 
 api_secret =
 org_id = 

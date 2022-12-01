@@ -8,7 +8,8 @@ from hashlib import sha256
 import sys
 
 COIN_SATS = 100_000_000
-
+MAX_LN_DEPOSIT = 15_000_000
+MIN_LN_DEPOSIT = 1_001
 
 class Nicehash:
 
@@ -125,11 +126,20 @@ class Nicehash:
         # TODO nicehash needs to implement LN widthdrawls
         return
 
+    def send_to_acct(self, sats, node):
+        # generate multiple invoices if needed
+        invs = []
+        while sats > MAX_LN_DEPOSIT:
+            invs.append(self.get_lightning_invoice(MAX_LN_DEPOSIT))
+            sats = sats - MAX_LN_DEPOSIT
+        if (sats > MIN_LN_DEPOSIT):
+            invs.append(self.get_lightning_invoice(sats))
+        for inv in invs:
+            node.pay_invoice(inv)
+    
     def get_lightning_invoice(self, sats):
-        url = f"/main/api/v2/accounting/depositAddresses?currency=BTC&walletType=LIGHTNING&amount={float(sats) / COIN_SATS}"
-        print(url)
-        res = self.nicehash_request("GET", url, '', None)
-        # TODO nicehash needs to implement LN deposits
-        return res
-
-        
+        res = self.nicehash_request("GET", "/main/api/v2/accounting/depositAddresses", f'currency=BTC&walletType=LIGHTNING&amount={float(sats) / COIN_SATS}', None)
+        invoice = res['list'][0]['address']
+        self.log.info(f"nicehash generated invoice for {sats} sats")
+        self.log.info(f"payment request: {invoice}")
+        return invoice

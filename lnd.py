@@ -327,6 +327,7 @@ class Lnd:
     def pay_invoice(self, invoice_string):
         send_request = ln.SendRequest(payment_request=invoice_string)
         send_response = self.stub.SendPaymentSync(send_request)
+        self.log.info(f"LND pay invoice response: {send_response}")
         return send_response
 
     def send_onchain(self, dest_addr, amount_sats, target_conf, sat_per_vbyte):

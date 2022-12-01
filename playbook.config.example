@@ -11,7 +11,6 @@ min_onchain_balance = 200_000
 strategy = fee-match
 execute = 0
 node = LND
-node_config = LND_NODE
 
 # choose the stat to match with 
 #     options: in_avg|out_avg|in_min|out_min|in_max|out_max|in_med

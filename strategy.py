@@ -7,7 +7,7 @@ CREDS = Config('creds.config').config
 
 class FeeMatch:
     def __init__(self, strategy_config, default_config, log):
-        self.node = node_map[strategy_config['node']](CREDS[strategy_config['node_config']], log)
+        self.node = node_map[strategy_config['node']](CREDS[strategy_config['node']], log)
         self.log = log
         self.match_key = strategy_config['match_key']
         self.premium_factor = strategy_config['premium_factor']
@@ -83,7 +83,7 @@ class FeeMatch:
 class SinkSource:
     def __init__(self, strategy_config, default_config, log):
         self.source = source_map[strategy_config['source']](CREDS[strategy_config['source_config']], log)
-        self.node = node_map[strategy_config['node']](CREDS[strategy_config['node_config']], log)
+        self.node = node_map[strategy_config['node']](CREDS[strategy_config['node']], log)
         self.log = log
         self.sink_pub = strategy_config['sink_pub']
         self.sink_host = strategy_config['sink_host']

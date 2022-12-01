@@ -1,0 +1,8 @@
+[DEFAULT]
+node = LND
+
+[HTLC_STREAM_LOGGER]
+execute = 1
+log_to_console = 1
+notify_forwards = 1
+csv_file = csv/htlcstream.csv

@@ -1,4 +1,4 @@
-[LND_NODE]
+[LND]
 # connect an LND node using an admin macaroon for full autopilot
 #   if connecting a remote lnd, you may need to add extratls=<IP_OF_LND>
 #   to lnd.conf

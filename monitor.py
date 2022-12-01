@@ -23,8 +23,7 @@ class HtlcStreamLogger:
         Uses a cache that times out after `chandatatimeout` seconds
         Also queries closed channels if `chanid` is not in open channels
         """
-        global lastchannelfetchtime
-        uptodate = (time.time() - lastchannelfetchtime < self.chandatatimeout)
+        uptodate = (time.time() - self.lastchannelfetchtime < self.chandatatimeout)
 
         if uptodate and chanid in self.mychannels:
             return self.mychannels[chanid]
@@ -32,7 +31,7 @@ class HtlcStreamLogger:
         for chan in self.mynode.get_channels():
             self.mychannels[chan.chan_id] = chan
 
-        lastchannelfetchtime = time.time()
+        self.lastchannelfetchtime = time.time()
 
         if chanid in self.mychannels:
             return self.mychannels[chanid]

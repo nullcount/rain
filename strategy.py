@@ -104,13 +104,8 @@ class SinkSource:
         self.confirmed = self.node.get_onchain_balance()
         self.unconfirmed = self.node.get_unconfirmed_balance()
         self.source_balance = self.source.get_account_balance()
-<<<<<<< HEAD
-        self.source_pending_loop_out = self.source.get_pending_send_sats()
-        self.sat_per_vbyte = self.mempool.get_fee()[self.mempool_fee]
-=======
         self.source_pending_loop_out = self.source.get_pending_widthdraw_sats()
         self.sat_per_vbyte = int(self.mempool.get_fee()[self.mempool_fee])
->>>>>>> 0197cfc34c85e8c6a11fb9f9652e6f6f7f68d713
         self.max_sat_per_vbyte = int(strategy_config['max_sat_per_vbyte'])
         self.sats_on_the_way = self.unconfirmed + self.source_pending_loop_out
 

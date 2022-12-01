@@ -1,4 +1,4 @@
-from multiprocessing import Process
+from threading import Thread
 from config import Config, node_map
 from notify import Logger
 from monitor import HtlcStreamLogger
@@ -20,11 +20,14 @@ def main():
     thread_pool = []
 
     for key in CONFIG:
-        if CONFIG[key]['execute'] == "1":
-            daemon = monitor_actions_map[key](CONFIG[key], node, log)
-            thread_pool.append(Process(target=daemon.mainLoop))
-    for process in thread_pool:
-        process.start()     
+        if key != 'DEFAULT':
+            if CONFIG[key]['execute'] == "1":
+                daemon = monitor_actions_map[key](CONFIG[key], node, log)
+              #  daemon.mainLoop()
+                thread_pool.append(Thread(target = daemon.mainLoop))
+   
+    for thread in thread_pool:
+        thread.start()     
 
 if __name__ == "__main__":
     main()

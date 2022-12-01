@@ -15,7 +15,7 @@ class Kraken:
         self.api_url = "https://api.kraken.com/"
         self.api_key = KRAKEN_CONFIG['api_key']
         self.api_secret = KRAKEN_CONFIG['api_secret']
-        self.widthdraw_key = KRAKEN_CONFIG['widthdraw_key']
+        self.funding_key = KRAKEN_CONFIG['funding_key']
 
     @staticmethod
     def get_kraken_signature(urlpath, data, secret):
@@ -63,22 +63,22 @@ class Kraken:
         self.log.info("kraken deposit address: {}".format(addr))
         return addr
 
-    def widthdraw_onchain(self, sats):
+    def send_onchain(self, sats):
         payload = {
             "nonce": str(int(1000*time.time())),
             "asset": "XBT",
-            "key": self.widthdraw_key,
+            "key": self.funding_key,
             "amount": sats / COIN_SATS
         }
         res = self.kraken_request('/0/private/Withdraw', payload)
         self.log.info("kraken initiated {} sat widthdrawl".format(sats))
         return res
 
-    def get_widthdraw_fee(self, sats):
+    def get_onchain_fee(self, sats):
         payload = {
             "nonce": str(int(1000*time.time())),
             "asset": "XBT",
-            "key": self.widthdraw_key,
+            "key": self.funding_key,
             "amount": sats / COIN_SATS
         }
         res = self.kraken_request('/0/private/WithdrawInfo', payload)
@@ -89,16 +89,16 @@ class Kraken:
         self.log.info("kraken fee: {} sats widthdraw amount: {} sats".format(fee_quote['fee'], sats))
         return fee_quote['fee']
 
-    def get_pending_widthdraw_sats(self):
-        widthdraws = self.get_recent_widthdraws()
+    def get_pending_send_sats(self):
+        sends = self.get_recent_sends()
         pending_amt = 0
-        for w in widthdraws:
+        for w in sends:
             if w['status'] in ['Initial']: # Pending status is considered unconfirmed
                 pending_amt += int(float(w['amount']) * COIN_SATS)
                 self.log.info('kraken [{}] widthdraw #{} of {} sats'.format(w['status'].lower(), w['refid'], w['amount']))
         return pending_amt
 
-    def get_recent_widthdraws(self):
+    def get_recent_sends(self):
         payload = {
             "nonce": str(int(1000*time.time())),
             "asset": "XBT"

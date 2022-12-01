@@ -104,7 +104,7 @@ class SinkSource:
         self.confirmed = self.node.get_onchain_balance()
         self.unconfirmed = self.node.get_unconfirmed_balance()
         self.source_balance = self.source.get_account_balance()
-        self.source_pending_loop_out = self.source.get_pending_widthdraw_sats()
+        self.source_pending_loop_out = self.source.get_pending_send_sats()
         self.sat_per_vbyte = self.mempool.get_fee()[self.mempool_fee]
         self.max_sat_per_vbyte = int(strategy_config['max_sat_per_vbyte'])
         self.sats_on_the_way = self.unconfirmed + self.source_pending_loop_out
@@ -160,19 +160,19 @@ class SinkSource:
                 self.sats_in_source_channels \
                 > self.sats_required_for_sink_channel
 
-    def should_initiate_source_account_onchain_widthdrawl(self):
-        # we should only widthdraw on chain if we absolutely need the sats
+    def should_initiate_source_account_onchain_send(self):
+        # we should only send on chain if we absolutely need the sats
         # flat fees are incurred so try to be maximally efficient
         # empty channels to source first
         if self.source_balance == 0:
-            return False  # no money to widthdrawl
+            return False  # no money to send
         if self.source_pending_loop_out > 0:
-            return False  # money already widthdrawn recently
+            return False  # money already sent recently
         if self.sats_on_the_way + self.confirmed + self.source_balance > \
                 self.sats_required_for_sink_channel:
             # the funds in acct would be enough to open a channel
             if self.has_source_channels_empty():
-                return True  # ready to init widthdrawl request
+                return True  # ready to init send request
             else:
                 self.empty_source_channels()
         return False
@@ -192,12 +192,12 @@ class SinkSource:
                 else:
                     self.log.notify(f"Channel close avoided: using {self.mempool_fee} at {self.sat_per_vbyte} sat/vbyte with max fee of {self.max_sat_per_vbyte} sat/vbyte")
 
-    def submit_widthdrawl_request(self):
-        fee = self.source.get_widthdraw_fee(self.source_balance)
+    def submit_send_request(self):
+        fee = self.source.get_onchain_fee(self.source_balance)
         if fee <= self.source_loop_fee:
-            self.source.widthdraw_onchain(self.source_balance)
+            self.source.send_onchain(self.source_balance)
         else:
-            self.log.warning(f"Source withdraw fee higher than expected. Found: {fee} sats Expected: {self.source_loop_fee}")
+            self.log.warning(f"Source widthdrawl fee higher than expected. Found: {fee} sats Expected: {self.source_loop_fee}")
 
     def execute(self):
         end = False
@@ -227,9 +227,9 @@ class SinkSource:
                 execution_path.append("6")
                 self.log.info(f"Found enough sats to open channel in unconfirmed: {self.unconfirmed} sats and pending: {self.source_pending_loop_out} sats from source account.")
                 end = True  # exit and wait until next execution
-            if self.should_initiate_source_account_onchain_widthdrawl() and not end:
+            if self.should_initiate_source_account_onchain_send() and not end:
                 execution_path.append('7')
-                self.source.widthdraw_onchain(self.source_balance)
+                self.source.send_onchain(self.source_balance)
                 end = True
             if self.has_enough_sats_in_source_channels() and not end:
                 execution_path.append("8")

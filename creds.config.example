@@ -8,21 +8,21 @@ macaroon_path =
 
 [KRAKEN]
 # create a kraken API key with funding permissions
-#   add a widthdrawl address to your account and name 
-#   it `widthdraw_key` 
+#   add a withdrawl address to your account and name 
+#   it `funding_key` 
 api_key = 
 api_secret =
-widthdraw_key =
+funding_key =
 
 [NICEHASH]
 # create a nicehash API key with wallet permissions
-#   add a whitelisted widthdrawl address and use the API to find the withdrawlAddressId
+#   add a whitelisted withdrawl address and use the API to find the withdrawlAddressId
 #   use https://www.nicehash.com/docs/rest/get-main-api-v2-accounting-withdrawalAddresses
-#   with your API keys witdhdraw_key should look like xxxxxxxx-xxxx-xxxx-xxxxx-xxxxxxxxxxxx
+#   with your API keys to get the id for funding_key should look like xxxxxxxx-xxxx-xxxx-xxxxx-xxxxxxxxxxxx
 api_key = 
 api_secret =
 org_id = 
-witdhdraw_key = 
+funding_key = 
 
 [TELEGRAM]
 # send yourself a telegram updates about your node using a bot

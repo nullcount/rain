@@ -18,7 +18,7 @@ class Nicehash:
         self.key = NH_CONFIG['api_key']
         self.secret = NH_CONFIG['api_secret']
         self.organisation_id = NH_CONFIG['org_id']
-        self.widthdraw_key = NH_CONFIG['widthdraw_key']
+        self.funding_key = NH_CONFIG['funding_key']
         self.host = "https://api2.nicehash.com"
 
     def nicehash_request(self, method, path, query, body):
@@ -88,31 +88,31 @@ class Nicehash:
         res = self.nicehash_request("GET", '/main/api/v2/accounting/depositAddresses', 'currency=BTC&walletType=BITGO', None)
         return res['list'][0]['address']
 
-    def widthdraw_onchain(self, sats):
+    def send_onchain(self, sats):
         amt = str(float(sats) / COIN_SATS)
         body = {
             "currency": "BTC",
             "amount": amt,
-            "withdrawalAddressId": self.widthdraw_key
+            "withdrawalAddressId": self.funding_key
         }
         res = self.nicehash_request("POST", "/main/api/v2/accounting/withdrawal", '', body)
         self.log.info("nicehash initiated {} sat widthdrawl".format(sats))
         return res
 
-    def get_widthdraw_fee(self, sats):
+    def get_onchain_fee(self, sats):
         res = self.nicehash_request("GET", "/main/api/v2/public/service/fee/info", '', None)
         fee = int(float(res['withdrawal']['BITGO']['rules']['BTC']['intervals'][0]['element']['sndValue']) * COIN_SATS)
         return fee
 
-    def get_pending_widthdraw_sats(self):
-        events = self.get_recent_widthdraws()['list']
+    def get_pending_send_sats(self):
+        events = self.get_recent_sends()['list']
         pending = 0
         for event in events:
             if event['status']['description'] in ['SUBMITTED', 'ACCEPTED']: # PROCESSING status is considered uncoinfirmed
                 pending += float(event['amount'])
         return int(pending * COIN_SATS)
 
-    def get_recent_widthdraws(self):
+    def get_recent_sends(self):
         res = self.nicehash_request("GET", "/main/api/v2/accounting/withdrawals/BTC", '', None)
         return res
 
@@ -123,7 +123,7 @@ class Nicehash:
         return balance
 
     def pay_invoice(self, invoice_code):
-        # TODO nicehash needs to implement LN widthdrawls
+        # TODO nicehash needs to implement paying invoices
         return
 
     def send_to_acct(self, sats, node):

@@ -28,7 +28,7 @@ class HtlcStreamLogger:
         if uptodate and chanid in self.mychannels:
             return self.mychannels[chanid]
 
-        for chan in self.mynode.get_channels():
+        for chan in self.node.get_channels():
             self.mychannels[chan.chan_id] = chan
 
         self.lastchannelfetchtime = time.time()

@@ -113,6 +113,9 @@ class Kraken:
         self.log.info("kraken account balance: {} sats".format(balance))
         return balance
 
+    def send_to_acct(self, sats, node):
+        self.log.notify(f"Hey boss, {int(sats)} sats ready for kraken deposit")
+
     def pay_invoice(self, invoice_code):
         # TODO kraken hasn't implemented yet
         return

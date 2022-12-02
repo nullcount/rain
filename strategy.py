@@ -124,9 +124,11 @@ class SinkSource:
             self.min_onchain_balance
         self.sats_in_source_channels = 0.0
         self.source_channels_capacity = 0.0
+        self.source_channels_local_reserve_sats = 0.0
         for chan in self.source_channels:
             self.sats_in_source_channels += chan.local_balance
             self.source_channels_capacity += chan.capacity
+            self.source_channels_local_reserve_sats += chan.local_chan_reserve_sat
 
     def dump_state(self):
         return vars(self)
@@ -178,11 +180,8 @@ class SinkSource:
         return False
 
     def empty_source_channels(self):
-        # generate LN invoices from the source acct.
-        # pay them using source channels as first hop.
-        # TODO automate once source(s) support LN API
-        self.log.info("Notify the operator to manually deposit sats into source accounts")
-        self.log.notify(f"Found {self.sats_in_source_channels} sats ready to  deposit into source account")
+        send_amt = self.sats_in_source_channels - self.source_channels_local_reserve_sats
+        self.source.send_to_acct(send_amt, self.node)
 
     def close_empty_sink_channels(self):
         for chan in self.sink_channels:

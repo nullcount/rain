@@ -347,8 +347,27 @@ class Lnd:
         self.log.info(f"LND open channel {channel.local_funding_amount} sats with peer: {channel.node_pubkey}")
         return channel_point
 
-    def close_channel(self, chan_id, sat_per_vbyte):
-        return
+    def close_channel(self, chan_id, sat_per_vbyte, force=False, target_conf=None, delivery_address=None):
+        if (not chan_id) or (not sat_per_vbyte):
+            self.log.info(f"Must provide chan_id and sat_per_vbyte to close a channel. "
+                          f"chan_id: {chan_id}, sat_per_vbyte: {sat_per_vbyte}")
+            return
+
+        target_channels = list(filter(lambda channel: channel.chan_id == chan_id,  self.get_channels()))
+        if not len(target_channels) > 0:
+            self.log.info(f"The channel id provided does not exist:  {chan_id}")
+            return
+        target_channel = target_channels[0]
+        channel_point_str = target_channel.channel_point
+        funding_txid_str, output_index = channel_point_str.split(':')
+
+        close_channel_request = ln.CloseChannelRequest(channel_point=ln.ChannelPoint(funding_txid_str=funding_txid_str, output_index=int(output_index)),
+                                                       sat_per_vbyte=sat_per_vbyte,
+                                                       force=force,
+                                                       target_conf=target_conf,
+                                                       delivery_address=delivery_address)
+        close_status_update_response = self.stub.CloseChannel(close_channel_request)
+        return close_status_update_response
 
     def get_onchain_balance(self):
         balance_request = ln.WalletBalanceRequest()

@@ -13,8 +13,8 @@ class HtlcStreamLogger:
         self.forward_event_cache = {}
         self.csv_file = config['csv_file']
         self.log_to_console = ['log_to_console']
-        self.notify_events = config['notify_events']
-        print(notify_events)
+        self.notify_events = config['notify_events'].split(' ')
+        print(self.notify_events)
     def getChanInfo(self, chanid):
         """
         Fetches channel data from LND

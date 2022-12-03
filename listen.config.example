@@ -7,12 +7,11 @@ node = LND
 #    log events in csv_file
 execute = 1
 log_to_console = 1
-notify_events = ["forwards"]
+notify_events = forwards
 csv_file = csv/htlcstream.csv
 
 [REPORT]
 # 
 execute = 1
 # interval options: daily, weekly
-interval
-
+interval = daily

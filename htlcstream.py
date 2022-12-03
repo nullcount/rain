@@ -1,8 +1,6 @@
 import time
 import csv
 import traceback
-import argparse
-
 
 
 class HtlcStreamLogger:
@@ -101,16 +99,8 @@ class HtlcStreamLogger:
 
 
     def mainLoop(self):
-        parser = argparse.ArgumentParser(description='Script for monitoring/dumping htlc events')
-        parser.add_argument('--persist', action="store_true",
-                        help='Automatically reconnect to LND')
-        args = parser.parse_args()
-
-        if args.persist:
-            events = self.subscribeEventsPersistent()
-        else:
-            events = self.node.subscribe_htlc_events()
-            print('Now listening for events')
+        events = self.subscribeEventsPersistent()
+        print('Now listening for events')
 
         for i, event in enumerate(events):
             try:
@@ -227,4 +217,3 @@ class HtlcStreamLogger:
                 print('Exception while handling event.', repr(e))
                 print(event)
                 traceback.print_exc()
-

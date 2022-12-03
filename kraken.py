@@ -16,6 +16,14 @@ class Kraken:
         self.api_key = KRAKEN_CONFIG['api_key']
         self.api_secret = KRAKEN_CONFIG['api_secret']
         self.funding_key = KRAKEN_CONFIG['funding_key']
+        self.log_msg_map = {
+            "get_onchain_address": lambda addr: f"kraken deposit address: {addr}",
+            "send_onchain": lambda sats: f"kraken initiated {sats} sat widthdrawl",
+            "get_onchain_fee": lambda fee, sats: f"kraken fee: {fee} sats widthdraw amount: {sats} sats",
+            "get_pending_send_sats": lambda status, ref, amt : f"kraken [{status}] widthdraw #{ref} of {amt} sats",
+            "get_account_balance": lambda sats: f"kraken account balance: {sats} sats",
+            "send_to_acct": lambda sats: f"Hey boss, {int(sats)} sats ready for kraken deposit"
+        }
 
     @staticmethod
     def get_kraken_signature(urlpath, data, secret):
@@ -60,7 +68,7 @@ class Kraken:
         }
         res = self.kraken_request('/0/private/DepositAddresses', payload)
         addr = res[0]['address']
-        self.log.info("kraken deposit address: {}".format(addr))
+        self.log.info(self.log_msg_map['get_onchain_address'](addr))
         return addr
 
     def send_onchain(self, sats):
@@ -71,7 +79,7 @@ class Kraken:
             "amount": sats / COIN_SATS
         }
         res = self.kraken_request('/0/private/Withdraw', payload)
-        self.log.info("kraken initiated {} sat widthdrawl".format(sats))
+        self.log.info(self.log_msg_map['send_onchain'](sats))
         return res
 
     def get_onchain_fee(self, sats):
@@ -86,7 +94,7 @@ class Kraken:
             'amount': int(float(res['amount']) * COIN_SATS),
             'fee': int(float(res['fee']) * COIN_SATS)
         }
-        self.log.info("kraken fee: {} sats widthdraw amount: {} sats".format(fee_quote['fee'], sats))
+        self.log.info(self.log_msg_map['get_onchain_address'](fee_quote['fee'], sats))
         return fee_quote['fee']
 
     def get_pending_send_sats(self):
@@ -95,7 +103,7 @@ class Kraken:
         for w in sends:
             if w['status'] in ['Initial']: # Pending status is considered unconfirmed
                 pending_amt += int(float(w['amount']) * COIN_SATS)
-                self.log.info('kraken [{}] widthdraw #{} of {} sats'.format(w['status'].lower(), w['refid'], w['amount']))
+                self.log.info(self.log_msg_map['get_pending_send_sats'](w['status'].lower(), w['refid'], w['amount']))
         return pending_amt
 
     def get_recent_sends(self):
@@ -110,11 +118,11 @@ class Kraken:
         payload = {"nonce": str(int(1000*time.time()))}
         res = self.kraken_request('/0/private/Balance', payload)
         balance = int(float(res['XXBT']) * COIN_SATS)
-        self.log.info("kraken account balance: {} sats".format(balance))
+        self.log.info(self.log_msg_map['get_account_balance'](balance))
         return balance
 
     def send_to_acct(self, sats, node):
-        self.log.notify(f"Hey boss, {int(sats)} sats ready for kraken deposit")
+        self.log.notify(self.log_msg_map['send_to_acct'](int(sats)))
 
     def pay_invoice(self, invoice_code):
         # TODO kraken hasn't implemented yet

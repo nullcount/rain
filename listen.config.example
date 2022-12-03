@@ -11,7 +11,5 @@ notify_events = forwards
 csv_file = csv/htlcstream.csv
 
 [REPORT]
-# 
 execute = 1
-# interval options: daily, weekly
 interval = daily

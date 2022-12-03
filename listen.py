@@ -2,6 +2,7 @@ from threading import Thread
 from config import Config, node_map
 from notify import Logger
 from htlcstream import HtlcStreamLogger
+from report import Report
 
 
 def main():
@@ -16,6 +17,7 @@ def main():
 
     monitor_actions_map = {
         'HTLC_STREAM_LOGGER': HtlcStreamLogger,
+        'REPORT': Report
     }
 
     thread_pool = []

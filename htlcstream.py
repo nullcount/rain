@@ -13,8 +13,8 @@ class HtlcStreamLogger:
         self.forward_event_cache = {}
         self.csv_file = config['csv_file']
         self.log_to_console = ['log_to_console']
-        self.notify_forwards = config['notify_forwards']
-
+        self.notify_events = config['notify_events']
+        print(notify_events)
     def getChanInfo(self, chanid):
         """
         Fetches channel data from LND
@@ -174,9 +174,10 @@ class HtlcStreamLogger:
                 elif outcome == 'settle_event':
                     note = '✅'
 
-                if self.notify_forwards:
-                    if eventtype == "FORWARD" and "successful" in note:
-                        self.log.notify(f"✅ FORWARD {inalias} ➜ {outalias} for {fee} sats")
+                if self.notify_events:
+                    if "forwards" in self.notify_events:
+                        if eventtype == "FORWARD" and "successful" in note:
+                            self.log.notify(f"✅ FORWARD {inalias} ➜ {outalias} for {fee} sats")
 
                 if self.log_to_console:
                     print(eventtype,

@@ -2,7 +2,17 @@
 node = LND
 
 [HTLC_STREAM_LOGGER]
+# Listen for payment attempts attempting routes into your node
+#    detect probes, get notified for successful routing events
+#    log events in csv_file
 execute = 1
 log_to_console = 1
-notify_forwards = 1
+notify_events = ["forwards"]
 csv_file = csv/htlcstream.csv
+
+[REPORT]
+# 
+execute = 1
+# interval options: daily, weekly
+interval
+

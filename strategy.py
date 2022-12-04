@@ -86,7 +86,7 @@ class SinkSource:
         self.node = node_map[strategy_config['node']](CREDS[strategy_config['node']], log) if not mock else None
         self.log = log.info if not mock else print
         self.notify = log.notify if not mock else print
-        self.mock = mock # True if this is a test
+        self.mock = mock  # True if this is a test
         self.sink_pub = strategy_config['sink_pub'] if not mock else None
         self.sink_host = strategy_config['sink_host'] if not mock else None
         self.source_pub = strategy_config['source_pub'] if not mock else None
@@ -142,7 +142,7 @@ class SinkSource:
                 "avoid_close_fee_too_large": f"Channel close avoided: using {self.mempool_fee} at {self.sat_per_vbyte} sat/vbyte with max fee of {self.max_sat_per_vbyte} sat/vbyte",
                 "source_fee_too_large": lambda fee: f"Source widthdrawl fee higher than expected. Found: {fee} sats Expected: {self.source_loop_fee}",
                 "wait_money_leaving": f"Found unconfirmed sent transaction of {abs(self.unconfirmed)} sats. Assuming this is a channel open transaction.",
-                "wait_money_leaving": f"Found enough sats to open channel in unconfirmed: {self.unconfirmed} sats and pending: {self.source_pending_loop_out} sats from source account.",
+                "wait_money_on_the_way": f"Found enough sats to open channel in unconfirmed: {self.unconfirmed} sats and pending: {self.source_pending_loop_out} sats from source account.",
                 "notify_need_more_sats": lambda sats_found, sats_needed: f"Need {sats_needed} sats for sink-source strategy to open channel. Found {sats_found} sats",
                 "try_open_channel": "Attempting to open a new source channel...",
                 "avoid_open_fee_too_large": f"Channel open avoided: using {self.mempool_fee} at {self.sat_per_vbyte} sat/vbyte with max fee of {self.max_sat_per_vbyte} sat/vbyte"
@@ -220,7 +220,7 @@ class SinkSource:
         self.log(self.log_msg_map['wait_money_leaving'])
 
     def wait_money_on_the_way(self):
-        self.log(self.log_msg_map['wait_money_leaving'])
+        self.log(self.log_msg_map['wait_money_on_the_way'])
 
     def notify_need_more_sats(self):
         sats_found = self.confirmed + self.sats_on_the_way + \
@@ -262,20 +262,19 @@ class SinkSource:
         else:  # we need to open another sink channel
             if self.is_money_leaving_node() and not end:
                 jobs.append("WAIT_MONEY_LEAVING")
-                end = True  # exit and wait until next execution
+                end = True
             if self.has_enough_sats_for_new_sink_channel() and not end:
                 jobs.append("TRY_OPEN_CHANNEL")
-                end = True  # exit and wait until next execution
+                end = True
             if self.has_enough_sats_on_the_way() and not end:
                 jobs.append("WAIT_MONEY_ON_THE_WAY")
-                end = True  # exit and wait until next execution
+                end = True
             if self.should_initiate_source_account_onchain_send() and not end:
                 jobs.append('SOURCE_SEND_ONCHAIN')
                 end = True
             if self.has_enough_sats_in_source_channels() and not end:
                 jobs.append("EMPTY_SOURCE_CHANNELS")
                 end = True
-            # if we make it here, we need more sats!!!
             if not end:
                 jobs.append("NOTIFY_NEED_MORE_SATS")
         self.log("Finished execution of sink/source strategy")

@@ -7,4 +7,3 @@ monitor.config
 venv
 .venv
 /.idea/*
-test.py

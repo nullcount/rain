@@ -7,6 +7,8 @@ import hmac
 import base64
 
 COIN_SATS = 100_000_000
+MIN_LN_DEPOSIT = 1000
+MAX_LN_DEPOSIT = COIN_SATS
 
 
 class Kraken:

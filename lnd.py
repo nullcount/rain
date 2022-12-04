@@ -18,6 +18,28 @@ def debug(message):
     sys.stderr.write(message + "\n")
 
 
+def remove_outliers(ppm_list):
+    if len(ppm_list)<2:
+        return ppm_list
+    threshold = 3  # 99.7% of data points lie between +/- 3 std deviations
+    z = stats.zscore(ppm_list)
+
+    low_outliers = np.array(ppm_list)[np.where(z < -threshold)]
+    high_outliers = np.array(ppm_list)[np.where(z > threshold)]
+
+    if low_outliers:
+        low_outlier = np.max(low_outliers)
+    else:
+        low_outlier = 0
+
+    if high_outliers:
+        high_outlier = np.min(high_outliers)
+    else:
+        high_outlier = 10_000
+    corrected_in_ppm = list(filter(lambda x: low_outlier < x < high_outlier, ppm_list))
+    return corrected_in_ppm
+
+
 class ChannelTemplate:
     def __init__(self, node_pubkey, local_funding_amount, address, sat_per_vbyte, base_fee, fee_rate, min_htlc_sat):
         self.node_pubkey = node_pubkey
@@ -91,8 +113,6 @@ class Lnd:
 
     def get_node_fee_report(self, nodeid):
         channels = self.get_node_channels(nodeid)
-        if len(channels) < 2:
-            return None
         in_ppm = []
         out_ppm = []
         capacity = 0
@@ -107,16 +127,9 @@ class Lnd:
                 in_ppm.append(c.node1_policy.fee_rate_milli_msat)
 
         # remove outliers
-        threshold = 3  # 99.7% of data points lie between +/- 3 std deviations
-        z = stats.zscore(in_ppm)
-        left_outlier = np.max(np.array(in_ppm)[np.where(z < -threshold)])
-        right_outlier = np.min(np.array(in_ppm)[np.where(z > threshold)])
-        corrected_in_ppm = list(filter(lambda x: left_outlier < x < right_outlier, in_ppm))
+        corrected_in_ppm = remove_outliers(in_ppm)
+        corrected_out_ppm = remove_outliers(out_ppm)
 
-        z = stats.zscore(out_ppm)
-        left_outlier = np.max(np.array(out_ppm)[np.where(z < -threshold)])
-        right_outlier = np.min(np.array(out_ppm)[np.where(z > threshold)])
-        corrected_out_ppm = list(filter(lambda x: left_outlier < x < right_outlier, out_ppm))
         return {"pub_key": nodeid, "channel_count": len(channels), "capacity": capacity, "in_min": min(in_ppm), "in_max": max(in_ppm), "in_avg": int(statistics.mean(in_ppm)), "in_corrected_avg": int(statistics.mean(corrected_in_ppm))if len(corrected_in_ppm) >= 2 else None, "in_med": int(statistics.median(in_ppm)), "in_std": int(statistics.stdev(in_ppm)), "out_min": min(out_ppm), "out_max": max(out_ppm), "out_avg": int(statistics.mean(out_ppm)), "out_corrected_avg": int(statistics.mean(corrected_out_ppm)) if len(corrected_out_ppm) >= 2 else None, "out_med": int(statistics.median(out_ppm)), "out_std": int(statistics.stdev(out_ppm))}
 
     def get_peers(self):

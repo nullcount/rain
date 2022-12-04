@@ -130,7 +130,7 @@ class Lnd:
         corrected_in_ppm = remove_outliers(in_ppm)
         corrected_out_ppm = remove_outliers(out_ppm)
 
-        return {"pub_key": nodeid, "channel_count": len(channels), "capacity": capacity, "in_min": min(in_ppm), "in_max": max(in_ppm), "in_avg": int(statistics.mean(in_ppm)), "in_corrected_avg": int(statistics.mean(corrected_in_ppm))if len(corrected_in_ppm) >= 2 else None, "in_med": int(statistics.median(in_ppm)), "in_std": int(statistics.stdev(in_ppm)), "out_min": min(out_ppm), "out_max": max(out_ppm), "out_avg": int(statistics.mean(out_ppm)), "out_corrected_avg": int(statistics.mean(corrected_out_ppm)) if len(corrected_out_ppm) >= 2 else None, "out_med": int(statistics.median(out_ppm)), "out_std": int(statistics.stdev(out_ppm))}
+        return {"pub_key": nodeid, "channel_count": len(channels), "capacity": capacity, "in_min": min(in_ppm), "in_max": max(in_ppm), "in_avg": int(statistics.mean(in_ppm)), "in_corrected_avg": int(statistics.mean(corrected_in_ppm))if len(corrected_in_ppm) >= 2 else None, "in_med": int(statistics.median(in_ppm)), "in_std": int(statistics.stdev(in_ppm)) if len(in_ppm) >= 2 else None, "out_min": min(out_ppm), "out_max": max(out_ppm), "out_avg": int(statistics.mean(out_ppm)), "out_corrected_avg": int(statistics.mean(corrected_out_ppm)) if len(corrected_out_ppm) >= 2 else None, "out_med": int(statistics.median(out_ppm)), "out_std": int(statistics.stdev(out_ppm)) if len(out_ppm) >= 2 else None}
 
     def get_peers(self):
         if self.peers is None:

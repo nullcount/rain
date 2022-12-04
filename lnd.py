@@ -27,12 +27,12 @@ def remove_outliers(ppm_list):
     low_outliers = np.array(ppm_list)[np.where(z < -threshold)]
     high_outliers = np.array(ppm_list)[np.where(z > threshold)]
 
-    if low_outliers:
+    if low_outliers.size > 0:
         low_outlier = np.max(low_outliers)
     else:
         low_outlier = 0
 
-    if high_outliers:
+    if high_outliers.size > 0:
         high_outlier = np.min(high_outliers)
     else:
         high_outlier = 10_000

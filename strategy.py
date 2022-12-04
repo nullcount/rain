@@ -253,31 +253,25 @@ class SinkSource:
                 map[key]()
 
     def execute(self):
-        end = False
         jobs = []
         if self.has_enough_sink_channels():
             if self.has_source_channels_full():
                 jobs.append("EMPTY_SOURCE_CHANNELS")
             jobs.append("CLOSE_EMPTY_SINK_CHANNELS")
-        else:  # we need to open another sink channel
-            if self.is_money_leaving_node() and not end:
-                jobs.append("WAIT_MONEY_LEAVING")
-                end = True  # exit and wait until next execution
-            if self.has_enough_sats_for_new_sink_channel() and not end:
-                jobs.append("TRY_OPEN_CHANNEL")
-                end = True  # exit and wait until next execution
-            if self.has_enough_sats_on_the_way() and not end:
-                jobs.append("WAIT_MONEY_ON_THE_WAY")
-                end = True  # exit and wait until next execution
-            if self.should_initiate_source_account_onchain_send() and not end:
-                jobs.append('SOURCE_SEND_ONCHAIN')
-                end = True
-            if self.has_enough_sats_in_source_channels() and not end:
-                jobs.append("EMPTY_SOURCE_CHANNELS")
-                end = True
+        # we need to open another sink channel
+        elif self.is_money_leaving_node():
+            jobs.append("WAIT_MONEY_LEAVING")
+        elif self.has_enough_sats_for_new_sink_channel():
+            jobs.append("TRY_OPEN_CHANNEL")
+        elif self.has_enough_sats_on_the_way():
+            jobs.append("WAIT_MONEY_ON_THE_WAY")
+        elif self.should_initiate_source_account_onchain_send():
+            jobs.append('SOURCE_SEND_ONCHAIN')
+        elif self.has_enough_sats_in_source_channels():
+            jobs.append("EMPTY_SOURCE_CHANNELS")
+        else:
             # if we make it here, we need more sats!!!
-            if not end:
-                jobs.append("NOTIFY_NEED_MORE_SATS")
+            jobs.append("NOTIFY_NEED_MORE_SATS")
         self.log("Finished execution of sink/source strategy")
         self.log(f"Execution results in: {', '.join(jobs)}")
         if self.mock:

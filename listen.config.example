@@ -12,4 +12,9 @@ csv_file = csv/htlcstream.csv
 
 [REPORT]
 execute = 1
-interval = daily
+intervals = daily weekly monthly
+daily_time = 10:00
+weekly_day = monday
+monthly_date = 1
+metrics = profit-loss apy expensive-nodes
+

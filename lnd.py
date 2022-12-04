@@ -5,7 +5,8 @@ import sys
 import re
 import time
 import statistics
-
+from scipy import stats
+import numpy as np
 from grpc_generated import rpc_pb2_grpc as lnrpc, rpc_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
 
@@ -100,9 +101,19 @@ class Lnd:
             else:
                 out_ppm.append(c.node2_policy.fee_rate_milli_msat)
                 in_ppm.append(c.node1_policy.fee_rate_milli_msat)
+
         # remove outliers
-        corrected_in_ppm = list(filter(lambda x: x > 0 and x < 10_000, in_ppm))
-        corrected_out_ppm = list(filter(lambda x: x > 0 and x < 10_000, out_ppm))
+        threshold = 3  # 99.7% of data points lie between +/- 3 std deviations
+
+        z = stats.zscore(in_ppm)
+        left_outlier = np.max(np.array(in_ppm)[np.where(z < -threshold)])
+        right_outlier = np.min(np.array(in_ppm)[np.where(z > threshold)])
+        corrected_in_ppm = list(filter(lambda x: left_outlier < x < right_outlier, in_ppm))
+
+        z = stats.zscore(out_ppm)
+        left_outlier = np.max(np.array(out_ppm)[np.where(z < -threshold)])
+        right_outlier = np.min(np.array(out_ppm)[np.where(z > threshold)])
+        corrected_out_ppm = list(filter(lambda x: left_outlier < x < right_outlier, out_ppm))
         return {"in_min": min(in_ppm), "in_max": max(in_ppm), "in_avg": int(statistics.mean(in_ppm)), "in_corrected_avg": int(statistics.mean(corrected_in_ppm)), "in_med": int(statistics.median(in_ppm)), "in_std": int(statistics.stdev(in_ppm)), "out_min": min(out_ppm), "out_max": max(out_ppm), "out_avg": int(statistics.mean(out_ppm)), "out_corrected_avg": int(statistics.mean(corrected_out_ppm)), "out_med": int(statistics.median(out_ppm)), "out_std": int(statistics.stdev(out_ppm))}
 
     def get_peers(self):

@@ -111,8 +111,8 @@ class Lnd:
         corrected_in_ppm = list(filter(lambda x: left_outlier < x < right_outlier, in_ppm))
 
         z = stats.zscore(out_ppm)
-        left_outlier = np.max(np.array(in_ppm)[np.where(z < -threshold)])
-        right_outlier = np.min(np.array(in_ppm)[np.where(z > threshold)])
+        left_outlier = np.max(np.array(out_ppm)[np.where(z < -threshold)])
+        right_outlier = np.min(np.array(out_ppm)[np.where(z > threshold)])
         corrected_out_ppm = list(filter(lambda x: left_outlier < x < right_outlier, out_ppm))
         return {"in_min": min(in_ppm), "in_max": max(in_ppm), "in_avg": int(statistics.mean(in_ppm)), "in_corrected_avg": int(statistics.mean(corrected_in_ppm)), "in_med": int(statistics.median(in_ppm)), "in_std": int(statistics.stdev(in_ppm)), "out_min": min(out_ppm), "out_max": max(out_ppm), "out_avg": int(statistics.mean(out_ppm)), "out_corrected_avg": int(statistics.mean(corrected_out_ppm)), "out_med": int(statistics.median(out_ppm)), "out_std": int(statistics.stdev(out_ppm))}
 

@@ -105,13 +105,15 @@ class Lnd:
         # remove outliers
         threshold = 3  # 99.7% of data points lie between +/- 3 std deviations
 
-        z = stats.zscore(in_ppm)  # assumes that low fees should not be treated as outliers
-        first_outlier = np.min(np.array(in_ppm)[np.where(z > threshold)])
-        corrected_in_ppm = list(filter(lambda x: 0 < x < first_outlier, in_ppm))
+        z = stats.zscore(in_ppm)
+        left_outlier = np.max(np.array(in_ppm)[np.where(z < -threshold)])
+        right_outlier = np.min(np.array(in_ppm)[np.where(z > threshold)])
+        corrected_in_ppm = list(filter(lambda x: left_outlier < x < right_outlier, in_ppm))
 
-        z = stats.zscore(out_ppm)  # assumes that low fees should not be treated as outliers
-        first_outlier = np.min(np.array(out_ppm)[np.where(z > threshold)])
-        corrected_out_ppm = list(filter(lambda x: 0 < x < first_outlier, out_ppm))
+        z = stats.zscore(out_ppm)
+        left_outlier = np.max(np.array(in_ppm)[np.where(z < -threshold)])
+        right_outlier = np.min(np.array(in_ppm)[np.where(z > threshold)])
+        corrected_out_ppm = list(filter(lambda x: left_outlier < x < right_outlier, out_ppm))
         return {"in_min": min(in_ppm), "in_max": max(in_ppm), "in_avg": int(statistics.mean(in_ppm)), "in_corrected_avg": int(statistics.mean(corrected_in_ppm)), "in_med": int(statistics.median(in_ppm)), "in_std": int(statistics.stdev(in_ppm)), "out_min": min(out_ppm), "out_max": max(out_ppm), "out_avg": int(statistics.mean(out_ppm)), "out_corrected_avg": int(statistics.mean(corrected_out_ppm)), "out_med": int(statistics.median(out_ppm)), "out_std": int(statistics.stdev(out_ppm))}
 
     def get_peers(self):

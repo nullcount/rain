@@ -21,7 +21,7 @@ def debug(message):
 def remove_outliers(ppm_list):
     if len(ppm_list)<2:
         return ppm_list
-    threshold = 3  # 99.7% of data points lie between +/- 3 std deviations
+    threshold = 2  # 99.7% of data points lie between +/- 3 std deviations
     z = stats.zscore(ppm_list)
 
     low_outliers = np.array(ppm_list)[np.where(z < -threshold)]

@@ -1,6 +1,8 @@
 import time
 import schedule
-from threading import Thread
+import os
+from multiprocessing import Process
+
 
 class Report:
     def __init__(self, report_config, node, log):
@@ -24,28 +26,31 @@ class Report:
         def check_node_is_expensive(nodes):
             for node in nodes:
                 fees = self.node.get_node_fee_report(node.pub_key)
-                if fees and fees['out_corrected_avg']:
-                    if fees['out_corrected_avg'] > 1000 and fees['capacity'] > 100_000_000:
-                        print("$$$$")
+                if fees and fees['in_corrected_avg']:
+                    if fees['in_corrected_avg'] > 1000 and fees['capacity'] > 100_000_000:
                         self.expensive_nodes.append(fees)
 
         g = self.node.get_graph(refresh=True)
         thread_pool = []
-        for chunk in chunks(g.nodes, 15):
-            thread_pool.append(Thread(target=check_node_is_expensive, kwargs={"nodes":chunk}))
-        for thread in thread_pool:
-            thread.start()
+        chunky = chunks(g.nodes, os.cpu_count() - 1)
+        for chunk in chunky:
+            t = Process(target=check_node_is_expensive, kwargs={"nodes":chunk})
+            t.start()
+            thread_pool.append(t)
         for thread in thread_pool:
             thread.join()
         toc = time.perf_counter()
-        print(f"Downloaded the tutorial in {toc - tic:0.4f} seconds")
+        print(f"Finished in {toc - tic:0.4f} seconds")
         return self.expensive_nodes
 
     def get_apy(self):
         return
 
     def make_report(self):
-        self.get_expensive_nodes()
+        expensive = self.get_expensive_nodes()
+        for n in expensive:
+            print(self.node.get_node_alias(n['pub_key']))
+            print(n['in_corrected_avg'])
         return
 
     def mainLoop(self):

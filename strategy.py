@@ -193,8 +193,6 @@ class SinkSource:
             # the funds in acct would be enough to open a channel
             if self.has_source_channels_empty():
                 return True  # ready to init send request
-            else:
-                self.empty_source_channels()
         return False
 
     def empty_source_channels(self):

@@ -91,10 +91,14 @@ class Lnd:
 
     def get_node_fee_report(self, nodeid):
         channels = self.get_node_channels(nodeid)
+        if len(channels) < 2:
+            return None
         in_ppm = []
         out_ppm = []
+        capacity = 0
         for c in channels:
             policy = []
+            capacity += c.capacity
             if c.node1_pub == nodeid:
                 out_ppm.append(c.node1_policy.fee_rate_milli_msat)
                 in_ppm.append(c.node2_policy.fee_rate_milli_msat)
@@ -104,7 +108,6 @@ class Lnd:
 
         # remove outliers
         threshold = 3  # 99.7% of data points lie between +/- 3 std deviations
-
         z = stats.zscore(in_ppm)
         left_outlier = np.max(np.array(in_ppm)[np.where(z < -threshold)])
         right_outlier = np.min(np.array(in_ppm)[np.where(z > threshold)])
@@ -114,7 +117,7 @@ class Lnd:
         left_outlier = np.max(np.array(out_ppm)[np.where(z < -threshold)])
         right_outlier = np.min(np.array(out_ppm)[np.where(z > threshold)])
         corrected_out_ppm = list(filter(lambda x: left_outlier < x < right_outlier, out_ppm))
-        return {"in_min": min(in_ppm), "in_max": max(in_ppm), "in_avg": int(statistics.mean(in_ppm)), "in_corrected_avg": int(statistics.mean(corrected_in_ppm)), "in_med": int(statistics.median(in_ppm)), "in_std": int(statistics.stdev(in_ppm)), "out_min": min(out_ppm), "out_max": max(out_ppm), "out_avg": int(statistics.mean(out_ppm)), "out_corrected_avg": int(statistics.mean(corrected_out_ppm)), "out_med": int(statistics.median(out_ppm)), "out_std": int(statistics.stdev(out_ppm))}
+        return {"pub_key": nodeid, "channel_count": len(channels), "capacity": capacity, "in_min": min(in_ppm), "in_max": max(in_ppm), "in_avg": int(statistics.mean(in_ppm)), "in_corrected_avg": int(statistics.mean(corrected_in_ppm))if len(corrected_in_ppm) >= 2 else None, "in_med": int(statistics.median(in_ppm)), "in_std": int(statistics.stdev(in_ppm)), "out_min": min(out_ppm), "out_max": max(out_ppm), "out_avg": int(statistics.mean(out_ppm)), "out_corrected_avg": int(statistics.mean(corrected_out_ppm)) if len(corrected_out_ppm) >= 2 else None, "out_med": int(statistics.median(out_ppm)), "out_std": int(statistics.stdev(out_ppm))}
 
     def get_peers(self):
         if self.peers is None:
@@ -258,8 +261,8 @@ class Lnd:
             end_height=end_height
         ))
 
-    def get_graph(self):
-        if self.graph is None:
+    def get_graph(self, refresh=False):
+        if self.graph is None or refresh:
             self.graph = self.stub.DescribeGraph(ln.ChannelGraphRequest(include_unannounced=True))
         return self.graph
 

@@ -23,6 +23,7 @@ pyparsing==3.0.9
 requests==2.28.1
 rsa==4.9
 scipy==1.9.3
+schedule==1.1.0
 six==1.16.0
 soupsieve==2.3.2.post1
 uritemplate==4.1.1

@@ -18,26 +18,24 @@ def debug(message):
     sys.stderr.write(message + "\n")
 
 
-def remove_outliers(ppm_list):
+def remove_outliers(ppm_list,capacities):
+    """
+    remove outliers and their corresponding capacities (if applicable)
+    in any case, return two numpy arrays
+    """
     if len(ppm_list)<2:
-        return ppm_list
-    threshold = 2  # 99.7% of data points lie between +/- 3 std deviations
-    z = stats.zscore(ppm_list)
+        return np.array(ppm_list),np.array(capacities)
 
-    low_outliers = np.array(ppm_list)[np.where(z < -threshold)]
-    high_outliers = np.array(ppm_list)[np.where(z > threshold)]
+    threshold = 3  # 99.7% of data points lie between +/- 3 std deviations
+    z = np.abs(stats.zscore(ppm_list))
 
-    if low_outliers.size > 0:
-        low_outlier = np.max(low_outliers)
+    outlier_indices = np.where(z > threshold)
+    if outlier_indices:
+        corrected_ppm_list = np.delete(ppm_list,outlier_indices)
+        corrected_capacities = np.delete(capacities,outlier_indices)
+        return corrected_ppm_list, corrected_capacities
     else:
-        low_outlier = 0
-
-    if high_outliers.size > 0:
-        high_outlier = np.min(high_outliers)
-    else:
-        high_outlier = 10_000
-    corrected_in_ppm = list(filter(lambda x: low_outlier < x < high_outlier, ppm_list))
-    return corrected_in_ppm
+        return np.array(ppm_list),np.array(capacities)
 
 
 class ChannelTemplate:
@@ -116,9 +114,11 @@ class Lnd:
         in_ppm = []
         out_ppm = []
         capacity = 0
+        capacities = []
         for c in channels:
             policy = []
             capacity += c.capacity
+            capacities.append(c.capacity)
             if c.node1_pub == nodeid:
                 out_ppm.append(c.node1_policy.fee_rate_milli_msat)
                 in_ppm.append(c.node2_policy.fee_rate_milli_msat)
@@ -126,11 +126,15 @@ class Lnd:
                 out_ppm.append(c.node2_policy.fee_rate_milli_msat)
                 in_ppm.append(c.node1_policy.fee_rate_milli_msat)
 
-        # remove outliers
-        corrected_in_ppm = remove_outliers(in_ppm)
-        corrected_out_ppm = remove_outliers(out_ppm)
+        # remove outliers and their corresponding capacities
+        corrected_in_ppm,in_cap = remove_outliers(in_ppm,capacities)
+        corrected_out_ppm,out_cap = remove_outliers(out_ppm,capacities)
 
-        return {"pub_key": nodeid, "channel_count": len(channels), "capacity": capacity, "in_min": min(in_ppm), "in_max": max(in_ppm), "in_avg": int(statistics.mean(in_ppm)), "in_corrected_avg": int(statistics.mean(corrected_in_ppm))if len(corrected_in_ppm) >= 2 else None, "in_med": int(statistics.median(in_ppm)), "in_std": int(statistics.stdev(in_ppm)) if len(in_ppm) >= 2 else None, "out_min": min(out_ppm), "out_max": max(out_ppm), "out_avg": int(statistics.mean(out_ppm)), "out_corrected_avg": int(statistics.mean(corrected_out_ppm)) if len(corrected_out_ppm) >= 2 else None, "out_med": int(statistics.median(out_ppm)), "out_std": int(statistics.stdev(out_ppm)) if len(out_ppm) >= 2 else None}
+        # calculate weighted average
+        corrected_weighted_in_ppm = np.average(corrected_in_ppm,weights=in_cap)
+        corrected_weighted_out_ppm = np.average(corrected_out_ppm,weights=out_cap)
+
+        return {"pub_key": nodeid, "channel_count": len(channels), "capacity": capacity, "in_min": min(in_ppm), "in_max": max(in_ppm), "in_avg": int(statistics.mean(in_ppm)), "in_corrected_avg": int(corrected_weighted_in_ppm), "in_med": int(statistics.median(in_ppm)), "in_std": int(statistics.stdev(in_ppm)) if len(in_ppm) >= 2 else None, "out_min": min(out_ppm), "out_max": max(out_ppm), "out_avg": int(statistics.mean(out_ppm)), "out_corrected_avg": int(corrected_weighted_out_ppm), "out_med": int(statistics.median(out_ppm)), "out_std": int(statistics.stdev(out_ppm)) if len(out_ppm) >= 2 else None}
 
     def get_peers(self):
         if self.peers is None:

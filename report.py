@@ -6,6 +6,7 @@ from mempool import Mempool
 from config import Config
 from datetime import datetime, timedelta
 import schedule
+from prettytable import PrettyTable
 
 DAY_BLOCKS = 144
 MILLI = 1_000_000
@@ -27,6 +28,60 @@ class Report:
         self.lndg = Lndg(LNDG_CREDS, self.mempool, log)
         self.intervals = report_config['intervals'].split(" ")
         self.daily_time = report_config['daily_time']
+
+    def make_report(self):
+        pl = self.get_profit_loss()
+        tables = self.table_profit_loss(pl)
+        for table in tables:
+            self.log.notify(f"```\n{table}\n```")
+        return
+
+    def mainLoop(self):
+        schedule.every().day.at("00:00").do(self.make_report)
+        self.make_report()
+        time.sleep(1)
+
+    def table_profit_loss(self, d):
+        time = datetime.now().strftime("%m/%d/%Y")
+        tables = []
+        for t in ["1 Day", "7 Day", "30 Day", "90 Day", "Lifetime"]:
+            key = "" if t == "Lifetime" else f"_{''.join(t.split(' ')).lower()}"
+            
+            x = PrettyTable()
+            x.add_column(time, ["Forwards", "Value", "Revenue", "Chain Costs", "LN Costs", "% Costs", "Profits"])
+            x.add_column(t, [f"{d[f'forward_count{key}']:,}", f"{d[f'forward_amount{key}']:,}", f"{d[f'total_revenue{key}']:,} [{d[f'total_revenue_ppm{key}']:,}]", f"{d[f'onchain_costs{key}']:,}", f"{d[f'total_fees{key}']:,} [{d[f'total_fees_ppm{key}']:,}]", f"{d[f'percent_cost{key}']:,}%", f"{d[f'profits{key}']:,} [{d[f'profits_ppm{key}']:,}]"])
+            tables.append(x)
+        return tables
+
+    def check_node_is_expensive(self, nodes):
+        for node in nodes:
+            fees = self.node.get_node_fee_report(node.pub_key)
+            if fees['in_corrected_avg'] and fees['in_corrected_avg']> 1000 and fees['capacity'] > 100_000_000:
+                expensive_nodes.put(fees)
+               # print(fees)
+
+    def get_expensive_nodes(self):
+        tic = time.perf_counter()
+        def chunks(l, n):
+            """Yield n number of striped chunks from l."""
+            for i in range(0, n):
+                yield l[i::n]
+
+        g = self.node.get_graph(refresh=True)
+        thread_pool = []
+        chunky = chunks(g.nodes, os.cpu_count() - 1)
+        for chunk in chunky:
+            t = Process(target=self.check_node_is_expensive, kwargs={"nodes":chunk})
+            t.start()
+            thread_pool.append(t)
+        for thread in thread_pool:
+            thread.join()
+        toc = time.perf_counter()
+        print(f"Finished in {toc - tic:0.4f} seconds")
+        return expensive_nodes
+
+    def get_apy(self):
+        return
 
     def get_profit_loss(self):
         block_height = self.mempool.get_tip_height()
@@ -177,41 +232,4 @@ class Report:
             'percent_cost_1day': 0 if total_revenue_1day == 0 else int(((total_fees_1day+onchain_costs_1day)/total_revenue_1day)*HUNDO),
         }
 
-    def check_node_is_expensive(self, nodes):
-        for node in nodes:
-            fees = self.node.get_node_fee_report(node.pub_key)
-            if fees['in_corrected_avg'] and fees['in_corrected_avg']> 1000 and fees['capacity'] > 100_000_000:
-                expensive_nodes.put(fees)
-               # print(fees)
 
-    def get_expensive_nodes(self):
-        tic = time.perf_counter()
-        def chunks(l, n):
-            """Yield n number of striped chunks from l."""
-            for i in range(0, n):
-                yield l[i::n]
-
-        g = self.node.get_graph(refresh=True)
-        thread_pool = []
-        chunky = chunks(g.nodes, os.cpu_count() - 1)
-        for chunk in chunky:
-            t = Process(target=self.check_node_is_expensive, kwargs={"nodes":chunk})
-            t.start()
-            thread_pool.append(t)
-        for thread in thread_pool:
-            thread.join()
-        toc = time.perf_counter()
-        print(f"Finished in {toc - tic:0.4f} seconds")
-        return expensive_nodes
-
-    def get_apy(self):
-        return
-
-    def make_report(self):
-        print(self.get_profit_loss())
-        return
-
-    def mainLoop(self):
-        schedule.every().day.at("00:00").do(make_report)
-        self.make_report()
-        time.sleep(1)

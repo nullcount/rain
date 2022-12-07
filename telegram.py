@@ -9,23 +9,22 @@ class Telegram:
         self.log = logger
         self.last_update_id = None
 
-    def send_message(self, message):
-        url = f"https://api.telegram.org/bot{self.api_token}/sendMessage?chat_id={self.chat_id}&text={message}"
+    def telegram_request(self, endpoint, params):
+        url = f"https://api.telegram.org/bot{self.api_token}/{endpoint}{params}"
         res = requests.get(url).json()
         if res['ok']:
-            return res
-        self.log.warning("Telegram failed to send message")
-        self.log.debug(f"message: {message}")
-        self.log.debug(f"response: {res}")
+            return res['result']
+        self.log.warning(f"Telegram failed !!! {endpoint}{params}")
+
+    def send_message(self, message):
+        return self.telegram_request('sendMessage', f'?chat_id={self.chat_id}&text={message}&parse_mode=Markdown')
 
     def get_updates(self):
-        updates = requests.get(f"https://api.telegram.org/bot{self.api_token}/getUpdates?chat_id={self.chat_id}&offset={self.last_update_id}")
-        return updates
+        return self.telegram_request('getUpdates', f'?chat_id={self.chat_id}&offset={self.last_update_id}')
 
-    def handle_message(message):
-        if message.text.startswith("/invoice"):
-            cmd, amount, memo = message.text.split(" ")
-
+    def ack_update(self, update_id):
+        print(update_id)
+        self.last_update_id = int(update_id) + 1
 
 class TelegramListener:
     def __init__(self, tg_config, node, logger):
@@ -36,8 +35,14 @@ class TelegramListener:
         while True:
             updates = self.tg.get_updates()
             for update in updates:
-                cmd, amount, memo = update['message'].split(' ')
-                self.send_message(f"{cmd} {amount} {memo}")
+                msg = update['message']['text']
+                self.tg.ack_update(update['update_id'])
+                if msg.startswith("/"):
+                    if msg.startswith("/invoice"):
+                        cmd, amount, memo = update.split(' ')
+                        self.tg.send_message(f"{cmd} {amount} {memo}")
+                else:
+                    self.tg.send_message(msg)
             time.sleep(5)
 
 

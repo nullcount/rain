@@ -1,6 +1,6 @@
 import requests
 import json
-
+from datetime import datetime
 
 class RecordList:
     """Useful class for filtering a list of dicts"""

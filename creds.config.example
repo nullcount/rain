@@ -38,3 +38,10 @@ chat_id =
 # use a mempool.space block explorer for mempool fee estimation
 #    use https://mempool.space/api/v1/ or your own instance 
 api_url = 
+
+[LNDG]
+# connect to an instance of LNDg
+#    use http://IP.OF.NO.DE/api/ for api_url
+auth_user = 
+auth_pass = 
+api_url = 

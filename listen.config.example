@@ -18,3 +18,5 @@ weekly_day = monday
 monthly_date = 1
 metrics = profit-loss apy expensive-nodes
 
+[TELEGRAM_ACTIONS]
+execute = 1

@@ -18,3 +18,6 @@ class Mempool:
     def get_fee(self):
         return self.mempool_request("fees/recommended", {})
 
+    def get_tip_height(self):
+        return self.mempool_request("blocks/tip/height", {})
+

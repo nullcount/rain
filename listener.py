@@ -3,7 +3,7 @@ from config import Config, node_map
 from notify import Logger
 from htlcstream import HtlcStreamLogger
 from report import Report
-
+from telegram import TelegramListener
 
 def main():
     CONFIG = Config('listen.config.example').config
@@ -17,7 +17,8 @@ def main():
 
     monitor_actions_map = {
         'HTLC_STREAM_LOGGER': HtlcStreamLogger,
-        'REPORT': Report
+        'REPORT': Report,
+        "TELEGRAM_ACTIONS": TelegramListener
     }
 
     thread_pool = []

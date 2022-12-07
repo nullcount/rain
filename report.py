@@ -58,7 +58,6 @@ class Report:
             fees = self.node.get_node_fee_report(node.pub_key)
             if fees['in_corrected_avg'] and fees['in_corrected_avg']> 1000 and fees['capacity'] > 100_000_000:
                 expensive_nodes.put(fees)
-               # print(fees)
 
     def get_expensive_nodes(self):
         tic = time.perf_counter()

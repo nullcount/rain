@@ -23,7 +23,6 @@ class Telegram:
         return self.telegram_request('getUpdates', f'?chat_id={self.chat_id}&offset={self.last_update_id}')
 
     def ack_update(self, update_id):
-        print(update_id)
         self.last_update_id = int(update_id) + 1
 
 class TelegramListener:
@@ -39,8 +38,14 @@ class TelegramListener:
                 self.tg.ack_update(update['update_id'])
                 if msg.startswith("/"):
                     if msg.startswith("/invoice"):
-                        cmd, amount, memo = update.split(' ')
-                        self.tg.send_message(f"{cmd} {amount} {memo}")
+                        words = msg.split(' ')
+                        amt = words[1]
+                        if amt.isnumeric():
+                            memo = " ".join(words[1:])
+                            inv = self.node.add_lightning_invoice(int(amt), memo)
+                            self.tg.send_message(f"{inv.payment_request}")
+                        else: 
+                            self.tg.send_message("usage: /invoice <sat_amount> <memo>")
                 else:
                     self.tg.send_message(msg)
             time.sleep(5)

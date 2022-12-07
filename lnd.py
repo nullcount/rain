@@ -422,8 +422,8 @@ class Lnd:
         self.log.info("LND generated deposit address: {}".format(addr))
         return addr
 
-    def add_lighting_invoice(self, amount):
-        add_invoice_request = ln.Invoice(value=amount)
+    def add_lightning_invoice(self, amount, memo=None):
+        add_invoice_request = ln.Invoice(value=amount, memo=memo)
         invoice_response = self.stub.AddInvoice(add_invoice_request)
         return invoice_response
 

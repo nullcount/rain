@@ -106,7 +106,7 @@ class SinkSource:
         self.confirmed = self.node.get_onchain_balance() if not mock else int(mock_state['confirmed'])
         self.unconfirmed = self.node.get_unconfirmed_balance() if not mock else int(mock_state['unconfirmed'])
         self.source_balance = self.source.get_account_balance() if not mock else int(mock_state['source_balance'])
-        self.source_pending_loop_out = self.source.get_pending_widthdraw_sats() if not mock else int(mock_state['source_pending_loop_out'])
+        self.source_pending_loop_out = self.source.get_pending_send_sats() if not mock else int(mock_state['source_pending_loop_out'])
         self.sat_per_vbyte = int(self.mempool.get_fee()[self.mempool_fee]) if not mock else int(mock_state['sat_per_vbyte'])
         self.max_sat_per_vbyte = int(strategy_config['max_sat_per_vbyte']) if not mock else int(mock_state['max_sat_per_vbyte'])
         self.sats_on_the_way = self.unconfirmed + self.source_pending_loop_out
@@ -270,9 +270,9 @@ class SinkSource:
         else:
             # if we make it here, we need more sats!!!
             jobs.append("NOTIFY_NEED_MORE_SATS")
-        self.log("Finished execution of sink/source strategy")
         self.log(f"Execution results in: {', '.join(jobs)}")
         if self.mock:
             return jobs
         else:
             self.run_jobs(jobs)
+        self.log("Finished execution of sink/source strategy")

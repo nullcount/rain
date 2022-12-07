@@ -178,6 +178,8 @@ class Report:
         profits_30day = int(total_revenue_30day-total_fees_30day-onchain_costs_30day)
         profits_7day = int(total_revenue_7day-total_fees_7day-onchain_costs_7day)
         profits_1day = int(total_revenue_1day-total_fees_1day-onchain_costs_1day)
+        # apy = (profits / total funds) * (365 / length of period) * 100
+
         return {
             'forward_count': forward_count,
             'forward_count_90day': forward_count_90day,

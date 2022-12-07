@@ -75,7 +75,7 @@ sink_budget = 100_000_000
 #     useful for maximizing availibility, reduces downtime between closures 
 #     max one channel will be 'enabled' at once -- all others flagged 'disabled'
 #     fee updates apply to all channels the same
-num_sink_channels = 1
+num_sink_channels_target = 1
 
 # automatically close any sink node channel when
 #     the local balance falls below this ratio

@@ -103,7 +103,7 @@ class Kraken:
         sends = self.get_recent_sends()
         pending_amt = 0
         for w in sends:
-            if w['status'] in ['Initial']: # Pending status is considered unconfirmed
+            if w['status'] in ['Initial', 'Pending']:
                 pending_amt += int(float(w['amount']) * COIN_SATS)
                 self.log.info(self.log_msg_map['get_pending_send_sats'](w['status'].lower(), w['refid'], w['amount']))
         return pending_amt

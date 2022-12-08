@@ -145,6 +145,26 @@ class TestSinkSourceStrategy(unittest.TestCase):
         }).execute()
         self.assertEqual(jobs, ["EMPTY_SOURCE_CHANNELS"])
 
+    def test_notify_send_more_sats(self):
+        jobs = SinkSource(mock=True, mock_state={
+            "source_loop_fee": 1000,
+            "num_sink_channels_target": 1,
+            "num_sink_channels": 0,  # does not have enough sink channels
+            "sink_close_ratio": 0.2,
+            "sink_budget": 100_000_000,
+            "min_onchain_balance": 200_000,
+            "confirmed": 100, 
+            "unconfirmed": 200_000,
+            "source_pending_loop_out": 0,
+            "source_balance": 200_000,
+            "sat_per_vbyte": 23,
+            "max_sat_per_vbyte": 30,
+            "sats_in_source_channels": 0,
+            "source_channels_capacity": 100_000_000,
+            "source_channels_local_reserve_sats": 2_000_000,
+        }).execute()
+        self.assertEqual(jobs, ["NOTIFY_NEED_MORE_SATS"])
+
 
 if __name__ == '__main__':
     unittest.main()

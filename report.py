@@ -30,15 +30,17 @@ class Report:
         self.daily_time = report_config['daily_time']
 
     def make_report(self):
-        pl = self.get_profit_loss()
-        tables = self.table_profit_loss(pl)
-        for table in tables:
-            self.log.notify(f"```\n{table}\n```")
-        return
+        report = ""
+        pl = self.table_profit_loss(self.get_profit_loss())
+        report += pl
+        return report
+
+    def send_report(self):
+        self.log.notify(self.make_report())
 
     def mainLoop(self):
-        schedule.every().day.at("00:00").do(self.make_report)
-        self.make_report()
+        self.send_report()
+        schedule.every().day.at("21:00").do(self.send_report)
         time.sleep(1)
 
     def table_profit_loss(self, d):
@@ -51,6 +53,11 @@ class Report:
             x.add_column(time, ["Forwards", "Value", "Revenue", "Chain Costs", "LN Costs", "% Costs", "Profits"])
             x.add_column(t, [f"{d[f'forward_count{key}']:,}", f"{d[f'forward_amount{key}']:,}", f"{d[f'total_revenue{key}']:,} [{d[f'total_revenue_ppm{key}']:,}]", f"{d[f'onchain_costs{key}']:,}", f"{d[f'total_fees{key}']:,} [{d[f'total_fees_ppm{key}']:,}]", f"{d[f'percent_cost{key}']:,}%", f"{d[f'profits{key}']:,} [{d[f'profits_ppm{key}']:,}]"])
             tables.append(x)
+        t = ""
+        for table in tables:
+            t += f"```\n{table}\n```"
+        return t
+
         return tables
 
     def check_node_is_expensive(self, nodes):

@@ -1,5 +1,9 @@
 import requests
 import time
+from report import Report
+from config import Config
+
+CONFIG = Config('listen.config.example').config
 
 
 class Telegram:
@@ -25,10 +29,12 @@ class Telegram:
     def ack_update(self, update_id):
         self.last_update_id = int(update_id) + 1
 
+
 class TelegramListener:
     def __init__(self, tg_config, node, logger):
         self.tg = logger.notify_connector
         self.node = node
+        self.report = Report(CONFIG['REPORT'], node, logger)
 
     def mainLoop(self):
         while True:
@@ -44,14 +50,10 @@ class TelegramListener:
                             memo = " ".join(words[1:])
                             inv = self.node.add_lightning_invoice(int(amt), memo)
                             self.tg.send_message(f"{inv.payment_request}")
-                        else: 
+                        else:
                             self.tg.send_message("usage: /invoice <sat_amount> <memo>")
+                    elif msg.startswith("/report"):
+                        self.report.send_report()
                 else:
                     self.tg.send_message(msg)
             time.sleep(5)
-
-
-
-
-            
-

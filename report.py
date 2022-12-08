@@ -5,7 +5,6 @@ from lndg import Lndg
 from mempool import Mempool
 from config import Config
 from datetime import datetime, timedelta
-import schedule
 from prettytable import PrettyTable
 
 DAY_BLOCKS = 144
@@ -26,8 +25,7 @@ class Report:
         self.log = log
         self.mempool = Mempool(MEMPOOL_CREDS, log)
         self.lndg = Lndg(LNDG_CREDS, self.mempool, log)
-        self.intervals = report_config['intervals'].split(" ")
-        self.daily_time = report_config['daily_time']
+        self.daily_sent = False
 
     def make_report(self):
         report = ""
@@ -40,7 +38,11 @@ class Report:
 
     def mainLoop(self):
         self.send_report()
-        schedule.every().day.at("21:00").do(self.send_report)
+        check_time = datetime.time(hour=21, minute=10, second=0)
+        current_time = datetime.datetime.now().time()
+        if current_time > check_time and not self.daily_sent:
+            self.send_report()
+            self.daily_sent = True
         time.sleep(1)
 
     def table_profit_loss(self, d):
@@ -86,8 +88,8 @@ class Report:
         print(f"Finished in {toc - tic:0.4f} seconds")
         return expensive_nodes
 
-    def get_apy(self):
-        return
+    def get_apy(self, profits, total_funds, days_of_period):
+        return (profits/total_funds) * (365 / days_of_period) * 100
 
     def get_profit_loss(self):
         block_height = self.mempool.get_tip_height()
@@ -106,6 +108,7 @@ class Report:
         payments_7day = payments.filter(creation_date__gte=filter_7day)
         payments_1day = payments.filter(creation_date__gte=filter_1day)
         onchain_txs = self.lndg.get_onchain()
+        print(onchain_txs)
         onchain_txs_90day = onchain_txs.filter(time_stamp__gte=filter_90day)
         onchain_txs_30day = onchain_txs.filter(time_stamp__gte=filter_30day)
         onchain_txs_7day = onchain_txs.filter(time_stamp__gte=filter_7day)
@@ -185,8 +188,7 @@ class Report:
         profits_30day = int(total_revenue_30day-total_fees_30day-onchain_costs_30day)
         profits_7day = int(total_revenue_7day-total_fees_7day-onchain_costs_7day)
         profits_1day = int(total_revenue_1day-total_fees_1day-onchain_costs_1day)
-        # apy = (profits / total funds) * (365 / length of period) * 100
-
+       
         return {
             'forward_count': forward_count,
             'forward_count_90day': forward_count_90day,

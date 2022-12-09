@@ -10,13 +10,9 @@ log_to_console = 1
 notify_events = forwards
 csv_file = csv/htlcstream.csv
 
-[REPORT]
-execute = 1
-intervals = daily weekly monthly
-daily_time = 10:00
-weekly_day = monday
-monthly_date = 1
-metrics = profit-loss apy expensive-nodes
-
 [TELEGRAM_ACTIONS]
 execute = 1
+daily_report = 1
+daily_report_hour = 17
+daily_report_min = 0
+actions = invoice report

@@ -17,7 +17,6 @@ def main():
 
     monitor_actions_map = {
         'HTLC_STREAM_LOGGER': HtlcStreamLogger,
-        'REPORT': Report,
         "TELEGRAM_ACTIONS": TelegramListener
     }
 

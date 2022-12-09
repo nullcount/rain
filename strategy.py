@@ -1,6 +1,7 @@
 from config import Config, node_map, source_map
 from lnd import ChannelTemplate
 from mempool import Mempool
+from report import Report
 
 CREDS = Config('creds.config').config
 
@@ -9,6 +10,7 @@ class FeeMatch:
     def __init__(self, strategy_config, default_config, log):
         self.node = node_map[strategy_config['node']](CREDS[strategy_config['node']], log)
         self.log = log
+        self.report = Report(self.node, log)
         self.match_key = strategy_config['match_key']
         self.premium_factor = strategy_config['premium_factor']
         self.tolerance_factor = strategy_config['tolerance_factor']
@@ -32,7 +34,7 @@ class FeeMatch:
             my_pubkey = self.node.get_own_pubkey()
             peer_pub = chan_info.node2_pub if chan_info.node1_pub == my_pubkey else chan_info.node1_pub
             my_policy = chan_info.node1_policy if chan_info.node1_pub == my_pubkey else chan_info.node2_policy
-            match_fee = self.node.get_node_fee_report(peer_pub)[self.match_key]
+            match_fee = self.report.get_node_fee_stats(peer_pub)[self.match_key]
             new_policy = {
                 "time_lock_delta": int(self.cltv_delta),
                 "min_htlc": int(self.min_htlc_sat) * 1_000,

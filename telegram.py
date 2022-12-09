@@ -35,25 +35,46 @@ class TelegramListener:
         self.tg = logger.notify_connector
         self.node = node
         self.report = Report(CONFIG['REPORT'], node, logger)
+        self.daily_report = tg_config['daily_report']
+        self.daily_report_hour = int(tg_config['daily_report_hour'])
+        self.daily_report_min = int(tg_config['daily_report_min'])
+        actions = tg_config['actions'].split(' ')
+        self.actions = {
+                "invoice": {
+                    "permission": "invoice" in actions,
+                    "parse_args": lambda msg: (msg.split(' ')[1], " ".join(msg.split(' ')[1:])),
+                    "action": lambda args: self.tg.send_message(f"{self.node.add_lightning_invoice(args[0], args[1])}")
+                },
+                "report": {
+                    "permission": "report" in actions,
+                    "action": self.report.send_report
+                }
+        }
 
     def mainLoop(self):
         while True:
-            updates = self.tg.get_updates()
-            for update in updates:
-                msg = update['message']['text']
-                self.tg.ack_update(update['update_id'])
-                if msg.startswith("/"):
-                    if msg.startswith("/invoice"):
-                        words = msg.split(' ')
-                        amt = words[1]
-                        if amt.isnumeric():
-                            memo = " ".join(words[1:])
-                            inv = self.node.add_lightning_invoice(int(amt), memo)
-                            self.tg.send_message(f"{inv.payment_request}")
-                        else:
-                            self.tg.send_message("usage: /invoice <sat_amount> <memo>")
-                    elif msg.startswith("/report"):
-                        self.report.send_report()
-                else:
-                    self.tg.send_message(msg)
+            if self.daily_report:
+                self.daily_report_check_send()
+            self.handle_updates()
             time.sleep(5)
+
+    def daily_report_check_send(self):
+        current_time = time.localtime()
+        if current_time.tm_hour == self.daily_report_hour and \
+                current_time.tm_min == self.daily_report_min:
+            self.report.send_report()
+
+    def handle_updates(self):
+        updates = self.tg.get_updates()
+        for update in updates:
+            msg = update['message']['text']
+            self.tg.ack_update(update['update_id'])
+            for action in self.actions:
+                if msg.startswith(f"/{action}"):
+                    if self.actions[action]['permission']:
+                        if self.actions[action]['parse_args']:
+                            self.actions[action]['action'](self.actions[action]['parse_args'])
+                        else:
+                            self.actions[action]['action']()
+                    else:
+                        self.tg.send_message(f"/{action} is not an allowed action")

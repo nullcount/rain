@@ -3,10 +3,6 @@ import codecs
 import grpc
 import sys
 import re
-import time
-import statistics
-from scipy import stats
-import numpy as np
 from grpc_generated import rpc_pb2_grpc as lnrpc, rpc_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
 
@@ -16,26 +12,6 @@ SAT_MSATS = 1000
 
 def debug(message):
     sys.stderr.write(message + "\n")
-
-
-def remove_outliers(ppm_list,capacities):
-    """
-    remove outliers and their corresponding capacities (if applicable)
-    in any case, return two numpy arrays
-    """
-    if len(ppm_list)<2:
-        return np.array(ppm_list),np.array(capacities)
-
-    threshold = 3  # 99.7% of data points lie between +/- 3 std deviations
-    z = np.abs(stats.zscore(ppm_list))
-
-    outlier_indices = np.where(z > threshold)
-    if outlier_indices:
-        corrected_ppm_list = np.delete(ppm_list,outlier_indices)
-        corrected_capacities = np.delete(capacities,outlier_indices)
-        return corrected_ppm_list, corrected_capacities
-    else:
-        return np.array(ppm_list),np.array(capacities)
 
 
 class ChannelTemplate:
@@ -80,12 +56,7 @@ class Lnd:
         self.node_info = {}
         self.chan_info = {}
         self.fwdhistory = {}
-        self.valid = True
         self.peer_channels = {}
-        try:
-            self.feereport = self.get_feereport()
-        except grpc._channel._InactiveRpcError:
-            self.valid = False
 
     @staticmethod
     def get_credentials(tls_cert_path, macaroon_path):
@@ -108,33 +79,6 @@ class Lnd:
             if c.node1_pub == nodeid or c.node2_pub == nodeid:
                 channels.append(c)
         return channels
-
-    def get_node_fee_report(self, nodeid):
-        channels = self.get_node_channels(nodeid)
-        in_ppm = []
-        out_ppm = []
-        capacity = 0
-        capacities = []
-        for c in channels:
-            policy = []
-            capacity += c.capacity
-            capacities.append(c.capacity)
-            if c.node1_pub == nodeid:
-                out_ppm.append(c.node1_policy.fee_rate_milli_msat)
-                in_ppm.append(c.node2_policy.fee_rate_milli_msat)
-            else:
-                out_ppm.append(c.node2_policy.fee_rate_milli_msat)
-                in_ppm.append(c.node1_policy.fee_rate_milli_msat)
-
-        # remove outliers and their corresponding capacities
-        corrected_in_ppm,in_cap = remove_outliers(in_ppm,capacities)
-        corrected_out_ppm,out_cap = remove_outliers(out_ppm,capacities)
-
-        # calculate weighted average
-        corrected_weighted_in_ppm = np.average(corrected_in_ppm,weights=in_cap)
-        corrected_weighted_out_ppm = np.average(corrected_out_ppm,weights=out_cap)
-
-        return {"pub_key": nodeid, "channel_count": len(channels), "capacity": capacity, "in_min": min(in_ppm), "in_max": max(in_ppm), "in_avg": int(statistics.mean(in_ppm)), "in_corrected_avg": int(corrected_weighted_in_ppm), "in_med": int(statistics.median(in_ppm)), "in_std": int(statistics.stdev(in_ppm)) if len(in_ppm) >= 2 else None, "out_min": min(out_ppm), "out_max": max(out_ppm), "out_avg": int(statistics.mean(out_ppm)), "out_corrected_avg": int(corrected_weighted_out_ppm), "out_med": int(statistics.median(out_ppm)), "out_std": int(statistics.stdev(out_ppm)) if len(out_ppm) >= 2 else None}
 
     def get_peers(self):
         if self.peers is None:
@@ -161,76 +105,13 @@ class Lnd:
         self.log.info("LND connected to peer {}@{}".format(pubkey, address))
         return res
 
-    def get_feereport(self):
-        feereport = self.stub.FeeReport(ln.FeeReportRequest())
-        feedict = {}
-        for channel_fee in feereport.channel_fees:
-            feedict[channel_fee.chan_id] = (channel_fee.base_fee_msat, channel_fee.fee_per_mil)
-        return feedict
-
-    # query the forwarding history for a channel covering the last # of seconds
-    def get_forward_history(self, chanid, seconds):
-        # cache all history to avoid stomping on lnd
-        last_time = self.fwdhistory['last'] if 'last' in self.fwdhistory else int(time.time())
-
-        start_time = int(time.time()) - seconds
-        leeway = 5  # don't call lnd on each second boundary
-        if start_time < last_time - leeway:
-            # retrieve (remaining) for the queried period
-            index_offset = 0
-            done = False
-            thishistory = {}
-            while not done:
-                forwards = self.stub.ForwardingHistory(ln.ForwardingHistoryRequest(
-                    start_time=start_time, end_time=last_time, index_offset=index_offset))
-                if forwards.forwarding_events:
-                    for forward in forwards.forwarding_events:
-                        if not forward.chan_id_out in thishistory:
-                            thishistory[forward.chan_id_out] = {'in': [], 'out': []}
-                        if not forward.chan_id_in in thishistory:
-                            thishistory[forward.chan_id_in] = {'in': [], 'out': []}
-                        # most recent last
-                        thishistory[forward.chan_id_out]['out'].append(forward)
-                        thishistory[forward.chan_id_in]['in'].append(forward)
-                    index_offset = forwards.last_offset_index
-                else:
-                    done = True
-
-            # add queried to existing cache and keep time order
-            for i in thishistory.keys():
-                if not i in self.fwdhistory:
-                    self.fwdhistory[i] = {'in': [], 'out': []}
-                self.fwdhistory[i]['in'] = thishistory[i]['in'] + self.fwdhistory[i]['in']
-                self.fwdhistory[i]['out'] = thishistory[i]['out'] + self.fwdhistory[i]['out']
-
-            self.fwdhistory['last'] = start_time
-
-        chan_data = self.fwdhistory[chanid] if chanid in self.fwdhistory else {'in': [], 'out': []}
-        result = {'htlc_in': 0, 'htlc_out': 0, 'sat_in': 0, 'sat_out': 0, 'last_in': 0, 'last_out': 0}
-
-        for fwd in reversed(chan_data['in']):
-            if fwd.timestamp < start_time:
-                break
-            result['htlc_in'] = result['htlc_in'] + 1
-            result['sat_in'] = result['sat_in'] + fwd.amt_in
-            result['last_in'] = fwd.timestamp
-
-        for fwd in reversed(chan_data['out']):
-            if fwd.timestamp < start_time:
-                break
-            result['htlc_out'] = result['htlc_out'] + 1
-            result['sat_out'] = result['sat_out'] + fwd.amt_out
-            result['last_out'] = fwd.timestamp
-
-        return result
-
     def get_node_info(self, nodepubkey):
-        if not nodepubkey in self.node_info:
+        if nodepubkey not in self.node_info:
             self.node_info[nodepubkey] = self.stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=nodepubkey))
         return self.node_info[nodepubkey]
 
     def get_chan_info(self, chanid):
-        if not chanid in self.chan_info:
+        if chanid not in self.chan_info:
             try:
                 self.chan_info[chanid] = self.stub.GetChanInfo(ln.ChanInfoRequest(chan_id=chanid))
             except:
@@ -244,7 +125,7 @@ class Lnd:
         min_htlc_msat = policy['min_htlc']
         max_htlc_msat = policy['max_htlc_msat']
         time_lock_delta = policy['time_lock_delta']
-        
+
         chan_info = self.get_chan_info(chanid)
         if not chan_info:
             return None
@@ -252,14 +133,13 @@ class Lnd:
             funding_txid_str=chan_info.chan_point.split(':')[0],
             output_index=int(chan_info.chan_point.split(':')[1])
         )
-        my_policy = chan_info.node1_policy if chan_info.node1_pub == self.get_own_pubkey() else chan_info.node2_policy
-        
+        my_policy = chan_info.node1_policy if chan_info.node1_pub == self.get_own_pubkey() else chan_info.node2_policy 
         base_fee_msat = (base_fee_msat if base_fee_msat is not None else my_policy.fee_base_msat)
         fee_rate = fee_ppm if fee_ppm is not None else my_policy.fee_rate_milli_msat
         min_htlc_msat = (min_htlc_msat if min_htlc_msat is not None else my_policy.min_htlc)
         max_htlc_msat = (max_htlc_msat if max_htlc_msat is not None else my_policy.max_htlc_msat)
         time_lock_delta = (time_lock_delta if time_lock_delta is not None else my_policy.time_lock_delta)
-    
+
         self.log.info(f"base_fee_msat: {base_fee_msat} ppm: {fee_rate} min_htlc_msat: {min_htlc_msat} max_htlc_msat: {max_htlc_msat} time_lock_delta: {time_lock_delta}")
 
         res = self.stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(
@@ -297,7 +177,7 @@ class Lnd:
             request = ln.ListChannelsRequest()
             self.channels = self.stub.ListChannels(request).channels
         return self.channels
-    
+
     def get_closed_channels(self):
         if self.closed_channels is None:
             req = ln.ClosedChannelsRequest()
@@ -453,4 +333,3 @@ class Lnd:
         pending_open_channels = pending_channels_response.pending_open_channels
         pending_open_channels = list(map(lambda x: x.channel, pending_open_channels))
         return pending_open_channels
-

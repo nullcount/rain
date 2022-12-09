@@ -6,6 +6,9 @@ from mempool import Mempool
 from config import Config
 from datetime import datetime, timedelta
 from prettytable import PrettyTable
+import statistics
+from scipy import stats
+import numpy as np
 
 DAY_BLOCKS = 144
 MILLI = 1_000_000
@@ -20,12 +23,11 @@ expensive_nodes = []
 
 
 class Report:
-    def __init__(self, report_config, node, log):
+    def __init__(self, node, log):
         self.node = node
         self.log = log
         self.mempool = Mempool(MEMPOOL_CREDS, log)
         self.lndg = Lndg(LNDG_CREDS, self.mempool, log)
-        self.daily_sent = False
 
     def make_report(self):
         report = ""
@@ -35,21 +37,11 @@ class Report:
     def send_report(self):
         self.log.notify(self.make_report())
 
-    def mainLoop(self):
-        self.send_report()
-        check_time = datetime.time(hour=21, minute=10, second=0)
-        current_time = datetime.datetime.now().time()
-        if current_time > check_time and not self.daily_sent:
-            self.send_report()
-            self.daily_sent = True
-        time.sleep(1)
-
     def table_profit_loss(self, d):
         time = datetime.now().strftime("%m/%d/%Y")
         tables = []
         for t in ["1 Day", "7 Day", "30 Day", "90 Day", "Lifetime"]:
-            key = "" if t == "Lifetime" else f"_{''.join(t.split(' ')).lower()}"
-            
+            key = "" if t == "Lifetime" else f"_{''.join(t.split(' ')).lower()}" 
             x = PrettyTable()
             x.add_column(time, ["Forwards", "Value", "Revenue", "Chain Costs", "LN Costs", "% Costs", "Profits"])
             x.add_column(t, [f"{d[f'forward_count{key}']:,}", f"{d[f'forward_amount{key}']:,}", f"{d[f'total_revenue{key}']:,} [{d[f'total_revenue_ppm{key}']:,}]", f"{d[f'onchain_costs{key}']:,}", f"{d[f'total_fees{key}']:,} [{d[f'total_fees_ppm{key}']:,}]", f"{d[f'percent_cost{key}']:,}%", f"{d[f'profits{key}']:,} [{d[f'profits_ppm{key}']:,}]"])
@@ -66,6 +58,51 @@ class Report:
             fees = self.node.get_node_fee_report(node.pub_key)
             if fees['in_corrected_avg'] and fees['in_corrected_avg']> 1000 and fees['capacity'] > 100_000_000:
                 expensive_nodes.put(fees)
+
+    def get_node_fee_stats(self, nodeid):
+        channels = self.node..get_node_channels(nodeid)
+        in_ppm = []
+        out_ppm = []
+        capacity = 0
+        capacities = []
+        for c in channels:
+            capacity += c.capacity
+            capacities.append(c.capacity)
+            if c.node1_pub == nodeid:
+                out_ppm.append(c.node1_policy.fee_rate_milli_msat)
+                in_ppm.append(c.node2_policy.fee_rate_milli_msat)
+            else:
+                out_ppm.append(c.node2_policy.fee_rate_milli_msat)
+                in_ppm.append(c.node1_policy.fee_rate_milli_msat)
+
+        # remove outliers and their corresponding capacities
+        corrected_in_ppm, in_cap = self.remove_ppm_outliers(in_ppm, capacities)
+        corrected_out_ppm, out_cap = self.remove_ppm_outliers(out_ppm ,capacities)
+
+        # calculate weighted average
+        corrected_weighted_in_ppm = np.average(corrected_in_ppm, weights=in_cap)
+        corrected_weighted_out_ppm = np.average(corrected_out_ppm, weights=out_cap)
+
+        return {"pub_key": nodeid, "channel_count": len(channels), "capacity": capacity, "in_min": min(in_ppm), "in_max": max(in_ppm), "in_avg": int(statistics.mean(in_ppm)), "in_corrected_avg": int(corrected_weighted_in_ppm), "in_med": int(statistics.median(in_ppm)), "in_std": int(statistics.stdev(in_ppm)) if len(in_ppm) >= 2 else None, "out_min": min(out_ppm), "out_max": max(out_ppm), "out_avg": int(statistics.mean(out_ppm)), "out_corrected_avg": int(corrected_weighted_out_ppm), "out_med": int(statistics.median(out_ppm)), "out_std": int(statistics.stdev(out_ppm)) if len(out_ppm) >= 2 else None}
+
+    def remove_ppm_outliers(self, ppm_list, capacities):
+        """
+        remove outliers and their corresponding capacities (if applicable)
+        in any case, return two numpy arrays
+        """
+        if len(ppm_list) < 2:
+            return np.array(ppm_list), np.array(capacities)
+        threshold = 3  # 99.7% of data points lie between +/- 3 std deviations
+        absurd_fee = 1_000_000  # fee ppm above this would be too expenive to consider
+        ppm_list = [ppm for ppm in ppm_list if ppm < absurd_fee]
+        z = np.abs(stats.zscore(ppm_list))
+        outlier_indices = np.where(z > threshold)
+        if outlier_indices:
+            corrected_ppm_list = np.delete(ppm_list, outlier_indices)
+            corrected_capacities = np.delete(capacities, outlier_indices)
+            return corrected_ppm_list, corrected_capacities
+        else:
+            return np.array(ppm_list), np.array(capacities)
 
     def get_expensive_nodes(self):
         tic = time.perf_counter()

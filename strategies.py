@@ -1,14 +1,15 @@
-from config import CREDS, node_map, source_map
 from lnd import ChannelTemplate
 from mempool import Mempool
 from report import Report
+from kraken import Kraken
+from nicehash import Nicehash
 
 
 class FeeMatch:
-    def __init__(self, strategy_config, default_config, log):
-        self.node = node_map[strategy_config['node']](CREDS[strategy_config['node']], log)
+    def __init__(self, strategy_config=None, DEFAULT=None, CREDS=None, node=None, log=None):
+        self.node = node
         self.log = log
-        self.report = Report(self.node, log)
+        self.report = Report(CREDS, self.node, log)
         self.match_key = strategy_config['match_key']
         self.premium_factor = strategy_config['premium_factor']
         self.tolerance_factor = strategy_config['tolerance_factor']
@@ -81,9 +82,13 @@ class FeeMatch:
 
 
 class SinkSource:
-    def __init__(self, strategy_config=None, default_config=None, log=None, mock=False, mock_state=None):
+    def __init__(self, strategy_config=None, DEFAULT=None, CREDS=None, node=None, log=None, mock=False, mock_state=None):
+        source_map = {
+            "kraken": Kraken,
+            "nicehash": Nicehash
+        }
         self.source = source_map[strategy_config['source']](CREDS[strategy_config['source_config']], log) if not mock else None
-        self.node = node_map[strategy_config['node']](CREDS[strategy_config['node']], log) if not mock else None
+        self.node = node if not mock else None
         self.log = log.info if not mock else print
         self.notify = log.notify if not mock else print
         self.mock = mock  # True if this is a test

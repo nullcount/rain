@@ -4,7 +4,6 @@ import pickle
 from multiprocessing import Process
 from lndg import Lndg
 from mempool import Mempool
-from config import CREDS
 from datetime import datetime, timedelta
 from prettytable import PrettyTable
 import statistics
@@ -16,23 +15,19 @@ MILLI = 1_000_000
 HUNDO = 100
 SAT_MSATS = 1_000
 
-LNDG_CREDS = CREDS['LNDG']
-MEMPOOL_CREDS = CREDS['MEMPOOL']
-
 expensive_nodes = []
 
 
 class Report:
-    def __init__(self, node, log):
+    def __init__(self, CREDS, node, log):
         self.node = node
         self.log = log
-        self.mempool = Mempool(MEMPOOL_CREDS, log)
-        self.lndg = Lndg(LNDG_CREDS, self.mempool, log)
+        self.mempool = Mempool(CREDS['MEMPOOL'], log)
+        self.lndg = Lndg(CREDS['LNDG'], self.mempool, log)
         self.all_time_daily_apy = None
         if os.path.exists("daily_apy.pkl"):
             with open("daily_apy.pkl", "rb") as pickle_file:
                 self.all_time_daily_apy = pickle.load(pickle_file)
-
 
     def make_report(self):
         report = ""
@@ -41,12 +36,12 @@ class Report:
 
     def send_report(self):
         self.log.notify(self.make_report())
-    
+
     def table_profit_loss(self, d):
         time = datetime.now().strftime("%m/%d/%Y")
         tables = []
         for t in ["1 Day", "7 Day", "30 Day", "90 Day", "Lifetime"]:
-            key = "" if t == "Lifetime" else f"_{''.join(t.split(' ')).lower()}" 
+            key = "" if t == "Lifetime" else f"_{''.join(t.split(' ')).lower()}"
             x = PrettyTable()
             x.add_column(time, ["Forwards", "Value", "Revenue", "Chain Costs", "LN Costs", "% Costs", "Profits"])
             x.add_column(t, [f"{d[f'forward_count{key}']:,}", f"{d[f'forward_amount{key}']:,}", f"{d[f'total_revenue{key}']:,} [{d[f'total_revenue_ppm{key}']:,}]", f"{d[f'onchain_costs{key}']:,}", f"{d[f'total_fees{key}']:,} [{d[f'total_fees_ppm{key}']:,}]", f"{d[f'percent_cost{key}']:,}%", f"{d[f'profits{key}']:,} [{d[f'profits_ppm{key}']:,}]"])

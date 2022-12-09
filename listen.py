@@ -16,7 +16,7 @@ def main():
     for key in LISTEN:
         if key != 'DEFAULT':
             if LISTEN[key]['execute'] == "1":
-                daemon = listen_map[key](LISTEN[key], node, log)
+                daemon = listen_map[key](config=LISTEN[key], CREDS=CREDS, node=node, log=log)
                 thread_pool.append(Thread(target=daemon.mainLoop))
 
     for thread in thread_pool:

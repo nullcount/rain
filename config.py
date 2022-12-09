@@ -1,8 +1,6 @@
 import argparse
 import configparser
 from lnd import Lnd
-from kraken import Kraken
-from nicehash import Nicehash
 from strategies import FeeMatch, SinkSource
 from listeners import HtlcStreamLogger, TelegramListener
 from notify import Logger
@@ -19,19 +17,13 @@ class Config:
         self.config.read(config_loc)
 
 
-source_map = {
-    "kraken": Kraken,
-    "nicehash": Nicehash
-}
 node_map = {
     "LND": Lnd
 }
-
 strategy_map = {
     'sink-source': SinkSource,
     'fee-match': FeeMatch
 }
-
 monitor_actions_map = {
     'HTLC_STREAM_LOGGER': HtlcStreamLogger,
     "TELEGRAM_ACTIONS": TelegramListener

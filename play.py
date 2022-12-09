@@ -1,16 +1,16 @@
 import sys
-from config import PLAYBOOK, PLAYBOOK_LOG, strategy_map
+from config import PLAYBOOK, PLAYBOOK_LOG, CREDS, strategy_map, node_map
 
 
 def main():
     DEFAULTS = PLAYBOOK['DEFAULT']
-
+    node = node_map[DEFAULTS['node']](CREDS[DEFAULTS['node']])
     PLAYBOOK_LOG.info("Running...")
 
     for play in PLAYBOOK:
         if play != 'DEFAULT':
             if PLAYBOOK[play]['execute'] == "1":
-                strategy = strategy_map[PLAYBOOK[play]['strategy']](strategy_config=PLAYBOOK[play], default_config=DEFAULTS, log=PLAYBOOK_LOG)
+                strategy = strategy_map[PLAYBOOK[play]['strategy']](strategy_config=PLAYBOOK[play], DEFAULT=DEFAULTS, CREDS=CREDS, node=node, log=PLAYBOOK_LOG)
                 strategy.execute()
                 if "--debug" in sys.argv:
                     PLAYBOOK_LOG.info(strategy.dump_state())

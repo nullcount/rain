@@ -3,6 +3,7 @@
 
 # minimum sats to keep on your node's onchain wallet
 min_onchain_balance = 200_000
+node = LND
 
 [FEE_MATCH_CORRECTED_AVERAGE_PLUS_PREMIUM]
 # fee match strategy will set your fee ppm 
@@ -10,7 +11,6 @@ min_onchain_balance = 200_000
 #   for incomming routes to that node 
 strategy = fee-match
 execute = 0
-node = LND
 
 # choose the stat to match with 
 #     options: in_avg|out_avg|in_min|out_min|in_max|out_max|in_med
@@ -41,8 +41,6 @@ strategy = sink-source
 execute = 1
 
 # node implementation info 
-node = LND
-node_config = LND_NODE
 
 # the fee priority as recommended by your mempool connection
 #     options: minimumFee|economyFee|hourFee|halfHourFee|fastestFee

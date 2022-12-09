@@ -5,14 +5,14 @@ from report import Report
 
 
 class TelegramListener:
-    def __init__(self, tg_config, node, logger):
-        self.tg = logger.notify_connector
+    def __init__(self, config, CREDS, node, log):
+        self.tg = log.notify_connector
         self.node = node
-        self.report = Report(node, logger)
-        self.daily_report = tg_config['daily_report']
-        self.daily_report_hour = int(tg_config['daily_report_hour'])
-        self.daily_report_min = int(tg_config['daily_report_min'])
-        actions = tg_config['actions'].split(' ')
+        self.report = Report(CREDS, node, log)
+        self.daily_report = config['daily_report']
+        self.daily_report_hour = int(config['daily_report_hour'])
+        self.daily_report_min = int(config['daily_report_min'])
+        actions = config['actions'].split(' ')
         self.actions = {
                 "invoice": {
                     "permission": "invoice" in actions,
@@ -55,8 +55,8 @@ class TelegramListener:
 
 
 class HtlcStreamLogger:
-    def __init__(self, config, node, logger):
-        self.log = logger
+    def __init__(self, config, CREDS, node, log):
+        self.log = log
         self.node = node
         self.mychannels = {}
         self.lastchannelfetchtime = 0

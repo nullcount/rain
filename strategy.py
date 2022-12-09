@@ -246,7 +246,7 @@ class SinkSource:
             "TRY_OPEN_CHANNEL": self.try_open_channel,
             "WAIT_MONEY_ON_THE_WAY": self.wait_money_on_the_way,
             "SOURCE_SEND_ONCHAIN": self.source_send_onchain,
-            "NOTIFY_SEND_MORE_SATS": self.notify_need_more_sats,
+            "NOTIFY_NEED_MORE_SATS": self.notify_need_more_sats,
         }
         for key in map:
             if key in jobs:

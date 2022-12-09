@@ -1,29 +1,19 @@
 import sys
-from config import Config
-from notify import Logger
-from strategy import SinkSource, FeeMatch
+from config import PLAYBOOK, PLAYBOOK_LOG, strategy_map
 
 
 def main():
-    CONFIG = Config('playbook.config.example').config
-    CREDS = Config('creds.config').config
-    DEFAULTS = CONFIG['DEFAULT']
+    DEFAULTS = PLAYBOOK['DEFAULT']
 
-    log = Logger("logs/strategy.log", CREDS['TELEGRAM'])
-    log.info("Running...")
+    PLAYBOOK_LOG.info("Running...")
 
-    strategy_map = {
-        'sink-source': SinkSource,
-        'fee-match': FeeMatch
-    }
-
-    for key in CONFIG:
-        if key != 'DEFAULT':
-            if CONFIG[key]['execute'] == "1":
-                _strategy = strategy_map[CONFIG[key]['strategy']](CONFIG[key], DEFAULTS, log)
-                _strategy.execute()
+    for play in PLAYBOOK:
+        if play != 'DEFAULT':
+            if PLAYBOOK[play]['execute'] == "1":
+                strategy = strategy_map[PLAYBOOK[play]['strategy']](strategy_config=PLAYBOOK[play], default_config=DEFAULTS, log=PLAYBOOK_LOG)
+                strategy.execute()
                 if "--debug" in sys.argv:
-                    log.info(_strategy.dump_state())
+                    PLAYBOOK_LOG.info(strategy.dump_state())
 
 
 if __name__ == "__main__":

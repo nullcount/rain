@@ -1,9 +1,7 @@
-from config import Config, node_map, source_map
+from config import CREDS, node_map, source_map
 from lnd import ChannelTemplate
 from mempool import Mempool
 from report import Report
-
-CREDS = Config('creds.config').config
 
 
 class FeeMatch:

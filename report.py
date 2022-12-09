@@ -1,11 +1,10 @@
 import time
 import os
-import json
 import pickle
 from multiprocessing import Process
 from lndg import Lndg
 from mempool import Mempool
-from config import Config
+from config import CREDS
 from datetime import datetime, timedelta
 from prettytable import PrettyTable
 import statistics
@@ -17,7 +16,6 @@ MILLI = 1_000_000
 HUNDO = 100
 SAT_MSATS = 1_000
 
-CREDS = Config('creds.config').config
 LNDG_CREDS = CREDS['LNDG']
 MEMPOOL_CREDS = CREDS['MEMPOOL']
 
@@ -35,27 +33,6 @@ class Report:
             with open("daily_apy.pkl", "rb") as pickle_file:
                 self.all_time_daily_apy = pickle.load(pickle_file)
 
-    def sync_daily_apy(self):
-        onchcain_txs = None
-        payments = None
-        forwards = None
-        closures = None
-        if not self.all_time_daily_apy:
-            onchain_txs = self.lndg.get_onchain()
-            # get date of oldest onchain tx
-        else: 
-            # get newest day in pickle
-            # if newest day is today => return  
-        payments = self.lndg.get_payments()
-        onchain_txs = self.lndg.get_onchain()
-        forwards = self.lndg.get_forwards()
-        closures = self.lndg.get_closures()
-        # while day not today
-            # calculate balance at end of day
-            # calculate profit loss for that day
-            # get APY for the day
-        with open("daily_apy.pkl", "wb") as pickle_file:
-            pickle.dump(self.all_time_daily_apy, pickle_file)
 
     def make_report(self):
         report = ""
@@ -88,7 +65,7 @@ class Report:
                 expensive_nodes.put(fees)
 
     def get_node_fee_stats(self, nodeid):
-        channels = self.node..get_node_channels(nodeid)
+        channels = self.node.get_node_channels(nodeid)
         in_ppm = []
         out_ppm = []
         capacity = 0
@@ -152,9 +129,6 @@ class Report:
         print(f"Finished in {toc - tic:0.4f} seconds")
         return expensive_nodes
 
-    def get_apy(self, profits, total_funds, days_of_period):
-        return (profits/total_funds) * (365 / days_of_period) * 100
-
     def get_profit_loss(self):
         block_height = self.mempool.get_tip_height()
         filter_90day = datetime.now() - timedelta(days=90)
@@ -172,7 +146,6 @@ class Report:
         payments_7day = payments.filter(creation_date__gte=filter_7day)
         payments_1day = payments.filter(creation_date__gte=filter_1day)
         onchain_txs = self.lndg.get_onchain()
-        print(json.dumps(onchain_txs.list, indent=4))
         onchain_txs_90day = onchain_txs.filter(time_stamp__gte=filter_90day)
         onchain_txs_30day = onchain_txs.filter(time_stamp__gte=filter_30day)
         onchain_txs_7day = onchain_txs.filter(time_stamp__gte=filter_7day)

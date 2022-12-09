@@ -42,6 +42,9 @@ api_url =
 [LNDG]
 # connect to an instance of LNDg
 #    use http://IP.OF.NO.DE/api/ for api_url
+# umbrel users need to disable app proxy SSO to use the API
+#    edit your umbrel/scripts/support/docker-compose.app_proxy.yml and set "PROXY_ADD_AUTH" to "false"
+#    then restart umbrel -- this disables umbrel's login proxy on all apps! use with caution!
 auth_user = 
 auth_pass = 
 api_url = 

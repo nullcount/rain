@@ -1,5 +1,7 @@
 import time
 import os
+import json
+import pickle
 from multiprocessing import Process
 from lndg import Lndg
 from mempool import Mempool
@@ -28,6 +30,32 @@ class Report:
         self.log = log
         self.mempool = Mempool(MEMPOOL_CREDS, log)
         self.lndg = Lndg(LNDG_CREDS, self.mempool, log)
+        self.all_time_daily_apy = None
+        if os.path.exists("daily_apy.pkl"):
+            with open("daily_apy.pkl", "rb") as pickle_file:
+                self.all_time_daily_apy = pickle.load(pickle_file)
+
+    def sync_daily_apy(self):
+        onchcain_txs = None
+        payments = None
+        forwards = None
+        closures = None
+        if not self.all_time_daily_apy:
+            onchain_txs = self.lndg.get_onchain()
+            # get date of oldest onchain tx
+        else: 
+            # get newest day in pickle
+            # if newest day is today => return  
+        payments = self.lndg.get_payments()
+        onchain_txs = self.lndg.get_onchain()
+        forwards = self.lndg.get_forwards()
+        closures = self.lndg.get_closures()
+        # while day not today
+            # calculate balance at end of day
+            # calculate profit loss for that day
+            # get APY for the day
+        with open("daily_apy.pkl", "wb") as pickle_file:
+            pickle.dump(self.all_time_daily_apy, pickle_file)
 
     def make_report(self):
         report = ""
@@ -36,7 +64,7 @@ class Report:
 
     def send_report(self):
         self.log.notify(self.make_report())
-
+    
     def table_profit_loss(self, d):
         time = datetime.now().strftime("%m/%d/%Y")
         tables = []
@@ -144,7 +172,7 @@ class Report:
         payments_7day = payments.filter(creation_date__gte=filter_7day)
         payments_1day = payments.filter(creation_date__gte=filter_1day)
         onchain_txs = self.lndg.get_onchain()
-        print(onchain_txs)
+        print(json.dumps(onchain_txs.list, indent=4))
         onchain_txs_90day = onchain_txs.filter(time_stamp__gte=filter_90day)
         onchain_txs_30day = onchain_txs.filter(time_stamp__gte=filter_30day)
         onchain_txs_7day = onchain_txs.filter(time_stamp__gte=filter_7day)
@@ -277,5 +305,3 @@ class Report:
             'percent_cost_7day': 0 if total_revenue_7day == 0 else int(((total_fees_7day+onchain_costs_7day)/total_revenue_7day)*HUNDO),
             'percent_cost_1day': 0 if total_revenue_1day == 0 else int(((total_fees_1day+onchain_costs_1day)/total_revenue_1day)*HUNDO),
         }
-
-

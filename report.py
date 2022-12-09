@@ -29,8 +29,7 @@ class Report:
 
     def make_report(self):
         report = ""
-        pl = self.table_profit_loss(self.get_profit_loss())
-        report += pl
+        report += self.table_profit_loss(self.get_profit_loss())
         return report
 
     def send_report(self):
@@ -235,7 +234,7 @@ class Report:
             'profits_ppm_30day': 0 if forward_amount_30day == 0 else int(profits_30day/(forward_amount_30day/MILLI)),
             'profits_ppm_7day': 0 if forward_amount_7day == 0 else int(profits_7day/(forward_amount_7day/MILLI)),
             'profits_ppm_1day': 0 if forward_amount_1day == 0 else int(profits_1day/(forward_amount_1day/MILLI)),
-            'percent_cost': 0 if total_revenue == 0 else int(((total_fees+onchain_costs)/total_revenue)*100),
+            'percent_cost': 0 if total_revenue == 0 else int(((total_fees+onchain_costs)/total_revenue)*HUNDO),
             'percent_cost_90day': 0 if total_revenue_90day == 0 else int(((total_fees_90day+onchain_costs_90day)/total_revenue_90day)*HUNDO),
             'percent_cost_30day': 0 if total_revenue_30day == 0 else int(((total_fees_30day+onchain_costs_30day)/total_revenue_30day)*HUNDO),
             'percent_cost_7day': 0 if total_revenue_7day == 0 else int(((total_fees_7day+onchain_costs_7day)/total_revenue_7day)*HUNDO),

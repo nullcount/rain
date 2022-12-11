@@ -1,6 +1,5 @@
 import requests
 import json
-from datetime import datetime
 
 
 class RecordList:
@@ -9,22 +8,14 @@ class RecordList:
     def __init__(self, list_of_dicts=False):
         self.list = list_of_dicts if list_of_dicts else []
 
-    def sort(self, key_name):
-        return sorted(self.list, key=lambda d: int(d[key_name]))
+    def sort(self, sort_func):
+        return RecordList(list(sorted(sort_func, self.list)))
 
-    def filter(self, **kwargs):
-        for arg in kwargs:
-            if "__" in arg:
-                a, op = arg.split("__")
-                if op == "gte" and isinstance(self.list[0][a], str):
-                    return RecordList(filter(self.list, key=lambda d: datetime.strftime(d[a], "%Y-%m-%dT%H:%M:%S") >= kwargs[arg]))
-                elif op == "gte" and isinstance(self.list[0][a], int):
-                    return RecordList(filter(self.list, key=lambda d: d[a] >= kwargs[arg]))
-            else:
-                return RecordList(filter(self.list, key=lambda d: d[a] != kwargs[arg]))
+    def filter(self, filter_func):
+        return RecordList(list(filter(filter_func, self.list)))
 
-    def sum(self, key):
-        return sum(self.list, key=lambda d: d[key])
+    def sum(self, sum_key):
+        return sum(lambda r: r[sum_key], self.list)
 
 
 class Lndg:
@@ -52,7 +43,7 @@ class Lndg:
 
     def get_invoices(self):
         self.lndg_request(self.get_url('invoices'), self.invoices)
-        return self.invoices
+        return self.invoicesi
 
     def get_payments(self):
         self.lndg_request(self.get_url('payments'), self.payments)

@@ -9,31 +9,22 @@ class RecordList:
     def __init__(self, list_of_dicts=False):
         self.list = list_of_dicts if list_of_dicts else []
 
+    def sort(self, key_name):
+        return sorted(self.list, key=lambda d: int(d[key_name]))
+
     def filter(self, **kwargs):
-        res = []
-        for record in self.list:
-            pass_filter = True
-            for arg in kwargs:
-                if "__" in arg:
-                    a, operator = arg.split("__")
-                    if operator == "gte" and isinstance(record[a], str) and not datetime.strptime(record[a], "%Y-%m-%dT%H:%M:%S") >= kwargs[arg]:
-                        pass_filter = False
-                        break
-                    elif operator == "gte" and isinstance(record[a], int) and not record[a] >= kwargs[arg]:
-                        pass_filter = False
-                        break
-                elif record[arg] != kwargs[arg]:
-                    pass_filter = False
-                    break
-            if pass_filter:
-                res.append(record)
-        return RecordList(res)
+        for arg in kwargs:
+            if "__" in arg:
+                a, op = arg.split("__")
+                if op == "gte" and isinstance(self.list[0][a], str):
+                    return RecordList(filter(self.list, key=lambda d: datetime.strftime(d[a], "%Y-%m-%dT%H:%M:%S") >= kwargs[arg]))
+                elif op == "gte" and isinstance(self.list[0][a], int):
+                    return RecordList(filter(self.list, key=lambda d: d[a] >= kwargs[arg]))
+            else:
+                return RecordList(filter(self.list, key=lambda d: d[a] != kwargs[arg]))
 
     def sum(self, key):
-        sum = 0
-        for record in self.list:
-            sum += record[key]
-        return sum
+        return sum(self.list, key=lambda d: d[key])
 
 
 class Lndg:

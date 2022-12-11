@@ -24,7 +24,7 @@ strategy_map = {
     'sink-source': SinkSource,
     'fee-match': FeeMatch
 }
-monitor_actions_map = {
+listen_map = {
     'HTLC_STREAM_LOGGER': HtlcStreamLogger,
     "TELEGRAM_ACTIONS": TelegramListener
 }

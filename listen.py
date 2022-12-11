@@ -9,7 +9,7 @@ def main():
     log = Logger("logs/monitor.log", CREDS['TELEGRAM'])
     log.info("Running...")
 
-    node = node_map[DEFAULT['node']](LISTEN[DEFAULT['node']], log)
+    node = node_map[DEFAULT['node']](CREDS[DEFAULT['node']], log)
 
     thread_pool = []
 

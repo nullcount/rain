@@ -126,7 +126,7 @@ class Report:
 
     @staticmethod
     def date_gte(date, compare):
-        return datetime.strftime(date, "%Y-%m-%dT%H:%M:%S") >= compare
+        return datetime.strptime(date, "%Y-%m-%dT%H:%M:%S") >= compare
 
     def get_profit_loss(self):
         block_height = self.mempool.get_tip_height()
@@ -139,7 +139,7 @@ class Report:
         invoices_30day = invoices.filter(lambda r: self.date_gte(r['settle_date'], filter_30day))
         invoices_7day = invoices.filter(lambda r: self.date_gte(r['settle_date'], filter_7day))
         invoices_1day = invoices.filter(lambda r: self.date_gte(r['settle_date'], filter_1day))
-        payments = self.lndg.get_payments().filter(lambda r: r['state'] == 2)
+        payments = self.lndg.get_payments().filter(lambda r: r['status'] == 2)
         payments_90day = payments.filter(lambda r: self.date_gte(r['creation_date'], filter_90day))
         payments_30day = payments.filter(lambda r: self.date_gte(r['creation_date'], filter_30day))
         payments_7day = payments.filter(lambda r: self.date_gte(r['creation_date'], filter_7day))

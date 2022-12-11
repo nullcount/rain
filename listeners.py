@@ -26,7 +26,7 @@ class TelegramListener:
         }
 
     def mainLoop(self):
-        self.report.send_report()
+        #self.report.send_report()
         while True:
             if self.daily_report:
                 self.daily_report_check_send()

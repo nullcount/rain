@@ -12,10 +12,10 @@ class RecordList:
         return RecordList(list(sorted(sort_func, self.list)))
 
     def filter(self, filter_func):
-        return RecordList(list(filter(filter_func, self.list)))
+        return RecordList(list(filter(filter_func, self.list))) if self.list else self
 
-    def sum(self, sum_key):
-        return sum(lambda r: r[sum_key], self.list)
+    def sum(self, key):
+        return sum(r[key] for r in self.list if key in r)
 
 
 class Lndg:
@@ -43,7 +43,7 @@ class Lndg:
 
     def get_invoices(self):
         self.lndg_request(self.get_url('invoices'), self.invoices)
-        return self.invoicesi
+        return self.invoices
 
     def get_payments(self):
         self.lndg_request(self.get_url('payments'), self.payments)

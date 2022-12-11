@@ -9,7 +9,7 @@ class RecordList:
         self.list = list_of_dicts if list_of_dicts else []
 
     def sort(self, sort_func):
-        return RecordList(list(sorted(sort_func, self.list)))
+        return RecordList(sorted(self.list, key=sort_func)) if self.list else self
 
     def filter(self, filter_func):
         return RecordList(list(filter(filter_func, self.list))) if self.list else self

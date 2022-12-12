@@ -1,5 +1,6 @@
 import requests
 import json
+from datetime import datetime
 
 
 class RecordList:
@@ -16,6 +17,13 @@ class RecordList:
 
     def sum(self, key):
         return sum(r[key] for r in self.list if key in r)
+
+    def add_key(self, new_key, new_value_func):
+        if self.list:
+            for d in self.list:
+                d[new_key] = new_value_func(d)
+            return RecordList(self.list)
+        return self
 
 
 class Lndg:
@@ -51,6 +59,7 @@ class Lndg:
 
     def get_onchain(self):
         self.lndg_request(self.get_url('onchain'), self.onchain)
+        self.onchain = self.onchain.sort(lambda r: r['block_height'])
         return self.onchain
 
     def get_closures(self):

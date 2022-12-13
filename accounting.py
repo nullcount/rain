@@ -3,6 +3,7 @@ import pickle
 from datetime import datetime, date, timedelta
 from lndg import Lndg, RecordList
 from mempool import Mempool
+from tqdm import tqdm
 
 
 class Accounting:
@@ -10,12 +11,18 @@ class Accounting:
         self.log = log
         self.mempool = Mempool(CREDS['MEMPOOL'], log)
         self.lndg = Lndg(CREDS['LNDG'], self.mempool, log)
-        self.history = None
+        self.history = {}
         self.history_file = '.history.pkl'
 
     def save_history(self):
         with open(self.history_file, "wb") as p:
             pickle.dump(self.history, p)
+
+    def load_history(self):
+        if not os.path.exists(self.history_file):
+            return  # nothing to load
+        with open(self.history_file, 'rb') as pickle_file:
+            self.history = pickle.load(pickle_file)
 
     @staticmethod
     def get_apy(profits, total_funds, days_of_period):
@@ -32,11 +39,9 @@ class Accounting:
         return date.fromordinal(o).strftime("%Y-%m-%d")
 
     def get_history(self):
-        self.history = {}
-        if os.path.exists(self.history_file):
-            with open(self.history_file, 'rb') as pickle_file:
-                self.history = pickle.load(pickle_file)
-        return self.sync_history()
+        if not self.history:
+            self.load_history()
+        return self.history
 
     def add_ts(self, r):
         # very expensive operation -- lndg needs to add blocktimestamp to closures
@@ -44,33 +49,49 @@ class Accounting:
         ts = self.mempool.get_block_timestamp(block_hash)
         return datetime.fromtimestamp(ts).strftime("%Y-%m-%dT%H:%M:%S")
 
-    def sync_history(self):
+    def sync_history(self, progress=False):
+        self.load_history()
         onchain_txs = None
+        prog_bar = None
         start_sync_from = 0
         yesterday = (date.today() - timedelta(1)).toordinal()
+        node_inception_date = float('inf')  # infinity
         if not self.history:
             # start at the oldest onchain tx timestamp day
             onchain_txs = self.lndg.get_onchain()
             start_sync_from = self.ts_to_ord(onchain_txs.list[0]['time_stamp'])
+            node_inception_date = start_sync_from
         else:
             # identify the last day with records in our history
             for day in self.history:
                 d = int(datetime.strptime(day, "%Y-%m-%d").toordinal())
                 if d > start_sync_from:
                     start_sync_from = d
-            # already caught up -- will not index today
+                if d < node_inception_date:
+                    node_inception_date = d
+            # already caught up -- will not index current day until tomorrow
             if yesterday == start_sync_from:
                 return self.history
         # query for data
+        if progress:
+            print(f"Node alive for {yesterday - node_inception_date} days")
+            print(f"Missing {yesterday - start_sync_from} days of historical data")
+            print("Fetching latest records from LNDg...")
         onchain_txs = self.lndg.get_onchain() if not onchain_txs else onchain_txs
+        onchain_tx_map = {}
+        for tx in onchain_txs.list:
+            onchain_tx_map[tx['tx_hash']] = tx
         onchain_tx_hashes = [r['tx_hash'] for r in onchain_txs.list]
         channels_from_onchain_tx = RecordList(self.mempool.get_channels_from_txids(onchain_tx_hashes))
-        closures = self.lndg.get_closures().add_key("time_stamp", self.add_ts)
+        closures = self.lndg.get_closures().add_key("time_stamp", lambda r: onchain_tx_map[r['closing_tx']]['time_stamp'] if r['closing_tx'] in onchain_tx_map else self.add_ts(r))
         payments = self.lndg.get_payments().filter(lambda r: r['status'] == 2)
         invoices = self.lndg.get_invoices().filter(lambda r: r['state'] == 1 and r['is_revenue'])
         forwards = self.lndg.get_forwards()
-        day = start_sync_from
-        while yesterday > day:
+        if progress:
+            print(f"Starting sync from {self.ord_to_datestr(start_sync_from)}")
+            prog_bar = tqdm(total=(yesterday - node_inception_date), initial=(start_sync_from - node_inception_date))
+        days_to_sync = range(start_sync_from, yesterday + 1)
+        for day in days_to_sync:
             opens_to_date = channels_from_onchain_tx.filter(lambda r: day >= self.ts_to_ord(r['created']))
             payments_to_date = payments.filter(lambda r: day >= self.ts_to_ord(r['creation_date']))
             invoices_to_date = invoices.filter(lambda r: day >= self.ts_to_ord(r['settle_date']))
@@ -102,17 +123,17 @@ class Accounting:
                 day_local_balance_in_channels += invoice['amt_paid']
             for forward in forwards_to_date.list:
                 day_local_balance_in_channels += forward['fee']
-            day_date = self.ord_to_datestr(day)
             day_apy = self.get_apy(profits, day_local_balance_in_channels, 1)
+            day_date = self.ord_to_datestr(day)
             self.history[day_date] = {
                 "onchain_costs": onchain_costs,
                 "total_fees": total_fees,
                 "total_revenue": total_revenue,
                 "profits": profits,
                 "apy": day_apy,
-                "local_balance": day_local_balance_in_channels,
+                "local_balance": int(day_local_balance_in_channels),
 
             }
-            day += 1  # next day ordinal
+            if progress: prog_bar.update(1)
         self.save_history()
         return self.history

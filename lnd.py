@@ -327,7 +327,7 @@ class Lnd:
                 chans.append(chan)
         return chans
 
-    def get_pending_channel_openings(self):
+    def get_pending_channel_opens(self):
         pending_channels_request = ln.PendingChannelsRequest()
         pending_channels_response = self.stub.PendingChannels(pending_channels_request)
         pending_open_channels = pending_channels_response.pending_open_channels

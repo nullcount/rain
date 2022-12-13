@@ -1,5 +1,5 @@
 import unittest
-from strategy import SinkSource
+from strategies import SinkSource
 
 
 class TestSinkSourceStrategy(unittest.TestCase):
@@ -22,6 +22,7 @@ class TestSinkSourceStrategy(unittest.TestCase):
             "sats_in_source_channels": 70_000_000,
             "source_channels_capacity": 100_000_000,
             "source_channels_local_reserve_sats": 2_000_000,
+            "num_pending_sink_channels": 0
         }).execute()
         self.assertEqual(jobs, ["CLOSE_EMPTY_SINK_CHANNELS"])
 
@@ -42,8 +43,9 @@ class TestSinkSourceStrategy(unittest.TestCase):
             "sats_in_source_channels": 80_000_001,  # source channel full
             "source_channels_capacity": 100_000_000,
             "source_channels_local_reserve_sats": 2_000_000,
+            "num_pending_sink_channels": 0
         }).execute()
-        self.assertEqual(jobs, ["EMPTY_SOURCE_CHANNELS", "CLOSE_EMPTY_SINK_CHANNELS"])
+        self.assertEqual(jobs, ["EMPTY_SOURCE_CHANNELS"])
 
     def test_wait_money_leaving(self):
         jobs = SinkSource(mock=True, mock_state={
@@ -62,6 +64,7 @@ class TestSinkSourceStrategy(unittest.TestCase):
             "sats_in_source_channels": 80_000_001,  # source channel full
             "source_channels_capacity": 100_000_000,
             "source_channels_local_reserve_sats": 2_000_000,
+            "num_pending_sink_channels": 0
         }).execute()
         self.assertEqual(jobs, ["WAIT_MONEY_LEAVING"])
 
@@ -82,6 +85,7 @@ class TestSinkSourceStrategy(unittest.TestCase):
             "sats_in_source_channels": 80_000_001,  # source channel full
             "source_channels_capacity": 100_000_000,
             "source_channels_local_reserve_sats": 2_000_000,
+            "num_pending_sink_channels": 0
         }).execute()
         self.assertEqual(jobs, ["TRY_OPEN_CHANNEL"])
 
@@ -102,6 +106,7 @@ class TestSinkSourceStrategy(unittest.TestCase):
             "sats_in_source_channels": 80_000_001,  # source channel full
             "source_channels_capacity": 100_000_000,
             "source_channels_local_reserve_sats": 2_000_000,
+            "num_pending_sink_channels": 0
         }).execute()
         self.assertEqual(jobs, ["WAIT_MONEY_ON_THE_WAY"])
 
@@ -122,6 +127,7 @@ class TestSinkSourceStrategy(unittest.TestCase):
             "sats_in_source_channels": 10_000_000,  # source channel not full
             "source_channels_capacity": 100_000_000,
             "source_channels_local_reserve_sats": 2_000_000,
+            "num_pending_sink_channels": 0
         }).execute()
         self.assertEqual(jobs, ["SOURCE_SEND_ONCHAIN"])
 
@@ -142,6 +148,7 @@ class TestSinkSourceStrategy(unittest.TestCase):
             "sats_in_source_channels": 20_000_001,  # source channel full
             "source_channels_capacity": 100_000_000,
             "source_channels_local_reserve_sats": 2_000_000,
+            "num_pending_sink_channels": 0
         }).execute()
         self.assertEqual(jobs, ["EMPTY_SOURCE_CHANNELS"])
 
@@ -162,8 +169,30 @@ class TestSinkSourceStrategy(unittest.TestCase):
             "sats_in_source_channels": 0,
             "source_channels_capacity": 100_000_000,
             "source_channels_local_reserve_sats": 2_000_000,
+            "num_pending_sink_channels": 0
         }).execute()
         self.assertEqual(jobs, ["NOTIFY_NEED_MORE_SATS"])
+
+    def test_wait_channel_pending_open(self):
+        jobs = SinkSource(mock=True, mock_state={
+            "source_loop_fee": 1000,
+            "num_sink_channels_target": 1,
+            "num_sink_channels": 0,  # does not have enough sink channels
+            "sink_close_ratio": 0.2,
+            "sink_budget": 100_000_000,
+            "min_onchain_balance": 200_000,
+            "confirmed": 100, 
+            "unconfirmed": 200_000,
+            "source_pending_loop_out": 0,
+            "source_balance": 200_000,
+            "sat_per_vbyte": 23,
+            "max_sat_per_vbyte": 30,
+            "sats_in_source_channels": 0,
+            "source_channels_capacity": 100_000_000,
+            "source_channels_local_reserve_sats": 2_000_000,
+            "num_pending_sink_channels": 1
+        }).execute()
+        self.assertEqual(jobs, ["WAIT_CHANNEL_PENDING_OPEN"])
 
 
 if __name__ == '__main__':

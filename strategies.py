@@ -107,6 +107,8 @@ class SinkSource:
         self.mempool = Mempool(CREDS["MEMPOOL"], self.log) if not mock else None
         self.node.get_channels() if not mock else None
         self.sink_channels = self.node.has_channel_with(self.sink_pub) if not mock else None
+        self.pending_sink_channels = filter(lambda x: x['channel']['remote_node_pub'] == self.sink_pub, self.node.get_pending_channel_opens()) if not mock else None
+        self.num_pending_sink_channels = len(self.pending_sink_channels) if not mock else int(mock_state['num_pending_sink_channels'])
         self.source_channels = self.node.has_channel_with(self.source_pub) if not mock else None
         self.confirmed = self.node.get_onchain_balance() if not mock else int(mock_state['confirmed'])
         self.unconfirmed = self.node.get_unconfirmed_balance() if not mock else int(mock_state['unconfirmed'])
@@ -150,7 +152,8 @@ class SinkSource:
                 "wait_money_on_the_way": f"Found enough sats to open channel in unconfirmed: {self.unconfirmed} sats and pending: {self.source_pending_loop_out} sats from source account.",
                 "notify_need_more_sats": lambda sats_found, sats_needed: f"Need {sats_needed} sats for sink-source strategy to open channel. Found {sats_found} sats",
                 "try_open_channel": "Attempting to open a new source channel...",
-                "avoid_open_fee_too_large": f"Channel open avoided: using {self.mempool_fee} at {self.sat_per_vbyte} sat/vbyte with max fee of {self.max_sat_per_vbyte} sat/vbyte"
+                "avoid_open_fee_too_large": f"Channel open avoided: using {self.mempool_fee} at {self.sat_per_vbyte} sat/vbyte with max fee of {self.max_sat_per_vbyte} sat/vbyte",
+                "wait_channel_pending_open": f"Found {self.num_pending_sink_channels} pending channels to sink. Waiting for it to confirm."
         }
 
     def dump_state(self):
@@ -225,6 +228,9 @@ class SinkSource:
     def wait_money_on_the_way(self):
         self.log(self.log_msg_map['wait_money_on_the_way'])
 
+    def wait_channel_pending_open(self):
+        self.log(self.log_msg_map['wait_channel_pending_open'])
+
     def notify_need_more_sats(self):
         sats_found = self.confirmed + self.sats_on_the_way + \
                     self.source_balance
@@ -250,6 +256,7 @@ class SinkSource:
             "WAIT_MONEY_ON_THE_WAY": self.wait_money_on_the_way,
             "SOURCE_SEND_ONCHAIN": self.source_send_onchain,
             "NOTIFY_NEED_MORE_SATS": self.notify_need_more_sats,
+            "WAIT_CHANNEL_PENDING_OPEN": self.wait_channel_pending_open,
         }
         for key in map:
             if key in jobs:
@@ -257,10 +264,12 @@ class SinkSource:
 
     def execute(self):
         jobs = []
-        if self.has_enough_sink_channels():
-            if self.has_source_channels_full():
-                jobs.append("EMPTY_SOURCE_CHANNELS")
+        if self.has_enough_sink_channels() and self.has_source_channels_full():
+            jobs.append("EMPTY_SOURCE_CHANNELS")
+        elif self.has_enough_sink_channels():
             jobs.append("CLOSE_EMPTY_SINK_CHANNELS")
+        elif self.num_pending_sink_channels > 0:
+            jobs.append("WAIT_CHANNEL_PENDING_OPEN")
         # we need to open another sink channel
         elif self.is_money_leaving_node():
             jobs.append("WAIT_MONEY_LEAVING")

@@ -121,7 +121,6 @@ class HtlcStreamLogger:
             events = self.node.subscribe_htlc_events()
             try:
                 _ = self.node.get_info() # test connection
-                failures = 0
                 print('Connected to LND. Waiting for first event...')
                 for e in events:
                     yield e

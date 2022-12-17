@@ -52,6 +52,7 @@ class Lnd:
         self.graph = None
         self.info = None
         self.channels = None
+        self.closed_channels = None
         self.peers = None
         self.node_info = {}
         self.chan_info = {}

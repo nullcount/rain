@@ -227,7 +227,7 @@ class HtlcStreamLogger:
                 if self.notify_events:
                     if "forwards" in self.notify_events:
                         if eventtype == "FORWARD" and "successful" in note:
-                            self.log.notify(f"✅ FORWARD {inalias} ➜ {outalias} for {fee} sats")
+                            self.log.notify(f"✅ FORWARD {inalias} ➜ {outalias} for {fee} [{(fee / amount) * 1_000_000}]")
 
                 if self.log_to_console:
                     print(eventtype,

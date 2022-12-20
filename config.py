@@ -1,7 +1,7 @@
 import configparser
 from lnd import Lnd
 from strategies import FeeMatch, SinkSource
-from listeners import HtlcStreamLogger, TelegramListener
+from listeners import MempoolListener, HtlcStreamLogger, TelegramListener
 from notify import Logger
 
 
@@ -20,7 +20,8 @@ strategy_map = {
 }
 listen_map = {
     'HTLC_STREAM_LOGGER': HtlcStreamLogger,
-    "TELEGRAM_ACTIONS": TelegramListener
+    "TELEGRAM_ACTIONS": TelegramListener,
+    "MEMPOOL_NOTIFY": MempoolListener
 }
 
 CREDS = Config('creds.config').config

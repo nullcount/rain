@@ -16,3 +16,8 @@ daily_report = 1
 daily_report_hour = 17
 daily_report_min = 0
 actions = invoice report
+
+[MEMPOOL_NOTIFY]
+execute = 1
+mempool_empty_mb = 3
+mempool_delta_mb = 10

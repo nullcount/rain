@@ -2,9 +2,45 @@ import time
 import csv
 import traceback
 from report import Report
+from mempool import Mempool
+
+
+class MempoolListener:
+    """
+    Get notifications about mempool activity
+    """
+
+    def __init__(self, config, CREDS, node, log):
+        self.tg = log.notify_connector
+        self.node = node
+        self.mempool = Mempool(CREDS['MEMPOOL'], log)
+        self.empty_mb = config['mempool_empty_mb']
+        self.delta_mb = config['mempool_delta_mb']
+        self.last_notify_bytes = None
+
+    def mainLoop(self):
+        MB_BYTES = 1024
+        while True:
+            bytes = self.mempool.get_mempool_bytes()
+            self.last_notify_bytes = bytes if not self.last_notify_bytes else self.last_notify_bytes
+            mb = round(bytes/MB_BYTES, 2)
+            if mb > ((self.last_notify_bytes/MB_BYTES) + self.delta_mb):
+                self.last_notify_bytes = bytes
+                self.tg.send_message(f"Mempool growing! Currently {mb}MB")
+            elif mb < ((self.last_notify_bytes/MB_BYTES) - self.delta_mb):
+                self.last_notify_bytes = bytes
+                self.tg.send_message(f"Mempool shrinking! Currently {mb}MB")
+            elif mb < self.empty_mb and not self.last_notify_bytes < self.empty_mb:
+                self.last_notify_bytes = bytes
+                self.tg.send_message(f"Mempool is good as empty! Currently {mb}MB")
+            time.sleep(30)
 
 
 class TelegramListener:
+    """
+    Used when Telegram needs to send a message at regular interval (as opposed to on the fly)
+        or when Telegram needs to respond to user commands
+    """
     def __init__(self, config, CREDS, node, log):
         self.tg = log.notify_connector
         self.node = node
@@ -56,6 +92,10 @@ class TelegramListener:
 
 
 class HtlcStreamLogger:
+    """
+    Monitor and store HTLCs as they sream across your node. 
+        Optional notify telegram on forwards, sends, etc.
+    """
     def __init__(self, config, CREDS, node, log):
         self.log = log
         self.node = node

@@ -26,13 +26,13 @@ class MempoolListener:
             mb = round(bytes/MB_BYTES, 2)
             if mb > ((self.last_notify_bytes/MB_BYTES) + self.delta_mb):
                 self.last_notify_bytes = bytes
-                self.tg.send_message(f"Mempool growing! Currently {mb}MB")
+                self.tg.send_message(f"⬆️  Mempool growing! Currently {mb}MB")
             elif mb < ((self.last_notify_bytes/MB_BYTES) - self.delta_mb):
                 self.last_notify_bytes = bytes
-                self.tg.send_message(f"Mempool shrinking! Currently {mb}MB")
+                self.tg.send_message(f"⬇️  Mempool shrinking! Currently {mb}MB")
             elif mb < self.empty_mb and not self.last_notify_bytes < self.empty_mb:
                 self.last_notify_bytes = bytes
-                self.tg.send_message(f"Mempool is good as empty! Currently {mb}MB")
+                self.tg.send_message(f"🫗  Mempool is good as empty! Currently {mb}MB")
             time.sleep(30)
 
 
@@ -267,11 +267,10 @@ class HtlcStreamLogger:
                 if self.notify_events:
                     if "forwards" in self.notify_events:
                         if eventtype == "FORWARD" and "successful" in note:
-                            self.log.notify(f"✅ FORWARD {inalias} ➜ {outalias} for {fee} \[{int((fee / amount) * 1_000_000)}]")
+                            self.log.notify(f"✅ FORWARD {inalias} ➜ {outalias} for {fee} \[{(int(fee) / int(amount)) * 1_000_000}]")
                     elif "sends" in self.notify_events:
                         if eventtype == "SEND" and outcome == "settle_event":
-                            self.log.notify(f"✅ SEND {ammount} out {outalias} for {fee}")
-
+                            self.log.notify(f"✅ SEND {amount} out {outalias} for {fee}")
 
                 if self.log_to_console:
                     print(eventtype,

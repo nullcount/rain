@@ -31,7 +31,8 @@ class Mempool:
         return self.mempool_request(f"block-height/{block_height}", obj=False)
 
     def get_mempool_bytes(self):
-        return self.mempool_request("mempool")['vsize']
+        res = self.mempool_request("mempool")
+        return res['vsize'] if res['vsize'] else 0
 
     def get_channels_from_txids(self, txid_list):
         def chunks():

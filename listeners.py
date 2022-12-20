@@ -19,7 +19,7 @@ class MempoolListener:
         self.last_notify_bytes = None
 
     def mainLoop(self):
-        MB_BYTES = 1024
+        MB_BYTES = 1_048_576
         while True:
             bytes = self.mempool.get_mempool_bytes()
             self.last_notify_bytes = bytes if not self.last_notify_bytes else self.last_notify_bytes

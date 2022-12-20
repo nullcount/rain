@@ -180,7 +180,7 @@ class HtlcStreamLogger:
 
                 if any((unavailable, unready, terminated)):
                     failures += 1
-                    timeout = min(4**failures, 60*60*2)
+                    timeout = 4**failures
                     print(f'Could not connect to lnd, retrying in {timeout}s')
                     time.sleep(timeout)
                     continue
@@ -210,8 +210,8 @@ class HtlcStreamLogger:
                 if inchanid:
                     inalias = self.getAlias4ChanID(inchanid)
                     inchan = self.getChanInfo(inchanid)
-                    incap = inchan.capacity
-                    inrbal = inchan.remote_balance
+                    incap = getattr(inchan, 'capacity', 'UNKNOWN')
+                    inrbal = getattr(inchan, 'remote_balance', 'UNKNOWN')
 
                 if outchanid:
                     outalias = self.getAlias4ChanID(outchanid)
@@ -267,7 +267,11 @@ class HtlcStreamLogger:
                 if self.notify_events:
                     if "forwards" in self.notify_events:
                         if eventtype == "FORWARD" and "successful" in note:
-                            self.log.notify(f"✅ FORWARD {inalias} ➜ {outalias} for {fee} [{(fee / amount) * 1_000_000}]")
+                            self.log.notify(f"✅ FORWARD {inalias} ➜ {outalias} for {fee} \[{int((fee / amount) * 1_000_000)}]")
+                    elif "sends" in self.notify_events:
+                        if eventtype == "SEND" and outcome == "settle_event":
+                            self.log.notify(f"✅ SEND {ammount} out {outalias} for {fee}")
+
 
                 if self.log_to_console:
                     print(eventtype,

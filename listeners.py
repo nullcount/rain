@@ -14,8 +14,8 @@ class MempoolListener:
         self.tg = log.notify_connector
         self.node = node
         self.mempool = Mempool(CREDS['MEMPOOL'], log)
-        self.empty_mb = config['mempool_empty_mb']
-        self.delta_mb = config['mempool_delta_mb']
+        self.empty_mb = int(config['mempool_empty_mb'])
+        self.delta_mb = int(config['mempool_delta_mb'])
         self.last_notify_bytes = None
 
     def mainLoop(self):

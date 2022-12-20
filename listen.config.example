@@ -21,3 +21,15 @@ actions = invoice report
 execute = 1
 mempool_empty_mb = 3
 mempool_delta_mb = 10
+
+[FUNDING_NOTIFY]
+execute = 1
+onchain_deposit = 1
+onchain_send = 1
+channel_open_broadcast = 1
+channel_open_confirmed = 1
+channel_open_active = 1
+channel_close_broadcast = 1
+channel_close_confirmed = 1
+ln_payment_sent = 1
+ln_invoice_paid = 1

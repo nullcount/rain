@@ -5,6 +5,27 @@ from report import Report
 from mempool import Mempool
 
 
+class FundingListener:
+    """Get notificatinos when the node sends/recieves funds"""
+
+    def __init_(self, config, CREDS, node, log):
+        self.tg = log.notify_connector
+        self.node = node
+        self.onchain_deposit = config['onchain_deposit']
+        self.onchain_send = config['onchain_send']
+        self.channel_open_broadcast = config['channel_open_broadcast']
+        self.channel_open_confirmed = config['channel_open_confirmed']
+        self.channel_open_active = config['channel_open_active']
+        self.channel_close_broadcast = config['channel_close_broadcast']
+        self.channel_close_confirmed = config['channel_close_confirmed']
+        self.ln_payment_sent = config['ln_payment_sent']
+        self.ln_invoice_paid = config['ln_invoice_paid']
+
+    def mainLoop(self):
+        while True:
+            time.sleep(30)
+
+
 class MempoolListener:
     """
     Get notifications about mempool activity

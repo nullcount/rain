@@ -99,6 +99,14 @@ class Lnd:
         req = router.SubscribeHtlcEventsRequest()
         return self.routerstub.SubscribeHtlcEvents(req)
 
+    def subscribe_channel_events(self):
+        req = ln.ChannelEventSubscription()
+        return self.stub.SubscribeChannelEvents(req)
+
+    def subscribe_transactions(self):
+        req = ln.Transaction.empty()
+        return self.stub.SubscribeTransactions(req) 
+
     def add_peer(self, pubkey, address):
         ln_addr = ln.LightningAddress(pubkey=pubkey, host=address)
         connectRequest = ln.ConnectPeerRequest(addr=ln_addr)

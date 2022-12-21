@@ -236,6 +236,11 @@ class Lnd:
         decode_hex = codecs.getdecoder("hex_codec")
         return decode_hex(hex_string)[0]
 
+    def decode_invoice(self, invoice_string):
+        request = ln.PayReqString(pay_req=invoice_string)
+        decoded = self.stub.DecodePayReq(request)
+        return decoded
+
     def pay_invoice(self, invoice_string):
         send_request = ln.SendRequest(payment_request=invoice_string)
         send_response = self.stub.SendPaymentSync(send_request)

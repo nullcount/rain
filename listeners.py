@@ -289,8 +289,8 @@ class HtlcStreamLogger:
                     if "forwards" in self.notify_events:
                         if eventtype == "FORWARD" and "successful" in note:
                             fee_ppm = "--"
-                            if isinstance(fee, int) and isinstance(amount, int):
-                                fee_ppm = (fee/amount) * 1_000_000
+                            if (isinstance(fee, float) or isinstance(fee, int)) and (isinstance(amount, float) or isinstance(amount, int)):
+                                fee_ppm = round((fee/amount) * 1_000_000)
                             self.log.notify(f"✅ FORWARD {inalias} ➜ {outalias} for {fee} \[{fee_ppm}]")
                     elif "sends" in self.notify_events:
                         if eventtype == "SEND" and outcome == "settle_event":

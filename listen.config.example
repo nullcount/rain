@@ -23,7 +23,7 @@ mempool_empty_mb = 3
 mempool_delta_mb = 10
 
 [FUNDING_NOTIFY]
-execute = 1
+execute = 0
 onchain_deposit = 1
 onchain_send = 1
 channel_open_broadcast = 1

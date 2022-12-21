@@ -62,6 +62,7 @@ class TelegramListener:
     Used when Telegram needs to send a message at regular interval (as opposed to on the fly)
         or when Telegram needs to respond to user commands
     """
+
     def __init__(self, config, CREDS, node, log):
         self.tg = log.notify_connector
         self.node = node
@@ -211,7 +212,7 @@ class HtlcStreamLogger:
 
     def mainLoop(self):
         events = self.subscribeEventsPersistent()
-        print('Now listening for events')
+        print('Now listening for HTLCs')
 
         for i, event in enumerate(events):
             try:

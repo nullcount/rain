@@ -14,7 +14,7 @@ def get_midpoint(bounds):
 
 
 class Muun:
-    def __init__(self, log):
+    def __init__(self, MUUN_CRED, log):
         self.log = log
         self.log_msg_map = {
             "get_onchain_address": lambda addr: f"muun deposit address: {addr}",
@@ -30,7 +30,7 @@ class Muun:
         # self.devices = client.devices()
 
         # self.device = client.device("R58M47ZGS2Z")
-        self.device = client.device("emulator-5554")
+        self.device = client.device(MUUN_CRED["device_name"])
 
     def muun_request(self):
         return
@@ -159,7 +159,7 @@ class Muun:
 
 def main():
     log = Logger("logs/listen.log", CREDS['TELEGRAM'])
-    wallet = Muun(LISTEN_LOG)
+    wallet = Muun(CREDS["MUUN"], LISTEN_LOG)
     wallet.restart_app()
     wallet.get_backup_key()
 

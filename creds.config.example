@@ -22,7 +22,10 @@ funding_key =
 api_key = 
 api_secret =
 org_id = 
-funding_key = 
+funding_key =
+
+[MUUN]
+device_name =
 
 [TELEGRAM]
 # send yourself a telegram updates about your node using a bot

@@ -52,16 +52,10 @@ class Muun:
     def get_recent_sends(self):
         return
 
-    def get_account_balance(self):
-        return
-
     def pay_invoice(self, invoice_code):
         return
 
     def send_to_acct(self, sats, node):
-        return
-
-    def get_lightning_invoice(self, sats):
         return
 
     def get_screen_layout(self):
@@ -89,19 +83,50 @@ class Muun:
         # confirm deletion
         self.tap(element_dict["confirm-btn"])
 
-    def get_balance(self):
+    def get_account_balance(self):
+        self.log.info("Getting (potentially inaccurate) balance...")
+        self.restart_app()
         screen = self.get_screen_layout()
-        balance_obj = screen.find("node", {"resource-id": "io.muun.apollo:id/balance_main_currency_amount"})
-        balance = float(balance_obj["text"])
+        balance_obj = screen.find("node", element_dict["balance"])
+        balance = int(float(balance_obj["text"]) * 1e6)
         return balance
 
-    def get_invoice(self):
+    def get_lightning_invoice(self, sats):
+        self.log.info("Getting invoice...")
+        self.restart_app()
+
         # click receive
         self.tap(element_dict["receive-btn"])
+
+        # click address settings
+        self.tap(element_dict["address-settings"])
+
+        # get location of add button
+        loc_screen = self.get_screen_layout()
+        obj = loc_screen.find("node", element_dict["add-button"])
+
         # click lightning
         self.tap(element_dict["lightning-tab"])
 
+        # click invoice settings
+        self.tap(element_dict["invoice-settings"])
+
+        # click location of add button
+        add_btn_bounds = parse_bounds(obj["bounds"])
+        x, y = get_midpoint(add_btn_bounds)
+        self.device.shell(f"input tap {x} {y}")
+
+        # input amount
+        self.device.input_text(f"{sats}")
+        self.tap(element_dict["confirm-amt-btn"])
+        sleep(1)
+
         # get invoice
+        obj = loc_screen.find("node", element_dict["address-settings"])
+        add_btn_bounds = parse_bounds(obj["bounds"])
+        x, y = get_midpoint(add_btn_bounds)
+        self.device.shell(f"input tap {x} {y}")
+
         screen = self.get_screen_layout()
         invoice_obj = screen.find("node", element_dict["qr-code"])
         bolt11 = invoice_obj["text"]
@@ -115,8 +140,10 @@ class Muun:
         self.device.shell("input keyevent DEL")
 
     def restart_app(self):
+        self.log.info("Restarting app...")
         self.device.shell("am force-stop io.muun.apollo")
         self.device.shell("monkey -p io.muun.apollo -c android.intent.category.LAUNCHER 1")
+        sleep(1)
 
     def create_wallet(self):
         screen_obj = self.get_screen_layout()
@@ -177,7 +204,11 @@ element_dict = {
     "email-skipped": {"resource-id": "io.muun.apollo:id/tag_email_skipped", "text": "Skipped"},
     "no-email": {"content-desc": "I don't want to use my email"},
     "start-backup": {"resource-id": "io.muun.apollo:id/muun_button_button", "text": "START"},
-    "backup-chunk": {"resource-id": "io.muun.apollo:id/muun_text_input_edit_text"}
+    "backup-chunk": {"resource-id": "io.muun.apollo:id/muun_text_input_edit_text"},
+    "invoice-settings": {"resource-id": "io.muun.apollo:id/invoice_settings"},
+    "address-settings": {"resource-id": "io.muun.apollo:id/address_settings"},
+    "add-button": {"resource-id": "io.muun.apollo:id/add_amount"},
+    "confirm-amt-btn": {"resource-id": "io.muun.apollo:id/confirm_amount_button"}
 
 }
 if __name__ == '__main__':

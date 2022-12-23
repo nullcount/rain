@@ -2,7 +2,6 @@ from ppadb.client import Client as AdbClient
 from time import sleep
 from bs4 import BeautifulSoup as bs
 from config import LISTEN_LOG, CREDS
-from notify import Logger
 
 
 def parse_bounds(bounds_str):
@@ -68,7 +67,7 @@ class Muun:
     def get_screen_layout(self):
         xml_dump = self.device.shell(
             """uiautomator dump /dev/tty | awk '{gsub("UI hierchary dumped to: /dev/tty", "");print}'""")
-        print(xml_dump)
+        # print(xml_dump)
         soup_obj = bs(xml_dump, features="xml")
         return soup_obj
 
@@ -80,7 +79,7 @@ class Muun:
         self.device.shell(f"input tap {x} {y}")
 
     def delete_wallet(self):
-        print("Deleting wallet...")
+        self.log.info("Deleting wallet...")
         # click settings
         self.tap(element_dict["settings"])
 
@@ -116,23 +115,23 @@ class Muun:
         self.device.shell("input keyevent DEL")
 
     def restart_app(self):
-        print(self.device.shell("am force-stop io.muun.apollo"))
-        print(self.device.shell("monkey -p io.muun.apollo -c android.intent.category.LAUNCHER 1"))
+        self.device.shell("am force-stop io.muun.apollo")
+        self.device.shell("monkey -p io.muun.apollo -c android.intent.category.LAUNCHER 1")
 
     def create_wallet(self):
         screen_obj = self.get_screen_layout()
         create_wallet_btn = screen_obj.find("node", {"resource-id": "io.muun.apollo:id/signup_start"})
         if create_wallet_btn:
-            print("Creating wallet....")
+            self.log.info("Creating wallet....")
             self.tap(element_dict["create-wallet"])
             sleep(1)
-            print("Doing a trick so we don't have to make a pin...")
+            self.log.info("Doing a trick so we don't have to make a pin...")
             self.close_app()
             sleep(1)
-            print(self.device.shell("monkey -p io.muun.apollo -c android.intent.category.LAUNCHER 1"))
+            self.device.shell("monkey -p io.muun.apollo -c android.intent.category.LAUNCHER 1")
             return True
         else:
-            print("Wallet already created...")
+            self.log.info("Wallet already created...")
             return False
 
     def get_backup_key(self):
@@ -153,12 +152,11 @@ class Muun:
 
         screen = self.get_screen_layout()
         key = " ".join([x["text"] for x in screen.findAll("node", element_dict["backup-chunk"])])
-        print(key)
+        self.log.info(key)
         return key
 
 
 def main():
-    log = Logger("logs/listen.log", CREDS['TELEGRAM'])
     wallet = Muun(CREDS["MUUN"], LISTEN_LOG)
     wallet.restart_app()
     wallet.get_backup_key()

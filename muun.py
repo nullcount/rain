@@ -75,7 +75,7 @@ class Muun:
         return soup_obj
 
     def tap(self, resource_id=None, content_desc=None):
-        screen = self.get_screen_layout(self.device)
+        screen = self.get_screen_layout()
         if resource_id:
             obj = screen.find("node", {"resource-id": resource_id})
         elif content_desc:

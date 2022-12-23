@@ -101,9 +101,8 @@ class Muun:
         # click address settings
         self.tap(element_dict["address-settings"])
 
-        # get location of add button
+        # get dump to find location of add button and settings button
         loc_screen = self.get_screen_layout()
-        obj = loc_screen.find("node", element_dict["add-button"])
 
         # click lightning
         self.tap(element_dict["lightning-tab"])
@@ -112,6 +111,7 @@ class Muun:
         self.tap(element_dict["invoice-settings"])
 
         # click location of add button
+        obj = loc_screen.find("node", element_dict["add-button"])
         add_btn_bounds = parse_bounds(obj["bounds"])
         x, y = get_midpoint(add_btn_bounds)
         self.device.shell(f"input tap {x} {y}")
@@ -121,12 +121,13 @@ class Muun:
         self.tap(element_dict["confirm-amt-btn"])
         sleep(1)
 
-        # get invoice
+        # tap settings to close timer
         obj = loc_screen.find("node", element_dict["address-settings"])
-        add_btn_bounds = parse_bounds(obj["bounds"])
-        x, y = get_midpoint(add_btn_bounds)
+        settings_bounds = parse_bounds(obj["bounds"])
+        x, y = get_midpoint(settings_bounds)
         self.device.shell(f"input tap {x} {y}")
 
+        # get bolt11 invoice
         screen = self.get_screen_layout()
         invoice_obj = screen.find("node", element_dict["qr-code"])
         bolt11 = invoice_obj["text"]

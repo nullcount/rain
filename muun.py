@@ -1,6 +1,8 @@
 from ppadb.client import Client as AdbClient
 from time import sleep
 from bs4 import BeautifulSoup as bs
+from config import LISTEN_LOG, CREDS
+from notify import Logger
 
 
 def parse_bounds(bounds_str):
@@ -12,12 +14,8 @@ def get_midpoint(bounds):
 
 
 class Muun:
-    def __init__(self, CONFIG, log):
+    def __init__(self, log):
         self.log = log
-        self.key = CONFIG['api_key']
-        self.secret = CONFIG['api_secret']
-        self.organisation_id = CONFIG['org_id']
-        self.funding_key = CONFIG['funding_key']
         self.log_msg_map = {
             "get_onchain_address": lambda addr: f"muun deposit address: {addr}",
             "send_onchain": lambda sats: f"muun initiated {sats} sat widthdrawl",
@@ -70,16 +68,13 @@ class Muun:
     def get_screen_layout(self):
         xml_dump = self.device.shell(
             """uiautomator dump /dev/tty | awk '{gsub("UI hierchary dumped to: /dev/tty", "");print}'""")
-        # print(xml_dump)
+        print(xml_dump)
         soup_obj = bs(xml_dump, features="xml")
         return soup_obj
 
-    def tap(self, resource_id=None, content_desc=None):
+    def tap(self, param_dict):
         screen = self.get_screen_layout()
-        if resource_id:
-            obj = screen.find("node", {"resource-id": resource_id})
-        elif content_desc:
-            obj = screen.find("node", {"content-desc": content_desc})
+        obj = screen.find("node", param_dict)
         bounds = parse_bounds(obj["bounds"])
         x, y = get_midpoint(bounds)
         self.device.shell(f"input tap {x} {y}")
@@ -87,13 +82,13 @@ class Muun:
     def delete_wallet(self):
         print("Deleting wallet...")
         # click settings
-        self.tap("io.muun.apollo:id/settings_fragment")
+        self.tap(element_dict["settings"])
 
         # click delete wallet
-        self.tap("io.muun.apollo:id/log_out_text_view")
+        self.tap(element_dict["delete-wallet"])
 
         # confirm deletion
-        self.tap("io.muun.apollo:id/positive_button")
+        self.tap(element_dict["confirm-btn"])
 
     def get_balance(self):
         screen = self.get_screen_layout()
@@ -103,13 +98,13 @@ class Muun:
 
     def get_invoice(self):
         # click receive
-        self.tap("io.muun.apollo:id/muun_button_button")
+        self.tap(element_dict["receive-btn"])
         # click lightning
-        self.tap(content_desc="LIGHTNING")
+        self.tap(element_dict["lightning-tab"])
 
         # get invoice
         screen = self.get_screen_layout()
-        invoice_obj = screen.find("node", {"resource-id": "io.muun.apollo:id/show_qr_content"})
+        invoice_obj = screen.find("node", element_dict["qr-code"])
         bolt11 = invoice_obj["text"]
         return bolt11
 
@@ -129,7 +124,7 @@ class Muun:
         create_wallet_btn = screen_obj.find("node", {"resource-id": "io.muun.apollo:id/signup_start"})
         if create_wallet_btn:
             print("Creating wallet....")
-            self.tap("io.muun.apollo:id/signup_start")
+            self.tap(element_dict["create-wallet"])
             sleep(1)
             print("Doing a trick so we don't have to make a pin...")
             self.close_app()
@@ -139,3 +134,53 @@ class Muun:
         else:
             print("Wallet already created...")
             return False
+
+    def get_backup_key(self):
+        """
+        Expecting to be on the main screen of muun wallet
+        """
+        self.tap(element_dict["security-tab"])
+        screen = self.get_screen_layout()
+        backup_steps = screen.findAll("node", element_dict["backup-step"])
+        if screen.find("node", element_dict["email-skipped"]):
+            pass
+        else:
+            self.tap({"text": backup_steps[0]["text"], **element_dict["backup-step"]})
+            self.tap(element_dict["no-email"])
+            self.tap(element_dict["confirm-btn"])
+        self.tap({"text": backup_steps[1]["text"], **element_dict["backup-step"]})
+        self.tap(element_dict["start-backup"])
+
+        screen = self.get_screen_layout()
+        key = " ".join([x["text"] for x in screen.findAll("node", element_dict["backup-chunk"])])
+        print(key)
+        return key
+
+
+def main():
+    log = Logger("logs/listen.log", CREDS['TELEGRAM'])
+    wallet = Muun(LISTEN_LOG)
+    wallet.restart_app()
+    wallet.get_backup_key()
+
+
+element_dict = {
+    "balance": {"resource-id": "io.muun.apollo:id/balance_main_currency_amount"},
+    "settings": {"resource-id": "io.muun.apollo:id/settings_fragment"},
+    "delete-wallet": {"resource-id": "io.muun.apollo:id/log_out_text_view"},
+    "confirm-btn": {"resource-id": "io.muun.apollo:id/positive_button"},
+    "create-wallet": {"resource-id": "io.muun.apollo:id/signup_start"},
+    "qr-code": {"resource-id": "io.muun.apollo:id/show_qr_content"},
+    "receive-btn": {"resource-id": "io.muun.apollo:id/muun_button_button", "text": "RECEIVE"},
+    "lightning-tab": {"content-desc": "LIGHTNING"},
+    "wallet-backup": {"resource-id": "io.muun.apollo:id/muun_text_input_edit_text"},
+    "security-tab": {"resource-id": "io.muun.apollo:id/security_center_fragment", },
+    "backup-step": {"resource-id": "io.muun.apollo:id/title"},
+    "email-skipped": {"resource-id": "io.muun.apollo:id/tag_email_skipped", "text": "Skipped"},
+    "no-email": {"content-desc": "I don't want to use my email"},
+    "start-backup": {"resource-id": "io.muun.apollo:id/muun_button_button", "text": "START"},
+    "backup-chunk": {"resource-id": "io.muun.apollo:id/muun_text_input_edit_text"}
+
+}
+if __name__ == '__main__':
+    main()

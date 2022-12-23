@@ -347,3 +347,11 @@ class Lnd:
         pending_open_channels = pending_channels_response.pending_open_channels
         pending_open_channels = list(map(lambda x: x.channel, pending_open_channels))
         return pending_open_channels
+
+    def should_pay_invoice(self, invoice):
+        for hint in self.decode_invoice(invoice).route_hints:
+            if hint.fee_base_msat > 1000:
+                return False
+            elif hint.fee_proportional_millionths > 1500:
+                return False
+        return True

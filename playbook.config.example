@@ -8,8 +8,6 @@ node = LND
 strategy = fee-match
 execute = 0
 
-min_onchain_balance = 200_000
-
 # choose the stat to match with 
 #     options: in_avg|out_avg|in_min|out_min|in_max|out_max|in_med
 #         out_med|in_std|out_std|in_corrected_avg|out_corrected_avg
@@ -37,6 +35,8 @@ max_htlc_ratio = 0.4
 # sink/source strategy for automating sink/source channel pairs
 strategy = sink-source
 execute = 1
+
+min_onchain_balance = 200_000
 
 # the fee priority as recommended by your mempool connection
 #     options: minimumFee|economyFee|hourFee|halfHourFee|fastestFee

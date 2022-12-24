@@ -87,14 +87,9 @@ class Muun:
 
     def delete_wallet(self):
         self.log.info("Deleting wallet...")
-        # click settings
-        self.tap(element_dict["settings"])
-
-        # click delete wallet
-        self.tap(element_dict["delete-wallet"])
-
-        # confirm deletion
-        self.tap(element_dict["confirm-btn"])
+        self.device.shell("am force-stop io.muun.apollo")
+        sleep(1)
+        self.device.shell("pm clear io.muun.apollo")
 
     def get_account_balance(self):
         self.log.info("Getting (potentially inaccurate) balance...")

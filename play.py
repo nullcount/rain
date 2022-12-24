@@ -4,7 +4,7 @@ from config import PLAYBOOK, PLAYBOOK_LOG, CREDS, strategy_map, node_map
 
 def main():
     DEFAULTS = PLAYBOOK['DEFAULT']
-    node = node_map[DEFAULTS['node']](CREDS[DEFAULTS['node']])
+    node = node_map[DEFAULTS['node']](CREDS[DEFAULTS['node']], PLAYBOOK_LOG)
     PLAYBOOK_LOG.info("Running...")
 
     for play in PLAYBOOK:

@@ -1,7 +1,6 @@
 from ppadb.client import Client as AdbClient
 from time import sleep
 from bs4 import BeautifulSoup as bs
-from config import LISTEN_LOG, CREDS
 
 
 def parse_bounds(bounds_str):
@@ -211,9 +210,9 @@ class Muun:
         return transaction
 
 
-def main():
+#def main():
     # connect to the wallet
-    wallet = Muun(CREDS["MUUN"], LISTEN_LOG)
+    #wallet = Muun(CREDS["MUUN"], LISTEN_LOG)
     # while True:
     #     # check if at create wallet screen
     #     if wallet.init_wallet():
@@ -270,5 +269,5 @@ element_dict = {
     "payment": {"text": "You paid", "resource-id": "io.muun.apollo:id/home_operations_item_title"},
     "payment-detail": {"resource-id": "io.muun.apollo:id/operation_detail_item_text_content"}
 }
-if __name__ == '__main__':
-    main()
+#if __name__ == '__main__':
+    #    main()

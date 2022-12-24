@@ -61,6 +61,7 @@ source_budget = 400_000_000
 source_channel_count = 1
 # expected onchain widthdrawl fee for the source adapter 
 source_loop_fee = 1000
+source_fee_ppm = 2
 source_close_ratio = 0.0
 
 # pubkey of the sink node
@@ -71,6 +72,7 @@ sink_host = 44.228.158.82:9735
 
 # max number of sats to 'lock-up' at once in sink channels for this strategy
 sink_budget = 100_000_000
+sink_fee_ppm = 17_500
 
 # the max number of channels to the sink node this script will maintain at once
 #     useful for maximizing availibility, reduces downtime between closures 

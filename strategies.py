@@ -99,18 +99,21 @@ class SinkSource:
         self.sink_pub = strategy_config['sink_pub'] if not mock else None
         self.sink_host = strategy_config['sink_host'] if not mock else None
         self.sink_budget = int(strategy_config['sink_budget']) if not mock else int(mock_state['sink_budget'])
-        self.sink_fee_ppm = int(strategy_config['sink_fee_ppm']) if not mock else None
+        self.sink_fee_ppm = int(strategy_config['sink_fee_ppm']) if not mock else 10_000
+        self.source_fee_ppm = int(strategy_config['source_fee_ppm']) if not mock else 10_000
         self.sink_close_ratio = float(strategy_config['sink_close_ratio']) if not mock else float(mock_state['sink_close_ratio'])
-        self.sink_channels_count = int(strategy_config['sink_channels_count']) if not mock else int(mock_state['sink_channels_count'])
-        self.sink_channel_capacity = self.sink_budget / self.sink_channels_count
+        self.sink_channel_count = int(strategy_config['sink_channel_count']) if not mock else int(mock_state['sink_channel_count'])
+        self.sink_channel_capacity = self.sink_budget / self.sink_channel_count
         self.source_host = strategy_config['source_host'] if not mock else None
         self.source_pub = strategy_config['source_pub'] if not mock else None
         self.source_budget = int(strategy_config['source_budget']) if not mock else int(mock_state['source_budget'])
-        self.source_channels_count = int(strategy_config['source_channels_count']) if not mock else int(mock_state['source_channels_count'])
-        self.source_channel_capacity = self.source_budget / self.source_channels_count
-        self.source_fee_ppm = int(strategy_config['source_ppm_fee']) if not mock else int(mock_state['source_ppm_fee'])
+        self.source_channel_count = int(strategy_config['source_channel_count']) if not mock else int(mock_state['source_channel_count'])
+        self.source_channel_capacity = 0
+        try:
+            self.source_channel_capacity = self.source_budget / self.source_channel_count
+        except ZeroDivisionError:
+            self.log("There are no source channels")
         self.source_close_ratio = float(strategy_config['source_close_ratio']) if not mock else int(mock_state['source_close_ratio'])
-        self.source_loop_fee = int(strategy_config['source_loop_fee']) if not mock else int(mock_state['source_loop_fee'])
         self.min_onchain_balance = int(default_config['min_onchain_balance']) if not mock else int(mock_state['min_onchain_balance'])
         self.mempool_fee = strategy_config['mempool_fee'] if not mock else None
 
@@ -123,12 +126,9 @@ class SinkSource:
         self.num_sink_channels = len(self.sink_channels) if not mock else int(mock_state['num_sink_channels'])
         self.num_source_channels = len(self.source_channels) if not mock else int(mock_state['num_source_channels'])
         self.pending_sink_channels = filter(lambda x: x['channel']['remote_node_pub'] == self.sink_pub, self.node.get_pending_channel_opens()) if not mock else None
-        self.num_pending_sink_channels = len(self.pending_sink_channels) if not mock else int(mock_state['num_pending_sink_channels'])
-        self.source_pending_loop_out = self.source.get_pending_send_sats() if not mock else int(mock_state['source_pending_loop_out'])
         self.source_account_balance = self.source.get_account_balance() if not mock else int(mock_state['source_account_balance'])
         self.sat_per_vbyte = int(self.mempool.get_fee()[self.mempool_fee]) if not mock else int(mock_state['sat_per_vbyte'])
         self.max_sat_per_vbyte = int(strategy_config['max_sat_per_vbyte']) if not mock else int(mock_state['max_sat_per_vbyte'])
-        self.sats_on_the_way = self.unconfirmed + self.source_pending_loop_out
 
         self.sink_channel_template = ChannelTemplate(
             sat_per_vbyte=self.sat_per_vbyte,
@@ -158,7 +158,6 @@ class SinkSource:
             self.min_onchain_balance
 
         self.source_channel_local_sats = 0.0
-        self.source_channels_capacity = 0.0
         self.source_channels_local_reserve_sats = 0.0
 
         self.sink_channel_local_sats = 0.0
@@ -172,7 +171,6 @@ class SinkSource:
                 if float(chan.local_balance / chan.capacity) < self.source_close_ratio:
                     self.sink_channels_to_close.append(chan.chan_id)
                 self.source_channel_local_sats += chan.local_balance
-                self.source_channels_capacity += chan.capacity
                 self.source_channels_local_reserve_sats += chan.local_chan_reserve_sat
             for chan in self.sink_channels:
                 if float(chan.local_balance / chan.capacity) < self.source_close_ratio:
@@ -183,75 +181,56 @@ class SinkSource:
                 self.sink_channels_local_reserve_sats += chan.local_chan_reserve_sat
         else:
             self.source_channel_local_sats = float(mock_state['source_channels_local_sats'])
-            self.source_channels_capacity = float(mock_state['source_channels_capacity'])
-            self.source_channels_local_reserve_sats = float(mock_state['source_channels_local_reserve_sats'])
+            self.source_channels_local_reserve_sats = 0.0
             self.sink_channel_local_sats = float(mock_state['sink_channels_local_sats'])
             self.sink_channels_capacity = float(mock_state['sink_channels_capacity'])
-            self.sink_channels_local_reserve_sats = float(mock_state['sink_channels_local_reserve_sats'])     
+            self.sink_channels_local_reserve_sats = 0.0 
         self.log_msg_map = {
                 "avoid_close_fee_too_large": f"Channel close avoided: using {self.mempool_fee} at {self.sat_per_vbyte} sat/vbyte with max fee of {self.max_sat_per_vbyte} sat/vbyte",
-                "source_fee_too_large": lambda fee: f"Source widthdrawl fee higher than expected. Found: {fee} sats Expected: {self.source_loop_fee}",
                 "wait_money_leaving": f"Found unconfirmed sent transaction of {abs(self.unconfirmed)} sats. Assuming this is a channel open transaction.",
-                "wait_money_on_the_way": f"Found enough sats to open channel in unconfirmed: {self.unconfirmed} sats and pending: {self.source_pending_loop_out} sats from source account.",
-                "notify_need_more_sats": lambda sats_found, sats_needed: f"Need {sats_needed} sats for sink-source strategy to open channel. Found {sats_found} sats",
                 "try_open_sink_channel": "Attempting to open a new sink channel...",
                 "try_open_source_channel": "Attempting to open a new source channel...",
                 "avoid_open_fee_too_large": f"Channel open avoided: using {self.mempool_fee} at {self.sat_per_vbyte} sat/vbyte with max fee of {self.max_sat_per_vbyte} sat/vbyte",
-                "wait_channel_pending_open": f"Found {self.num_pending_sink_channels} pending channels to sink. Waiting for it to confirm."
         }
         # MAIN EXECUTION PATH CONDITIONS
         self.sats_spendable_onchain = self.confirmed + self.unconfirmed - self.min_onchain_balance
         self.HAS_ENOUGH_SOURCE_CHANNELS = \
-            self.num_source_channels >= self.num_source_channels_target
-        self.HAS_ENOUGH_SATS_FOR_NEW_SOURCE_CHANNEL_ONCHAIN = \
+            self.num_source_channels >= self.source_channel_count
+        self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN = \
             self.sats_required_for_source_channel \
             < self.sats_spendable_onchain
-        self.HAS_ENOUGH_SATS_FOR_NEW_SOURCE_CHANNEL_IN_SINK_CHANNELS = \
+        self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_SINK_CHANNELS = \
             self.sats_spendable_onchain + self.sink_channel_local_sats \
             >= self.source_channel_capacity
-        self.HAS_ENOUGH_SATS_FOR_NEW_SOURCE_CHANNEL_IN_ACCOUNT = \
+        self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT = \
             self.sats_spendable_onchain + self.source_account_balance \
             >= self.source_channel_capacity
         self.HAS_ENOUGH_SINK_CHANNELS = \
-            self.num_sink_channels >= self.num_source_channels_target
-        self.HAS_ENOUGH_SATS_FOR_NEW_SINK_CHANNEL_ONCHAIN = \
-            self.sats_required_for_sink_channel \
+            self.num_sink_channels >= self.sink_channel_count
+        self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN = \
+            self.source_channel_capacity \
             < self.sats_spendable_onchain
-        self.HAS_ENOUGH_SATS_FOR_NEW_SINK_CHANNEL_IN_SOURCE_CHANNELS = \
+        self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_SOURCE_CHANNELS = \
             self.source_channel_local_sats + self.sats_spendable_onchain \
             >= self.sink_channel_capacity
-        self.HAS_ENOUGH_SATS_FOR_NEW_SINK_CHANNEL_IN_ACCOUNT = \
+        self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT = \
             self.sats_spendable_onchain + self.source_account_balance \
-            >= self.sink_channel_capacity
+            >= self.source_channel_capacity
         # END MAIN EXECUTION PATH CONDITIONS
+        print(f"HAS_ENOUGH_SOURCE_CHANNELS: {self.HAS_ENOUGH_SOURCE_CHANNELS}")
+        print(f"HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN: {self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN}")
+        print(f"HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_SINK_CHANNELS: {self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_SINK_CHANNELS}")
+        print(f"HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT: {self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT}")
+        print(f"HAS_ENOUGH_SINK_CHANNELS: {self.HAS_ENOUGH_SINK_CHANNELS}")
+        print(f"HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN: {self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN}")
+        print(f"HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_SOURCE_CHANNELS: {self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_SOURCE_CHANNELS}")
+        print(f"HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT: {self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT}")
 
     def dump_state(self):
         return vars(self)
 
-    def is_money_leaving_node(self):
-        return self.unconfirmed < 0
-
     def is_chain_fee_in_budget(self):
         return self.max_sat_per_vbyte > self.sat_per_vbyte
-
-    def should_initiate_source_account_onchain_send(self):
-        # we should only send on chain if we absolutely need the sats
-        # flat fees are incurred so try to be maximally efficient
-        # empty channels to source first
-        if self.source_account_balance == 0:
-            return False  # no money to send
-        if self.source_pending_loop_out > 0:
-            return False  # money already sent recently
-        if self.sats_on_the_way + self.confirmed + self.source_account_balance > \
-                self.sats_required_for_sink_channel:
-            # the funds in acct would be enough to open a channel
-            if self.has_source_channels_empty():
-                return True  # ready to init send request
-        return False
-
-    def empty_source_channels(self):
-        send_amt = self.sats_in_source_channels - self.source_channels_local_reserve_sats
-        self.source.send_to_acct(send_amt, self.node)
 
     def try_close_empty_source_channels(self):
         for chan in self.source_channels:
@@ -267,12 +246,12 @@ class SinkSource:
             else:
                 self.notify(self.log_msg_map['avoid_close_fee_too_large'])
 
-    def try_loop_out_source_channel(self):
+    def try_drain_source_channel(self):
         invoice_amount = int(125e6)
         attempts = 3
         for i in range(attempts):
             if self.source_channel_local_sats < invoice_amount:
-                invoice_amount = self.source_channel_local_sats
+                invoice_amount = self.source_channel_local_sats -  self.source_channels_local_reserve_sats
             bolt11_invoice = self.source.get_lightning_invoice(invoice_amount)
             payment_response = self.node.pay_invoice(bolt11_invoice)
             if not payment_response.payment_error:
@@ -299,15 +278,6 @@ class SinkSource:
             else:
                 self.notify(self.log_msg_map['avoid_close_fee_too_large'])
 
-    def wait_money_leaving(self):
-        self.log(self.log_msg_map['wait_money_leaving'])
-
-    def wait_money_on_the_way(self):
-        self.log(self.log_msg_map['wait_money_on_the_way'])
-
-    def wait_channel_pending_open(self):
-        self.log(self.log_msg_map['wait_channel_pending_open'])
-
     def notify_need_more_sats(self):
         sats_found = self.confirmed + self.unconfirmed + \
                     self.source_account_balance - self.min_onchain_balance
@@ -329,7 +299,7 @@ class SinkSource:
             self.notify(self.log_msg_map['avoid_open_fee_too_large'])
 
     def source_account_send_onchain(self):
-        self.source.send_onchain(self.source_account_balance)
+        self.source.send_onchain(self.source_account_balance, self.sat_per_vbyte)
 
     def run_jobs(self, jobs):
         map = {
@@ -337,7 +307,7 @@ class SinkSource:
             "TRY_CLOSE_EMPTY_SINK_CHANNELS": self.try_close_empty_sink_channels,
             "TRY_OPEN_SOURCE_CHANNEL": self.try_open_source_channel,
             "TRY_OPEN_SINK_CHANNEL": self.try_open_sink_channel,
-            "TRY_LOOP_OUT_SOURCE_CHANNEL": self.try_loop_out_source_channel,
+            "TRY_DRAIN_SOURCE_CHANNEL": self.try_drain_source_channel,
             "TRY_HARVEST_SINK_CHANNELS": self.try_harvest_sink_channels,
             "SOURCE_ACCOUNT_SEND_ONCHAIN": self.source_account_send_onchain,
         }
@@ -348,19 +318,20 @@ class SinkSource:
     def execute(self):
         jobs = []
         if self.HAS_ENOUGH_SOURCE_CHANNELS:
+            jobs.append("TRY_CLOSE_EMPTY_SOURCE_CHANNELS")
             if self.HAS_ENOUGH_SINK_CHANNELS:
                 jobs.append("TRY_CLOSE_EMPTY_SINK_CHANNELS")
-            elif self.HAS_ENOUGH_SATS_FOR_NEW_SINK_CHANNEL_ONCHAIN:
+            elif self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN:
                 jobs.append("TRY_OPEN_SINK_CHANNEL")
             elif self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT:
                 jobs.append("SOURCE_ACCOUNT_SEND_ONCHAIN")
-            elif self.HAS_ENOUGH_SATS_FOR_NEW_SINK_CHANNEL_IN_SOURCE_CHANNELS:
-                jobs.append("TRY_LOOP_OUT_SOURCE_CHANNEL")
-        elif self.HAS_ENOUGH_SATS_FOR_NEW_SOURCE_CHANNEL_ONCHAIN:
+            elif self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_SOURCE_CHANNELS:
+                jobs.append("TRY_DRAIN_SOURCE_CHANNEL")
+        elif self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN:
             jobs.append("TRY_OPEN_SOURCE_CHANNEL")
-        elif self.HAS_ENOUGH_SATS_FOR_NEW_SOURCE_CHANNEL_IN_ACCOUNT:
+        elif self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT:
             jobs.append("SOURCE_ACCOUNT_SEND_ONCHAIN")
-        elif self.HAS_ENOUGH_SATS_FOR_NEW_SOURCE_ACCOUNT_IN_SINK_CHANNELS:
+        elif self.HAS_ENOUGH_SATS_FOR_SOURCE_ACCOUNT_IN_SINK_CHANNELS:
             jobs.append("TRY_HARVEST_SINK_CHANNELS")
 
         self.log(f"Execution results in: {', '.join(jobs)}")

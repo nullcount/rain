@@ -338,5 +338,6 @@ class SinkSource:
         if self.mock:
             return jobs
         else:
-            self.run_jobs(jobs)
+            print("Doing nothing...")
+            # self.run_jobs(jobs)
         self.log("Finished execution of sink/source strategy")

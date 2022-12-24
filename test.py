@@ -35,7 +35,7 @@ class TestSinkSourceStrategy(unittest.TestCase):
             "sink_channels_local_sats": 100_000_000,
             "source_channel_count": 1,
             "source_account_balance": 0,
-            "num_sink_channels": 2,  # not enough sink channels
+            "num_sink_channels": 3,  # enough sink channels
             "num_source_channels": 1,
             "min_onchain_balance": 400_000,
             "confirmed": 100_000_000,
@@ -45,7 +45,7 @@ class TestSinkSourceStrategy(unittest.TestCase):
             "source_channels_local_sats": 100_000_000,
             "sink_channels_capacity": 375_000_000
         }).execute()
-        self.assertEqual(jobs, ["TRY_CLOSE_EMPTY_SOURCE_CHANNELS"])
+        self.assertEqual(jobs, ["TRY_CLOSE_EMPTY_SOURCE_CHANNELS", "TRY_CLOSE_EMPTY_SINK_CHANNELS"])
 
     def test_try_open_source_channel(self):
         jobs = SinkSource(mock=True, mock_state={
@@ -121,10 +121,10 @@ class TestSinkSourceStrategy(unittest.TestCase):
             "source_close_ratio": 0.0,
             "sink_channel_count": 3,
             "sink_channels_local_sats": 500_000_000,  # sink channels have plenty of sats
-            "source_channel_count": 0,  # not enough source channels
+            "source_channel_count": 1,
             "source_account_balance": 0,
             "num_sink_channels": 5,  # plenty of sink channels
-            "num_source_channels": 1,
+            "num_source_channels": 0, # not enough source channels
             "min_onchain_balance": 400_000,
             "confirmed": 100_000_000,
             "unconfirmed": 0,

@@ -208,14 +208,14 @@ class SinkSource:
         self.HAS_ENOUGH_SINK_CHANNELS = \
             self.num_sink_channels >= self.sink_channel_count
         self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN = \
-            self.source_channel_capacity \
+            self.sink_channel_capacity \
             < self.sats_spendable_onchain
         self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_SOURCE_CHANNELS = \
             self.source_channel_local_sats + self.sats_spendable_onchain \
             >= self.sink_channel_capacity
         self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT = \
             self.sats_spendable_onchain + self.source_account_balance \
-            >= self.source_channel_capacity
+            >= self.sink_channel_capacity
         # END MAIN EXECUTION PATH CONDITIONS
         print(f"HAS_ENOUGH_SOURCE_CHANNELS: {self.HAS_ENOUGH_SOURCE_CHANNELS}")
         print(f"HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN: {self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN}")
@@ -331,7 +331,7 @@ class SinkSource:
             jobs.append("TRY_OPEN_SOURCE_CHANNEL")
         elif self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT:
             jobs.append("SOURCE_ACCOUNT_SEND_ONCHAIN")
-        elif self.HAS_ENOUGH_SATS_FOR_SOURCE_ACCOUNT_IN_SINK_CHANNELS:
+        elif self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_SINK_CHANNELS:
             jobs.append("TRY_HARVEST_SINK_CHANNELS")
 
         self.log(f"Execution results in: {', '.join(jobs)}")

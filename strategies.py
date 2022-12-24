@@ -64,7 +64,7 @@ class FeeMatch:
                         {new_policy['max_htlc_msat']}",
                 "fee_base_msat": f"Update <{chan.chan_id}> base_fee from \
                         {old_policy['fee_base_msat']} to \
-                        {new_policy['fee_base_msat']}" 
+                        {new_policy['fee_base_msat']}"
             }
             needs_update = False
             for key in new_policy:
@@ -185,7 +185,7 @@ class SinkSource:
             self.source_channels_local_reserve_sats = 0.0
             self.sink_channel_local_sats = float(mock_state['sink_channels_local_sats'])
             self.sink_channels_capacity = float(mock_state['sink_channels_capacity'])
-            self.sink_channels_local_reserve_sats = 0.0 
+            self.sink_channels_local_reserve_sats = 0.0
         self.log_msg_map = {
                 "avoid_close_fee_too_large": f"Channel close avoided: using {self.mempool_fee} at {self.sat_per_vbyte} sat/vbyte with max fee of {self.max_sat_per_vbyte} sat/vbyte",
                 "wait_money_leaving": f"Found unconfirmed sent transaction of {abs(self.unconfirmed)} sats. Assuming this is a channel open transaction.",
@@ -248,11 +248,11 @@ class SinkSource:
                 self.notify(self.log_msg_map['avoid_close_fee_too_large'])
 
     def try_drain_source_channel(self):
-        invoice_amount = int(125e6)
+        invoice_amount = int(100e3)
         attempts = 3
         for i in range(attempts):
             if self.source_channel_local_sats < invoice_amount:
-                invoice_amount = self.source_channel_local_sats -  self.source_channels_local_reserve_sats
+                invoice_amount = self.source_channel_local_sats - self.source_channels_local_reserve_sats
             bolt11_invoice = self.source.get_lightning_invoice(invoice_amount)
             payment_response = self.node.pay_invoice(bolt11_invoice)
             if not payment_response.payment_error:
@@ -340,5 +340,5 @@ class SinkSource:
             return jobs
         else:
             print("Doing nothing...")
-            # self.run_jobs(jobs)
+            self.run_jobs(jobs)
         self.log("Finished execution of sink/source strategy")

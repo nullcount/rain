@@ -91,6 +91,7 @@ class SinkSource:
             "nicehash": Nicehash,
             "muun": Muun
         }
+        print(log.filename)
         self.source = source_map[strategy_config['source']](CREDS[strategy_config['source_config']], log) if not mock else None
         self.node:Lnd = node if not mock else None
         self.log = log.info if not mock else print

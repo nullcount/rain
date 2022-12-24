@@ -8,6 +8,7 @@ class Logger:
         self.log = logging.getLogger()
         self.log.setLevel(logging.INFO)
         self.notify_connector = Telegram(notify_config, self)
+        self.filename = filename
 
     def info(self, message):
         self.log.info(message)

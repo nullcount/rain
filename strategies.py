@@ -303,6 +303,7 @@ class SinkSource:
         self.source.send_onchain(self.source_account_balance, self.sat_per_vbyte)
 
     def run_jobs(self, jobs):
+        print(jobs)
         map = {
             "TRY_CLOSE_EMPTY_SOURCE_CHANNELS": self.try_close_empty_source_channels,
             "TRY_CLOSE_EMPTY_SINK_CHANNELS": self.try_close_empty_sink_channels,
@@ -339,6 +340,5 @@ class SinkSource:
         if self.mock:
             return jobs
         else:
-            print("Doing nothing...")
             self.run_jobs(jobs)
         self.log("Finished execution of sink/source strategy")

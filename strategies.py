@@ -114,7 +114,7 @@ class SinkSource:
         except ZeroDivisionError:
             self.log("There are no source channels")
         self.source_close_ratio = float(strategy_config['source_close_ratio']) if not mock else int(mock_state['source_close_ratio'])
-        self.min_onchain_balance = int(default_config['min_onchain_balance']) if not mock else int(mock_state['min_onchain_balance'])
+        self.min_onchain_balance = int(strategy_config['min_onchain_balance']) if not mock else int(mock_state['min_onchain_balance'])
         self.mempool_fee = strategy_config['mempool_fee'] if not mock else None
 
         self.mempool = Mempool(CREDS["MEMPOOL"], self.log) if not mock else None

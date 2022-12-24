@@ -73,7 +73,8 @@ class Kraken:
         self.log.info(self.log_msg_map['get_onchain_address'](addr))
         return addr
 
-    def send_onchain(self, sats):
+    def send_onchain(self, sats, fee):
+        # kraken does not use variable fee
         payload = {
             "nonce": str(int(1000*time.time())),
             "asset": "XBT",

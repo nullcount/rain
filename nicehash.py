@@ -95,7 +95,7 @@ class Nicehash:
         res = self.nicehash_request("GET", '/main/api/v2/accounting/depositAddresses', 'currency=BTC&walletType=BITGO', None)
         return res['list'][0]['address']
 
-    def send_onchain(self, sats):
+    def send_onchain(self, sats, fee):
         amt = str(float(sats) / COIN_SATS)
         body = {
             "currency": "BTC",

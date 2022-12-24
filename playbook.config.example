@@ -44,11 +44,11 @@ execute = 1
 
 # the fee priority as recommended by your mempool connection
 #     options: minimumFee|economyFee|hourFee|halfHourFee|fastestFee
-mempool_fee = halfHourFee
+mempool_fee = fastestFee
 
 # specify the maximum fee to pay for opening channels
 #   if mempool_fee returns a higher value no channels will be opened/closed
-max_sat_per_vbyte = 31
+max_sat_per_vbyte = 200
 
 # pubkey of the source node - you must already have this channel open
 #     this strategy will never close your source channel
@@ -57,8 +57,11 @@ source_host = 52.13.118.208:9735
 source = kraken
 source_config = KRAKEN
 
+source_budget = 400_000_000
+source_channel_count = 1
 # expected onchain widthdrawl fee for the source adapter 
 source_loop_fee = 1000
+source_close_ratio = 0.0
 
 # pubkey of the sink node
 #     this strategy will open channels, and optionally close them 
@@ -73,7 +76,7 @@ sink_budget = 100_000_000
 #     useful for maximizing availibility, reduces downtime between closures 
 #     max one channel will be 'enabled' at once -- all others flagged 'disabled'
 #     fee updates apply to all channels the same
-num_sink_channels_target = 1
+sink_channel_count = 3
 
 # automatically close any sink node channel when
 #     the local balance falls below this ratio

@@ -1,4 +1,5 @@
 [DEFAULT]
+node = LND
 
 [FEE_MATCH_CORRECTED_AVERAGE_PLUS_PREMIUM]
 # fee match strategy will set your fee ppm 

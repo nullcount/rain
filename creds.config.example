@@ -30,7 +30,7 @@ funding_key =
 #   withdrawl_address is an address for your node to recieve onchain from muun
 #   muun wallet must be already installed on the device
 device_name =
-withdrawl_address = 
+withdraw_address = 
 
 [TELEGRAM]
 # send yourself a telegram updates about your node using a bot

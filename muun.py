@@ -28,8 +28,9 @@ class Muun:
         # self.devices = client.devices()
 
         # self.device = client.device("R58M47ZGS2Z")
-        self.device = client.device(MUUN_CRED["device_name"])
         self.address = MUUN_CRED["withdraw_address"]
+        self.device = client.device(MUUN_CRED["device_name"])
+        self.init_wallet()
 
     def muun_request(self):
         return
@@ -156,7 +157,7 @@ class Muun:
     def init_wallet(self):
         self.restart_app()
         screen = self.get_screen_layout()
-        create_wallet_btn = screen.find("node", {"resource-id": "io.muun.apollo:id/signup_start"})
+        create_wallet_btn = screen.find("node", element_dict["create-wallet"])
         if create_wallet_btn:
             self.log.info("Creating wallet....")
             self.tap(element_dict["create-wallet"])
@@ -165,12 +166,13 @@ class Muun:
             self.close_app()
             sleep(1)
             self.device.shell("monkey -p io.muun.apollo -c android.intent.category.LAUNCHER 1")
-            return True
         else:
             self.log.info("Wallet already created...")
-            return False
+        self.change_denomination()
+        self.get_backup_key()
 
     def change_denomination(self):
+        self.log.info("Changeing denominations...")
         self.restart_app()
         self.tap(element_dict["settings"])
         self.tap(element_dict["unit-setting"])
@@ -179,9 +181,8 @@ class Muun:
         self.tap(element_dict["bitcoin-main"])
 
     def get_backup_key(self):
-        """
-        Expecting to be on the main screen of muun wallet
-        """
+        self.log.info("Getting backup key...")
+        self.restart_app()
         self.tap(element_dict["security-tab"])
         screen = self.get_screen_layout()
         backup_steps = screen.findAll("node", element_dict["backup-step"])
@@ -269,5 +270,5 @@ element_dict = {
     "payment": {"text": "You paid", "resource-id": "io.muun.apollo:id/home_operations_item_title"},
     "payment-detail": {"resource-id": "io.muun.apollo:id/operation_detail_item_text_content"}
 }
-#if __name__ == '__main__':
-    #    main()
+# if __name__ == '__main__':
+#    main()

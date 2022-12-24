@@ -4,6 +4,7 @@ from report import Report
 from kraken import Kraken
 from nicehash import Nicehash
 from muun import Muun
+from lnd import Lnd
 
 
 class FeeMatch:
@@ -83,14 +84,15 @@ class FeeMatch:
 
 
 class SinkSource:
-    def __init__(self, strategy_config=None, DEFAULT=None, CREDS=None, node=None, log=None, mock=False, mock_state=None):
+    def __init__(self, strategy_config=None, DEFAULT=None, CREDS=None, node: Lnd = None, log=None, mock=False,
+                 mock_state=None):
         source_map = {
             "kraken": Kraken,
             "nicehash": Nicehash,
             "muun": Muun
         }
         self.source = source_map[strategy_config['source']](CREDS[strategy_config['source_config']], log) if not mock else None
-        self.node = node if not mock else None
+        self.node:Lnd = node if not mock else None
         self.log = log.info if not mock else print
         self.notify = log.notify if not mock else print
         self.mock = mock  # True if this is a test
@@ -266,11 +268,19 @@ class SinkSource:
                 self.notify(self.log_msg_map['avoid_close_fee_too_large'])
 
     def try_loop_out_source_channel(self):
-        fee = self.source.get_onchain_fee(self.source_account_balance, )
-        if fee <= self.source_loop_fee:
-            self.source.send_onchain(self.source_account_balance, fee)
-        else:
-            self.log(self.log_msg_map['source_fee_too_large'](fee))
+        invoice_amount = int(125e6)
+        attempts = 3
+        for i in range(attempts):
+            if self.source_channel_local_sats < invoice_amount:
+                invoice_amount = self.source_channel_local_sats
+            bolt11_invoice = self.source.get_lightning_invoice(invoice_amount)
+            payment_response = self.node.pay_invoice(bolt11_invoice)
+            if not payment_response.payment_error:
+                break
+            elif "no_route" in payment_response.payment_error:
+                invoice_amount = int(invoice_amount * 0.85)
+        else:  # no break
+            self.log.info("error no routes")
 
     def try_harvest_sink_channels(self):
         chans_to_harvest = []

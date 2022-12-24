@@ -213,14 +213,30 @@ class Muun:
         screen = self.get_screen_layout()
         transaction_obj = screen.findAll("node", element_dict["payment-detail"])[-1]
         transaction = transaction_obj["text"]
-        print(transaction)
         return transaction
 
 
 def main():
+    # connect to the wallet
     wallet = Muun(CREDS["MUUN"], LISTEN_LOG)
-    wallet.restart_app()
-    wallet.get_backup_key()
+    # while True:
+    #     # check if at create wallet screen
+    #     if wallet.init_wallet():
+    #         # change the denominated amount!!
+    #         wallet.change_denomination()
+    #         wallet.get_backup_key()
+    #         break
+    #     else:  # otherwise, check balance
+    #         balance = wallet.get_account_balance()
+    #         if balance == 0:
+    #             print("Balance is 0...")
+    #             wallet.delete_wallet()
+    #         else:
+    #             break
+    # print(wallet.get_lightning_invoice(1000))
+    # ###wait for payment....
+    # print(wallet.send_onchain(1))
+    # print(wallet.get_transaction_id())
 
 
 element_dict = {

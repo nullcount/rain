@@ -30,6 +30,7 @@ class Muun:
 
         # self.device = client.device("R58M47ZGS2Z")
         self.device = client.device(MUUN_CRED["device_name"])
+        self.address = MUUN_CRED["withdraw_address"]
 
     def muun_request(self):
         return
@@ -40,8 +41,20 @@ class Muun:
     def get_onchain_address(self):
         return
 
-    def send_onchain(self, sats):
-        return
+    def send_onchain(self, sat_per_vbyte):
+        self.restart_app()
+        self.tap(element_dict["send-btn"])
+        self.tap(element_dict["address-input"])
+        self.device.input_text(self.address)
+        self.tap(element_dict["confirm-address-btn"])
+        self.tap(element_dict["use-all-funds"])
+        self.device.input_text(":high-voltage:")
+        self.tap(element_dict["confirm-note"])
+        self.tap(element_dict["network-fee"])
+        self.tap(element_dict["enter-fee-manually"])
+        self.device.input_text(sat_per_vbyte)
+        self.tap(element_dict["confirm-fee"])
+        self.tap(element_dict["send-btn"])
 
     def get_onchain_fee(self, sats):
         return
@@ -146,9 +159,10 @@ class Muun:
         self.device.shell("monkey -p io.muun.apollo -c android.intent.category.LAUNCHER 1")
         sleep(1)
 
-    def create_wallet(self):
-        screen_obj = self.get_screen_layout()
-        create_wallet_btn = screen_obj.find("node", {"resource-id": "io.muun.apollo:id/signup_start"})
+    def init_wallet(self):
+        self.restart_app()
+        screen = self.get_screen_layout()
+        create_wallet_btn = screen.find("node", {"resource-id": "io.muun.apollo:id/signup_start"})
         if create_wallet_btn:
             self.log.info("Creating wallet....")
             self.tap(element_dict["create-wallet"])
@@ -161,6 +175,14 @@ class Muun:
         else:
             self.log.info("Wallet already created...")
             return False
+
+    def change_denomination(self):
+        self.restart_app()
+        self.tap(element_dict["settings"])
+        self.tap(element_dict["unit-setting"])
+        self.tap(element_dict["satoshi-unit"])
+        self.tap(element_dict["main-currency"])
+        self.tap(element_dict["bitcoin-main"])
 
     def get_backup_key(self):
         """
@@ -183,6 +205,17 @@ class Muun:
         self.log.info(key)
         return key
 
+    def get_transaction_id(self):
+        self.restart_app()
+        self.tap(element_dict["chevron"])
+        self.tap(element_dict["payment"])
+        self.device.input_swipe(400, 500, 400, 0, duration=1000)
+        screen = self.get_screen_layout()
+        transaction_obj = screen.findAll("node", element_dict["payment-detail"])[-1]
+        transaction = transaction_obj["text"]
+        print(transaction)
+        return transaction
+
 
 def main():
     wallet = Muun(CREDS["MUUN"], LISTEN_LOG)
@@ -198,6 +231,7 @@ element_dict = {
     "create-wallet": {"resource-id": "io.muun.apollo:id/signup_start"},
     "qr-code": {"resource-id": "io.muun.apollo:id/show_qr_content"},
     "receive-btn": {"resource-id": "io.muun.apollo:id/muun_button_button", "text": "RECEIVE"},
+    "send-btn": {"resource-id": "io.muun.apollo:id/muun_button_button", "text": "SEND"},
     "lightning-tab": {"content-desc": "LIGHTNING"},
     "wallet-backup": {"resource-id": "io.muun.apollo:id/muun_text_input_edit_text"},
     "security-tab": {"resource-id": "io.muun.apollo:id/security_center_fragment", },
@@ -209,8 +243,21 @@ element_dict = {
     "invoice-settings": {"resource-id": "io.muun.apollo:id/invoice_settings"},
     "address-settings": {"resource-id": "io.muun.apollo:id/address_settings"},
     "add-button": {"resource-id": "io.muun.apollo:id/add_amount"},
-    "confirm-amt-btn": {"resource-id": "io.muun.apollo:id/confirm_amount_button"}
-
+    "confirm-amt-btn": {"resource-id": "io.muun.apollo:id/confirm_amount_button"},
+    "unit-setting": {"resource-id": "io.muun.apollo:id/settings_bitcoin_unit"},
+    "satoshi-unit": {"resource-id": "io.muun.apollo:id/bitcoin_unit_sat"},
+    "main-currency": {"text": "Main currency", "resource-id": "io.muun.apollo:id/setting_item_label"},
+    "bitcoin-main": {"text": " Bitcoin (SAT)", "resource-id": "io.muun.apollo:id/currency_item_label"},
+    "address-input": {"text": "Enter a bitcoin address or invoice", "resource-id": "io.muun.apollo:id/text_input"},
+    "confirm-address-btn": {"resource-id": "io.muun.apollo:id/confirm"},
+    "use-all-funds": {"resource-id": "io.muun.apollo:id/use_all_funds"},
+    "confirm-note": {"text": "CONFIRM NOTE", "resource-id": "io.muun.apollo:id/muun_button_button"},
+    "confirm-fee": {"text": "CONFIRM FEE", "resource-id": "io.muun.apollo:id/muun_button_button"},
+    "network-fee": {"text": "Network fee", "resource-id": "io.muun.apollo:id/fee_label"},
+    "enter-fee-manually": {"resource-id": "io.muun.apollo:id/enter_fee_manually"},
+    "chevron": {"resource-id": "io.muun.apollo:id/chevron"},
+    "payment": {"text": "You paid", "resource-id": "io.muun.apollo:id/home_operations_item_title"},
+    "payment-detail": {"resource-id": "io.muun.apollo:id/operation_detail_item_text_content"}
 }
 if __name__ == '__main__':
     main()

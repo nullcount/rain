@@ -25,7 +25,12 @@ org_id =
 funding_key =
 
 [MUUN]
+# automate a muun wallet using ADB via emulation or connected device
+#   device_name is the adb name of the device to automate
+#   withdrawl_address is an address for your node to recieve onchain from muun
+#   muun wallet must be already installed on the device
 device_name =
+withdrawl_address = 
 
 [TELEGRAM]
 # send yourself a telegram updates about your node using a bot

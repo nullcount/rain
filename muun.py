@@ -173,11 +173,12 @@ class Muun:
         self.get_backup_key()
 
     def change_denomination(self):
-        self.log.info("Changeing denominations...")
+        self.log.info("Changing denominations...")
         self.restart_app()
         self.tap(element_dict["settings"])
         self.tap(element_dict["unit-setting"])
         self.tap(element_dict["satoshi-unit"])
+        sleep(1)
         self.tap(element_dict["main-currency"])
         self.tap(element_dict["bitcoin-main"])
 

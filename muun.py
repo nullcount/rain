@@ -31,7 +31,16 @@ class Muun:
         # self.device = client.device("R58M47ZGS2Z")
         self.address = MUUN_CRED["withdraw_address"]
         self.device = client.device(MUUN_CRED["device_name"])
-        self.init_wallet()
+        if self.init_wallet():
+            # change the denominated amount!!
+            self.change_denomination()
+            self.get_backup_key()
+        # elif self.delete_wallet():
+        #     self.init_wallet()
+        #     self.change_denomination()
+        #     self.get_backup_key()
+        else:
+            print("wallet initialized")
 
     def muun_request(self):
         return
@@ -42,7 +51,7 @@ class Muun:
     def get_onchain_address(self):
         return
 
-    def send_onchain(self, sat_per_vbyte):
+    def send_onchain(self, _, sat_per_vbyte):
         self.restart_app()
         self.tap(element_dict["send-btn"])
         self.tap(element_dict["address-input"])
@@ -87,17 +96,26 @@ class Muun:
         self.device.shell(f"input tap {x} {y}")
 
     def delete_wallet(self):
-        self.log.info("Deleting wallet...")
-        self.device.shell("am force-stop io.muun.apollo")
-        sleep(1)
-        self.device.shell("pm clear io.muun.apollo")
+        self.restart_app()
+        balance = self.get_account_balance()
+        if balance == 0:
+            print("Balance is 0...")
+            self.log.info("Deleting wallet...")
+            self.device.shell("am force-stop io.muun.apollo")
+            sleep(1)
+            self.device.shell("pm clear io.muun.apollo")
+            return True
+        else:
+            print("Balance is {}...".format(balance))
+            self.log.info("ERROR: Attempted to delete wallet with non-zero balance...")
+            return False
 
     def get_account_balance(self):
         self.log.info("Getting (potentially inaccurate) balance...")
         self.restart_app()
         screen = self.get_screen_layout()
         balance_obj = screen.find("node", element_dict["balance"])
-        balance = int(float(balance_obj["text"]) * 1e6)
+        balance = int(float(balance_obj["text"].replace(",", "")) * 1e6)
         return balance
 
     def get_lightning_invoice(self, sats):
@@ -162,15 +180,15 @@ class Muun:
         if create_wallet_btn:
             self.log.info("Creating wallet....")
             self.tap(element_dict["create-wallet"])
-            sleep(1)
+            sleep(2)
             self.log.info("Doing a trick so we don't have to make a pin...")
             self.close_app()
             sleep(1)
             self.device.shell("monkey -p io.muun.apollo -c android.intent.category.LAUNCHER 1")
+            return True
         else:
             self.log.info("Wallet already created...")
-        self.change_denomination()
-        self.get_backup_key()
+            return False
 
     def change_denomination(self):
         self.log.info("Changing denominations...")

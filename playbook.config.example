@@ -31,7 +31,7 @@ min_htlc_sat = 1000
 #     set below 0.5 for resistance against probing
 max_htlc_ratio = 0.4
 
-[SINK_SOOURCE_LOOP_MUUN]
+[SINK_SOURCE_LOOP_MUUN]
 # sink/source strategy for automating sink/source channel pairs
 strategy = sink-source
 execute = 1
@@ -44,7 +44,7 @@ mempool_fee = fastestFee
 
 # specify the maximum fee to pay for opening channels
 #   if mempool_fee returns a higher value no channels will be opened/closed
-max_sat_per_vbyte = 200
+max_sat_per_vbyte = 10
 
 # pubkey of the source node - you must already have this channel open
 #     this strategy will never close your source channel
@@ -53,11 +53,13 @@ source_host = evbw26fxcjyclkqjjbjovtfy7i36ojrs6c2vws3f5og7aokn2pok4kyd.onion:973
 source = muun
 source_config = MUUN
 
-source_budget = 300_000_000
+source_budget = 40_000_000
 source_channel_count = 1
 # expected onchain widthdrawl fee for the source adapter 
 source_fee_ppm = 2
 source_close_ratio = 0.0
+source_loop_out_amount = 8_000_000
+source_loop_out_backoff = 0.98
 
 # pubkey of the sink node
 #     this strategy will open channels, and optionally close them 
@@ -66,7 +68,7 @@ sink_pub = 021c97a90a411ff2b10dc2a8e32de2f29d2fa49d41bfbb52bd416e460db0747d0d
 sink_host = 44.228.158.82:9735
 
 # max number of sats to 'lock-up' at once in sink channels for this strategy
-sink_budget = 125_000_000
+sink_budget = 40_000_000
 sink_fee_ppm = 17_500
 
 # the max number of channels to the sink node this script will maintain at once
@@ -81,5 +83,5 @@ sink_channel_count = 1
 #          0.9M sats have been pushed through
 #     set to 0.0 to effectively disable this script from 
 #     automatically closing channels
-sink_close_ratio = 0.1
+sink_close_ratio = 0.025
 

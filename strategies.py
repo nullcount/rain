@@ -93,7 +93,7 @@ class SinkSource:
         }
         print(log.filename)
         self.source = source_map[strategy_config['source']](CREDS[strategy_config['source_config']], log) if not mock else None
-        self.node:Lnd = node if not mock else None
+        self.node: Lnd = node if not mock else None
         self.log = log.info if not mock else print
         self.notify = log.notify if not mock else print
         self.mock = mock  # True if this is a test
@@ -115,6 +115,8 @@ class SinkSource:
         except ZeroDivisionError:
             self.log("There are no source channels")
         self.source_close_ratio = float(strategy_config['source_close_ratio']) if not mock else int(mock_state['source_close_ratio'])
+        self.source_loop_out_amount = int(strategy_config['source_loop_out_amount']) if not mock else None
+        self.source_loop_out_backoff = float(strategy_config['source_loop_out_backoff']) if not mock else None
         self.min_onchain_balance = int(strategy_config['min_onchain_balance']) if not mock else int(mock_state['min_onchain_balance'])
         self.mempool_fee = strategy_config['mempool_fee'] if not mock else None
 
@@ -138,7 +140,8 @@ class SinkSource:
             base_fee=0,  # zerobasefee
             fee_rate=self.sink_fee_ppm,
             address=self.sink_host,
-            min_htlc_sat=1000
+            min_htlc_sat=1000,
+            spend_unconfirmed=True
         )
 
         self.source_channel_template = ChannelTemplate(
@@ -148,7 +151,8 @@ class SinkSource:
             base_fee=0,  # zerobasefee
             fee_rate=self.source_fee_ppm,
             address=self.source_host,
-            min_htlc_sat=1000
+            min_htlc_sat=1000,
+            spend_unconfirmed=True
         )
 
         self.sats_required_for_sink_channel = \
@@ -170,13 +174,12 @@ class SinkSource:
         if not mock:
             for chan in self.source_channels:
                 if float(chan.local_balance / chan.capacity) < self.source_close_ratio:
-                    self.sink_channels_to_close.append(chan.chan_id)
+                    self.source_channels_to_close.append(chan.chan_id)
                 self.source_channel_local_sats += chan.local_balance
                 self.source_channels_local_reserve_sats += chan.local_chan_reserve_sat
             for chan in self.sink_channels:
                 if float(chan.local_balance / chan.capacity) < self.source_close_ratio:
                     self.sink_channels_to_close.append(chan.chan_id)
-
                 self.sink_channel_local_sats += chan.local_balance
                 self.sink_channels_capacity += chan.capacity
                 self.sink_channels_local_reserve_sats += chan.local_chan_reserve_sat
@@ -187,11 +190,11 @@ class SinkSource:
             self.sink_channels_capacity = float(mock_state['sink_channels_capacity'])
             self.sink_channels_local_reserve_sats = 0.0
         self.log_msg_map = {
-                "avoid_close_fee_too_large": f"Channel close avoided: using {self.mempool_fee} at {self.sat_per_vbyte} sat/vbyte with max fee of {self.max_sat_per_vbyte} sat/vbyte",
-                "wait_money_leaving": f"Found unconfirmed sent transaction of {abs(self.unconfirmed)} sats. Assuming this is a channel open transaction.",
-                "try_open_sink_channel": "Attempting to open a new sink channel...",
-                "try_open_source_channel": "Attempting to open a new source channel...",
-                "avoid_open_fee_too_large": f"Channel open avoided: using {self.mempool_fee} at {self.sat_per_vbyte} sat/vbyte with max fee of {self.max_sat_per_vbyte} sat/vbyte",
+            "avoid_close_fee_too_large": f"Channel close avoided: using {self.mempool_fee} at {self.sat_per_vbyte} sat/vbyte with max fee of {self.max_sat_per_vbyte} sat/vbyte",
+            "wait_money_leaving": f"Found unconfirmed sent transaction of {abs(self.unconfirmed)} sats. Assuming this is a channel open transaction.",
+            "try_open_sink_channel": "Attempting to open a new sink channel...",
+            "try_open_source_channel": "Attempting to open a new source channel...",
+            "avoid_open_fee_too_large": f"Channel open avoided: using {self.mempool_fee} at {self.sat_per_vbyte} sat/vbyte with max fee of {self.max_sat_per_vbyte} sat/vbyte",
         }
         # MAIN EXECUTION PATH CONDITIONS
         self.sats_spendable_onchain = self.confirmed + self.unconfirmed - self.min_onchain_balance
@@ -234,7 +237,7 @@ class SinkSource:
         return self.max_sat_per_vbyte > self.sat_per_vbyte
 
     def try_close_empty_source_channels(self):
-        for chan in self.source_channels:
+        for chan in self.source_channels_to_close:
             if self.is_chain_fee_in_budget():
                 self.node.close_channel(chan.chan_id, self.sat_per_vbyte)
             else:
@@ -248,17 +251,17 @@ class SinkSource:
                 self.notify(self.log_msg_map['avoid_close_fee_too_large'])
 
     def try_drain_source_channel(self):
-        invoice_amount = int(100e3)
         attempts = 3
         for i in range(attempts):
-            if self.source_channel_local_sats < invoice_amount:
-                invoice_amount = self.source_channel_local_sats - self.source_channels_local_reserve_sats
+            invoice_amount = int(self.source_loop_out_amount * (self.source_loop_out_backoff ** i))
+            # if self.source_channel_local_sats < invoice_amount:
+            #     invoice_amount = self.source_channel_local_sats - self.source_channels_local_reserve_sats
             bolt11_invoice = self.source.get_lightning_invoice(invoice_amount)
             payment_response = self.node.pay_invoice(bolt11_invoice)
             if not payment_response.payment_error:
                 break
             elif "no_route" in payment_response.payment_error:
-                invoice_amount = int(invoice_amount * 0.85)
+                self.log("No route.")
         else:  # no break
             self.log.info("error no routes")
 
@@ -267,7 +270,7 @@ class SinkSource:
         sorted_chans = sorted(self.sink_channels, key=lambda x: x.capacity, reverse=True)
         sats_so_far = 0
         sats_needed_for_source_channel = self.sats_required_for_source_channel \
-            - (self.confirmed + self.unconfirmed)
+                                         - (self.confirmed + self.unconfirmed)
         for chan in sorted_chans:
             sats_so_far += chan.capacity
             chans_to_harvest.append(chan.chan_id)

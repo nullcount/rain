@@ -15,7 +15,8 @@ def debug(message):
 
 
 class ChannelTemplate:
-    def __init__(self, node_pubkey, local_funding_amount, address, sat_per_vbyte, base_fee, fee_rate, min_htlc_sat):
+    def __init__(self, node_pubkey, local_funding_amount, address, sat_per_vbyte, base_fee, fee_rate, min_htlc_sat,
+                 spend_unconfirmed):
         self.node_pubkey = node_pubkey
         self.local_funding_amount = local_funding_amount
         self.sat_per_vbyte = sat_per_vbyte
@@ -23,13 +24,15 @@ class ChannelTemplate:
         self.base_fee = base_fee
         self.fee_rate = fee_rate
         self.address = address
+        self.spend_unconfirmed = spend_unconfirmed
 
     def get_open_req(self):
         return ln.OpenChannelRequest(
             node_pubkey_string=self.node_pubkey,
             local_funding_amount=self.local_funding_amount,
             sat_per_vbyte=self.sat_per_vbyte,
-            min_htlc_msat=self.min_htlc_sat * SAT_MSATS
+            min_htlc_msat=self.min_htlc_sat * SAT_MSATS,
+            spend_unconfirmed=self.spend_unconfirmed
         )
 
 
@@ -105,7 +108,7 @@ class Lnd:
 
     def subscribe_transactions(self):
         req = ln.Transaction.empty()
-        return self.stub.SubscribeTransactions(req) 
+        return self.stub.SubscribeTransactions(req)
 
     def add_peer(self, pubkey, address):
         ln_addr = ln.LightningAddress(pubkey=pubkey, host=address)
@@ -278,7 +281,7 @@ class Lnd:
                           f"chan_id: {chan_id}, sat_per_vbyte: {sat_per_vbyte}")
             return
 
-        target_channels = list(filter(lambda channel: channel.chan_id == chan_id,  self.get_channels()))
+        target_channels = list(filter(lambda channel: channel.chan_id == chan_id, self.get_channels()))
         if not len(target_channels) > 0:
             self.log.info(f"The channel id provided does not exist:  {chan_id}")
             return
@@ -286,11 +289,12 @@ class Lnd:
         channel_point_str = target_channel.channel_point
         funding_txid_str, output_index = channel_point_str.split(':')
 
-        close_channel_request = ln.CloseChannelRequest(channel_point=ln.ChannelPoint(funding_txid_str=funding_txid_str, output_index=int(output_index)),
-                                                       sat_per_vbyte=sat_per_vbyte,
-                                                       force=force,
-                                                       target_conf=target_conf,
-                                                       delivery_address=delivery_address)
+        close_channel_request = ln.CloseChannelRequest(
+            channel_point=ln.ChannelPoint(funding_txid_str=funding_txid_str, output_index=int(output_index)),
+            sat_per_vbyte=sat_per_vbyte,
+            force=force,
+            target_conf=target_conf,
+            delivery_address=delivery_address)
         close_status_update_response = self.stub.CloseChannel(close_channel_request)
         return close_status_update_response
 
@@ -347,6 +351,13 @@ class Lnd:
         pending_open_channels = pending_channels_response.pending_open_channels
         pending_open_channels = list(map(lambda x: x.channel, pending_open_channels))
         return pending_open_channels
+
+    def get_pending_channel_open_tx_ids(self):
+        pending_channels_request = ln.PendingChannelsRequest()
+        pending_channels_response = self.stub.PendingChannels(pending_channels_request)
+        pending_open_channels = pending_channels_response.pending_open_channels
+        pending_open_channel_tx_ids = [x.channel.channel_point.split(":")[0] for x in pending_open_channels]
+        return pending_open_channel_tx_ids
 
     def should_pay_invoice(self, invoice):
         for hint in self.decode_invoice(invoice).route_hints:

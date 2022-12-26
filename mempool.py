@@ -16,7 +16,8 @@ class Mempool:
         )
         if obj:
             return req.json()
-        return req.text
+        else:
+            return req.text
 
     def get_fee(self):
         return self.mempool_request("fees/recommended")
@@ -38,6 +39,7 @@ class Mempool:
         def chunks():
             for i in range(0, 20):
                 yield txid_list[i::20]
+
         result = []
         for group_list in chunks():
             url_params = "?"
@@ -52,3 +54,7 @@ class Mempool:
                     for o in r['outputs']:
                         result.append(r['outputs'][o])
         return result
+
+    def check_tx(self, tx_id):
+        ret = self.mempool_request("tx/{0}".format(tx_id))
+        return ret["status"]

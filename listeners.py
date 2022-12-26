@@ -35,27 +35,52 @@ class MempoolListener:
         self.tg = log.notify_connector
         self.node = node
         self.mempool = Mempool(CREDS['MEMPOOL'], log)
-        self.empty_mb = int(config['mempool_empty_mb'])
-        self.delta_mb = int(config['mempool_delta_mb'])
+        self.bytes = self.get_bytes()
         self.last_notify_bytes = None
+        self.on_mempool_empty = bool(config['on_mempool_empty'])
+        self.mempool_empty_mb = int(config['mempool_empty_mb'])
+        self.on_mempool_change = int(config['on_mempool_change'])
+        self.mempool_delta_mb = int(config['mempool_delta_mb'])
+        self.on_channel_confirmed = bool(config['on_channel_confirmed'])
+
+    def get_bytes(self):
+        bytes = self.mempool.get_mempool_bytes()
+        self.last_notify_bytes = bytes if not self.last_notify_bytes else self.last_notify_bytes
+        return bytes
+
+    def get_pending_channels(self):
+        pending_channels = node.get_pending_channel_open_tx_ids()
+        self.pending_channels = pending_channels
+        return pending_channels
 
     def mainLoop(self):
         MB_BYTES = 1_000_000
         while True:
-            bytes = self.mempool.get_mempool_bytes()
-            self.last_notify_bytes = bytes if not self.last_notify_bytes else self.last_notify_bytes
+            # get latest bytes
+            self.get_bytes()
             mb = round(bytes/MB_BYTES, 2)
-            if mb > ((self.last_notify_bytes/MB_BYTES) + self.delta_mb):
-                self.last_notify_bytes = bytes
-                self.tg.send_message(f"⬆️  Mempool growing! Currently {mb}MB")
-            elif mb < ((self.last_notify_bytes/MB_BYTES) - self.delta_mb):
-                self.last_notify_bytes = bytes
-                self.tg.send_message(f"⬇️  Mempool shrinking! Currently {mb}MB")
-            elif mb < self.empty_mb and not self.last_notify_bytes/MB_BYTES < self.empty_mb:
-                self.last_notify_bytes = bytes
-                self.tg.send_message(f"🫗  Mempool is good as empty! Currently {mb}MB")
-            time.sleep(30)
-
+            if self.on_mempool_empty:
+                if mb < self.empty_mb and not self.last_notify_bytes/MB_BYTES < self.empty_mb:
+                    self.last_notify_bytes = bytes
+                    self.tg.send_message(f"🫗  Mempool is good as empty! Currently {mb}MB")
+            elif self.on_mempool_change:
+                if mb > ((self.last_notify_bytes/MB_BYTES) + self.mempool_delta_mb):
+                    self.last_notify_bytes = bytes
+                    self.tg.send_message(f"⬆️  Mempool growing! Currently {mb}MB")
+                elif mb < ((self.last_notify_bytes/MB_BYTES) - self.delta_mb):
+                    self.last_notify_bytes = bytes
+                    self.tg.send_message(f"⬇️  Mempool shrinking! Currently {mb}MB")
+            elif self.on_channel_confirmed:
+                for channel in self.pending_channels:
+                    tx_status = mp.check_tx(chan.chanel_point.split(":")[0])
+                    if tx_status["confirmed"]:
+                        conf_block_height = int(tx_status["block_height"])
+                        tip = int(mp.get_tip_height())
+                        diff = tip - conf_block_height + 1
+                        if diff == 0:
+                            self.tg.send_message(f"✅ Channel confirmed...")
+                        elif diff == 6:
+                            self.tg.send_message(f"✅ Channel active...")
 
 class TelegramListener:
     """

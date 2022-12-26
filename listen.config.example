@@ -19,8 +19,18 @@ actions = invoice report
 
 [MEMPOOL_NOTIFY]
 execute = 0
+# get a notice when the mempool clears
+on_mempool_empty = 1
+# the number of mb in memppol to consider "cleared"
 mempool_empty_mb = 3
+
+# get a notice when the mempool size grows or shirks
+on_mempool_change = 1
+# the number of mb change (delta) since last notification was sent
 mempool_delta_mb = 10
+
+# get a notice when a channel opening transaction confirms
+on_channel_confirmed = 1
 
 [FUNDING_NOTIFY]
 execute = 0

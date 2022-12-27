@@ -120,7 +120,7 @@ class SinkSource:
         self.source_loop_out_attempts = int(strategy_config['source_loop_out_attempts']) if not mock else None
         self.min_onchain_balance = int(strategy_config['min_onchain_balance']) if not mock else int(mock_state['min_onchain_balance'])
         self.mempool_fee = strategy_config['mempool_fee'] if not mock else None
-
+        self.mempool_fee_factor = float(strategy_config['mempool_fee_factor']) if not mock else None
         self.mempool = Mempool(CREDS["MEMPOOL"], self.log) if not mock else None
         self.confirmed = self.node.get_onchain_balance() if not mock else int(mock_state['confirmed'])
         self.unconfirmed = self.node.get_unconfirmed_balance() if not mock else int(mock_state['unconfirmed'])
@@ -131,7 +131,7 @@ class SinkSource:
         self.num_source_channels = len(self.source_channels) if not mock else int(mock_state['num_source_channels'])
         self.pending_sink_channels = filter(lambda x: x['channel']['remote_node_pub'] == self.sink_pub, self.node.get_pending_channel_opens()) if not mock else None
         self.source_account_balance = self.source.get_account_balance() if not mock else int(mock_state['source_account_balance'])
-        self.sat_per_vbyte = int(self.mempool.get_fee()[self.mempool_fee]) if not mock else int(mock_state['sat_per_vbyte'])
+        self.sat_per_vbyte = int(self.mempool.get_fee()[self.mempool_fee] * self.mempool_fee_factor) if not mock else int(mock_state['sat_per_vbyte'])
         self.max_sat_per_vbyte = int(strategy_config['max_sat_per_vbyte']) if not mock else int(mock_state['max_sat_per_vbyte'])
 
         self.sink_channel_template = ChannelTemplate(

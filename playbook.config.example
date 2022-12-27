@@ -42,8 +42,12 @@ min_onchain_balance = 200_000
 #     options: minimumFee|economyFee|hourFee|halfHourFee|fastestFee
 mempool_fee = fastestFee
 
+# a factor to multiply the sat/vbyte fee returned from mempool_fee
+#     e.x. to outbid by 5% use 1.05 with fastestFee 
+mempool_fee_factor = 1.00
+
 # specify the maximum fee to pay for opening channels
-#   if mempool_fee returns a higher value no channels will be opened/closed
+#   if mempool_fee returns a higher value no
 max_sat_per_vbyte = 10
 
 # pubkey of the source node - you must already have this channel open

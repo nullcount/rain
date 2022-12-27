@@ -117,6 +117,7 @@ class SinkSource:
         self.source_close_ratio = float(strategy_config['source_close_ratio']) if not mock else int(mock_state['source_close_ratio'])
         self.source_loop_out_amount = int(strategy_config['source_loop_out_amount']) if not mock else None
         self.source_loop_out_backoff = float(strategy_config['source_loop_out_backoff']) if not mock else None
+        self.source_loop_out_attempts = int(strategy_config['source_loop_out_attempts']) if not mock else None
         self.min_onchain_balance = int(strategy_config['min_onchain_balance']) if not mock else int(mock_state['min_onchain_balance'])
         self.mempool_fee = strategy_config['mempool_fee'] if not mock else None
 
@@ -251,11 +252,8 @@ class SinkSource:
                 self.notify(self.log_msg_map['avoid_close_fee_too_large'])
 
     def try_drain_source_channel(self):
-        attempts = 3
-        for i in range(attempts):
+        for i in range(self.source_loop_out_attempts):
             invoice_amount = int(self.source_loop_out_amount * (self.source_loop_out_backoff ** i))
-            # if self.source_channel_local_sats < invoice_amount:
-            #     invoice_amount = self.source_channel_local_sats - self.source_channels_local_reserve_sats
             bolt11_invoice = self.source.get_lightning_invoice(invoice_amount)
             payment_response = self.node.pay_invoice(bolt11_invoice)
             if not payment_response.payment_error:

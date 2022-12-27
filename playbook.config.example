@@ -60,6 +60,7 @@ source_fee_ppm = 2
 source_close_ratio = 0.0
 source_loop_out_amount = 8_000_000
 source_loop_out_backoff = 0.98
+source_loop_out_attempts = 3
 
 # pubkey of the sink node
 #     this strategy will open channels, and optionally close them 

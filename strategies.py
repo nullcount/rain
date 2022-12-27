@@ -244,7 +244,7 @@ class SinkSource:
                 self.notify(self.log_msg_map['avoid_close_fee_too_large'])
 
     def try_close_empty_sink_channels(self):
-        for chan in self.sink_channels:
+        for chan in self.sink_channels_to_close:
             if self.is_chain_fee_in_budget():
                 self.node.close_channel(chan.chan_id, self.sat_per_vbyte)
             else:

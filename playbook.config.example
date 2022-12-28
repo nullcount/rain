@@ -46,8 +46,7 @@ mempool_fee = fastestFee
 #     e.x. to outbid by 5% use 1.05 with fastestFee 
 mempool_fee_factor = 1.00
 
-# specify the maximum fee to pay for opening channels
-#   if mempool_fee returns a higher value no
+# specify the maximum fee to pay for onchain transactions
 max_sat_per_vbyte = 10
 
 # pubkey of the source node - you must already have this channel open

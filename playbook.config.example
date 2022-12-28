@@ -42,8 +42,11 @@ min_onchain_balance = 200_000
 #     options: minimumFee|economyFee|hourFee|halfHourFee|fastestFee
 mempool_fee = fastestFee
 
-# specify the maximum fee to pay for opening channels
-#   if mempool_fee returns a higher value no channels will be opened/closed
+# a factor to multiply the sat/vbyte fee returned from mempool_fee
+#     e.x. to outbid by 5% use 1.05 with fastestFee 
+mempool_fee_factor = 1.00
+
+# specify the maximum fee to pay for onchain transactions
 max_sat_per_vbyte = 10
 
 # pubkey of the source node - you must already have this channel open
@@ -60,6 +63,7 @@ source_fee_ppm = 2
 source_close_ratio = 0.0
 source_loop_out_amount = 8_000_000
 source_loop_out_backoff = 0.98
+source_loop_out_attempts = 3
 
 # pubkey of the sink node
 #     this strategy will open channels, and optionally close them 

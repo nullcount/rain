@@ -13,7 +13,6 @@ def get_midpoint(bounds):
 
 class Muun:
     def __init__(self, MUUN_CRED, log):
-        print(f"muun thinks {log.filename}")
         self.log = log
         self.log_msg_map = {
             "get_onchain_address": lambda addr: f"muun deposit address: {addr}",

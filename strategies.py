@@ -91,7 +91,6 @@ class SinkSource:
             "nicehash": Nicehash,
             "muun": Muun
         }
-        print(log.filename)
         self.source = source_map[strategy_config['source']](CREDS[strategy_config['source_config']], log) if not mock else None
         self.node: Lnd = node if not mock else None
         self.log = log.info if not mock else print
@@ -204,6 +203,7 @@ class SinkSource:
         self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN = \
             self.sats_required_for_source_channel \
             < self.sats_spendable_onchain
+        self.HAS_EMPTY_SINK_CHANNELS = len(self.sink_channels_to_close) > 0 if not mock else mock_state["HAS_EMPTY_SINK_CHANNELS"]
         self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_SINK_CHANNELS = \
             self.sats_spendable_onchain + self.sink_channel_local_sats \
             >= self.source_channel_capacity
@@ -211,7 +211,8 @@ class SinkSource:
             self.sats_spendable_onchain + self.source_account_balance \
             >= self.source_channel_capacity
         self.HAS_ENOUGH_SINK_CHANNELS = \
-            self.num_sink_channels >= self.sink_channel_count
+            (self.num_sink_channels - len(self.sink_channels_to_close)) \
+            >= self.sink_channel_count
         self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN = \
             self.sink_channel_capacity \
             < self.sats_spendable_onchain
@@ -227,6 +228,7 @@ class SinkSource:
         print(f"HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_SINK_CHANNELS: {self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_SINK_CHANNELS}")
         print(f"HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT: {self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT}")
         print(f"HAS_ENOUGH_SINK_CHANNELS: {self.HAS_ENOUGH_SINK_CHANNELS}")
+        print(f"HAS_EMPTY_SINK_CHANNELS: {self.HAS_EMPTY_SINK_CHANNELS}")
         print(f"HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN: {self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN}")
         print(f"HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_SOURCE_CHANNELS: {self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_SOURCE_CHANNELS}")
         print(f"HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT: {self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT}")
@@ -236,13 +238,6 @@ class SinkSource:
 
     def is_chain_fee_in_budget(self):
         return self.max_sat_per_vbyte > self.sat_per_vbyte
-
-    def try_close_empty_source_channels(self):
-        for chan in self.source_channels_to_close:
-            if self.is_chain_fee_in_budget():
-                self.node.close_channel(chan.chan_id, self.sat_per_vbyte)
-            else:
-                self.notify(self.log_msg_map['avoid_close_fee_too_large'])
 
     def try_close_empty_sink_channels(self):
         for chan in self.sink_channels_to_close:
@@ -306,7 +301,6 @@ class SinkSource:
     def run_jobs(self, jobs):
         print(jobs)
         map = {
-            "TRY_CLOSE_EMPTY_SOURCE_CHANNELS": self.try_close_empty_source_channels,
             "TRY_CLOSE_EMPTY_SINK_CHANNELS": self.try_close_empty_sink_channels,
             "TRY_OPEN_SOURCE_CHANNEL": self.try_open_source_channel,
             "TRY_OPEN_SINK_CHANNEL": self.try_open_sink_channel,
@@ -314,27 +308,36 @@ class SinkSource:
             "TRY_HARVEST_SINK_CHANNELS": self.try_harvest_sink_channels,
             "SOURCE_ACCOUNT_SEND_ONCHAIN": self.source_account_send_onchain,
         }
-        for key in map:
-            if key in jobs:
-                map[key]()
+        for key in jobs:
+            map[key]()
 
     def execute(self):
         jobs = []
-        if self.HAS_ENOUGH_SOURCE_CHANNELS:
-            jobs.append("TRY_CLOSE_EMPTY_SOURCE_CHANNELS")
-            if self.HAS_ENOUGH_SINK_CHANNELS:
-                jobs.append("TRY_CLOSE_EMPTY_SINK_CHANNELS")
-            elif self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN:
-                jobs.append("TRY_OPEN_SINK_CHANNEL")
-            elif self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT:
-                jobs.append("SOURCE_ACCOUNT_SEND_ONCHAIN")
-            elif self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_SOURCE_CHANNELS:
-                jobs.append("TRY_DRAIN_SOURCE_CHANNEL")
-        elif self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN:
-            jobs.append("TRY_OPEN_SOURCE_CHANNEL")
-        elif self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT:
+        if self.HAS_ENOUGH_SOURCE_CHANNELS and self.HAS_EMPTY_SINK_CHANNELS:
+            jobs.append("TRY_CLOSE_EMPTY_SINK_CHANNELS")
+
+        if not self.HAS_ENOUGH_SINK_CHANNELS and \
+                self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN:
+            jobs.append("TRY_OPEN_SINK_CHANNEL")
+
+        if not self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN and \
+                self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT:
             jobs.append("SOURCE_ACCOUNT_SEND_ONCHAIN")
-        elif self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_SINK_CHANNELS:
+
+        if not self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT and \
+                self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_SOURCE_CHANNELS:
+            jobs.append("TRY_DRAIN_SOURCE_CHANNEL")
+
+        if not self.HAS_ENOUGH_SOURCE_CHANNELS and \
+                self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN:
+            jobs.append("TRY_OPEN_SOURCE_CHANNEL")
+
+        if not self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN and \
+                self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT:
+            jobs.append("SOURCE_ACCOUNT_SEND_ONCHAIN")
+
+        if not self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT and \
+                self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_SINK_CHANNELS:
             jobs.append("TRY_HARVEST_SINK_CHANNELS")
 
         self.log(f"Execution results in: {', '.join(jobs)}")

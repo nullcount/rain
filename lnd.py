@@ -113,8 +113,12 @@ class Lnd:
     def add_peer(self, pubkey, address):
         ln_addr = ln.LightningAddress(pubkey=pubkey, host=address)
         connectRequest = ln.ConnectPeerRequest(addr=ln_addr)
-        res = self.stub.ConnectPeer(connectRequest)
-        self.log.info("LND connected to peer {}@{}".format(pubkey, address))
+        res = None
+        try:
+            res = self.stub.ConnectPeer(connectRequest)
+            self.log.info(f"LND connected to peer {pubkey}@{address}")
+        except grpc._channel._InactiveRpcError as e:
+            self.log.notify(f"An error occurred while adding peer: {e}")
         return res
 
     def get_node_info(self, nodepubkey):
@@ -269,10 +273,17 @@ class Lnd:
         return send_response
 
     def open_channel(self, channel: ChannelTemplate):
+        channel_point = None
         if not self.is_peer_with(channel.node_pubkey):
             self.add_peer(channel.node_pubkey, channel.address)
-        channel_point = self.stub.OpenChannelSync(channel.get_open_req())
-        self.log.info(f"LND open channel {channel.local_funding_amount} sats with peer: {channel.node_pubkey}")
+        try:
+            channel_point = self.stub.OpenChannelSync(channel.get_open_req())
+            self.log.info(f"LND open channel {channel.local_funding_amount} sats with peer: {channel.node_pubkey}")
+        except grpc._channel._InactiveRpcError as e:
+            if "Number of pending channels exceed maximum" in e.debug_error_string(): 
+                return channel_point # done for now
+            else:
+                self.log.notify(f"An error occurred while opening channel: {e}")
         return channel_point
 
     def close_channel(self, chan_id, sat_per_vbyte, force=False, target_conf=None, delivery_address=None):

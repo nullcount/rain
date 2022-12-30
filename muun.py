@@ -41,12 +41,6 @@ class Muun:
         else:
             print("wallet initialized")
 
-    def muun_request(self):
-        return
-
-    def check_errors(self, response, payload, endpoint):
-        return
-
     def get_onchain_address(self):
         return
 
@@ -112,9 +106,14 @@ class Muun:
     def get_account_balance(self):
         self.log.info("Getting (potentially inaccurate) balance...")
         self.restart_app()
+        sleep(2) # my phone is slow
         screen = self.get_screen_layout()
         balance_obj = screen.find("node", element_dict["balance"])
-        balance = int(float(balance_obj["text"].replace(",", "")) * 1e6)
+        balance = None
+        try:
+            balance = int(float(balance_obj["text"].replace(",", "")) * 1e6)
+        except TypeError:
+            self.log.notify("Err! Could not read balance from Muun. Check your android device!")
         return balance
 
     def get_lightning_invoice(self, sats):

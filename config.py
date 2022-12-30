@@ -26,8 +26,8 @@ listen_map = {
 }
 
 CREDS = Config('creds.config').config
-PLAYBOOK = Config('playbook.config.example').config
-LISTEN = Config('listen.config.example').config
+PLAYBOOK = Config('playbook.config').config
+LISTEN = Config('listen.config').config
 
 LISTEN_LOG = Logger("logs/listen.log", CREDS['TELEGRAM'])
 PLAYBOOK_LOG = Logger("logs/play.log", CREDS['TELEGRAM'])

@@ -82,6 +82,106 @@ class FeeMatch:
                 self.log.info("Broadcasting new channel policy!")
                 self.node.update_chan_policy(chan.chan_id, new_policy)
 
+class SourceChannel:
+    def __init__(self, strategy_config=None, DEFAULT=None, CREDS=None, node: Lnd = None, log=None, mock=False, mockState=None):
+        swap_providers = {
+            "kraken": Kraken,
+            "nicehash": Nicehash,
+            "muun": Muun
+        }
+        self.source = swap_providers[strategy_config['source']](CREDS[strategy_config['source_config']], log) if not mock else None
+        self.node: Lnd = node if not mock else None
+        self.log = log.info if not mock else print
+        self.notify = log.notify if not mock else print
+        self.mock = mock  # True if this is a test
+        self.source_fee_ppm = int(strategy_config['source_fee_ppm']) if not mock else 10_000
+        self.source_host = strategy_config['source_host'] if not mock else None
+        self.source_pub = strategy_config['source_pub'] if not mock else None
+        self.source_budget = int(strategy_config['source_budget']) if not mock else int(mock_state['source_budget'])
+        self.source_channel_count = int(strategy_config['source_channel_count']) if not mock else int(mock_state['source_channel_count'])
+        self.source_channel_capacity = 0
+        try:
+            self.source_channel_capacity = self.source_budget / self.source_channel_count
+        except ZeroDivisionError:
+            self.log("There are no source channels")
+        self.source_close_ratio = float(strategy_config['source_close_ratio']) if not mock else int(mock_state['source_close_ratio'])
+        self.source_loop_out_amount = int(strategy_config['source_loop_out_amount']) if not mock else None
+        self.source_loop_out_backoff = float(strategy_config['source_loop_out_backoff']) if not mock else None
+        self.source_loop_out_attempts = int(strategy_config['source_loop_out_attempts']) if not mock else None
+        self.source_channel_template = ChannelTemplate(
+            sat_per_vbyte=self.sat_per_vbyte,
+            node_pubkey=self.source_pub,
+            local_funding_amount=self.source_channel_capacity,
+            base_fee=0,  # zerobasefee
+            fee_rate=self.source_fee_ppm,
+            address=self.source_host,
+            min_htlc_sat=1000,
+            spend_unconfirmed=True
+        )
+        self.sats_required_for_source_channel = \
+            self.source_channel_capacity + \
+            self.min_onchain_balance
+
+        self.source_channel_local_sats = 0.0
+        self.source_channels_local_reserve_sats = 0.0
+        self.source_channels_to_close = []
+        if not mock:
+            for chan in self.source_channels:
+                if float(chan.local_balance / chan.capacity) < self.source_close_ratio:
+                    self.source_channels_to_close.append(chan.chan_id)
+                self.source_channel_local_sats += chan.local_balance
+                self.source_channels_local_reserve_sats += chan.local_chan_reserve_sat
+        else:
+            self.source_channel_local_sats = float(mock_state['source_channels_local_sats'])
+            self.source_channels_local_reserve_sats = 0.0
+        self.sats_spendable_onchain = self.confirmed + self.unconfirmed - self.min_onchain_balance
+        self.HAS_ENOUGH_SOURCE_CHANNELS = \
+            self.num_source_channels >= self.source_channel_count
+        self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN = \
+            self.sats_required_for_source_channel \
+            < self.sats_spendable_onchain
+        self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_SINK_CHANNELS = \
+            self.sats_spendable_onchain + self.sink_channel_local_sats \
+            >= self.source_channel_capacity
+        self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT = \
+            self.sats_spendable_onchain + self.source_account_balance \
+            >= self.source_channel_capacity
+    
+    def run_jobs(self, jobs):
+        print(jobs)
+        map = {
+            "TRY_OPEN_SOURCE_CHANNEL": self.try_open_source_channel,
+            "TRY_DRAIN_SOURCE_CHANNEL": self.try_drain_source_channel,
+            "SOURCE_ACCOUNT_SEND_ONCHAIN": self.source_account_send_onchain,
+        }
+        for key in jobs:
+            map[key]()
+
+    def execute(self):
+        jobs = []
+        if not self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN and \
+                self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT:
+            jobs.append("SOURCE_ACCOUNT_SEND_ONCHAIN")
+
+        if not self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT and \
+                self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_SOURCE_CHANNELS:
+            jobs.append("TRY_DRAIN_SOURCE_CHANNEL")
+
+        if not self.HAS_ENOUGH_SOURCE_CHANNELS and \
+                self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN:
+            jobs.append("TRY_OPEN_SOURCE_CHANNEL")
+
+        if not self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN and \
+                self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT:
+            jobs.append("SOURCE_ACCOUNT_SEND_ONCHAIN")
+
+        self.log(f"Execution results in: {', '.join(jobs)}")
+        if self.mock:
+            return jobs
+        else:
+            self.run_jobs(jobs)
+        self.log("Finished execution of sink/source strategy")
+
 
 class SinkSource:
     def __init__(self, strategy_config=None, DEFAULT=None, CREDS=None, node: Lnd = None, log=None, mock=False,

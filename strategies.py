@@ -203,14 +203,14 @@ class SinkSource:
         self.source_fee_ppm = int(strategy_config['source_fee_ppm']) if not mock else 10_000
         self.sink_close_ratio = float(strategy_config['sink_close_ratio']) if not mock else float(mock_state['sink_close_ratio'])
         self.sink_channel_count = int(strategy_config['sink_channel_count']) if not mock else int(mock_state['sink_channel_count'])
-        self.sink_channel_capacity = self.sink_budget / self.sink_channel_count
+        self.sink_channel_capacity = int(self.sink_budget / self.sink_channel_count)
         self.source_host = strategy_config['source_host'] if not mock else None
         self.source_pub = strategy_config['source_pub'] if not mock else None
         self.source_budget = int(strategy_config['source_budget']) if not mock else int(mock_state['source_budget'])
         self.source_channel_count = int(strategy_config['source_channel_count']) if not mock else int(mock_state['source_channel_count'])
         self.source_channel_capacity = 0
         try:
-            self.source_channel_capacity = self.source_budget / self.source_channel_count
+            self.source_channel_capacity = int(self.source_budget / self.source_channel_count)
         except ZeroDivisionError:
             self.log("There are no source channels")
         self.source_close_ratio = float(strategy_config['source_close_ratio']) if not mock else int(mock_state['source_close_ratio'])
@@ -255,13 +255,6 @@ class SinkSource:
             spend_unconfirmed=True
         )
 
-        self.sats_required_for_sink_channel = \
-            self.source_channel_capacity + \
-            self.min_onchain_balance
-        self.sats_required_for_source_channel = \
-            self.source_channel_capacity + \
-            self.min_onchain_balance
-
         self.source_channel_local_sats = 0.0
         self.source_channels_local_reserve_sats = 0.0
 
@@ -301,7 +294,7 @@ class SinkSource:
         self.HAS_ENOUGH_SOURCE_CHANNELS = \
             self.num_source_channels >= self.source_channel_count
         self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN = \
-            self.sats_required_for_source_channel \
+            self.source_channel_capacity \
             < self.sats_spendable_onchain
         self.HAS_EMPTY_SINK_CHANNELS = len(self.sink_channels_to_close) > 0 if not mock else mock_state["HAS_EMPTY_SINK_CHANNELS"]
         self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_SINK_CHANNELS = \
@@ -362,8 +355,8 @@ class SinkSource:
         chans_to_harvest = []
         sorted_chans = sorted(self.sink_channels, key=lambda x: x.capacity, reverse=True)
         sats_so_far = 0
-        sats_needed_for_source_channel = self.sats_required_for_source_channel \
-                                         - (self.confirmed + self.unconfirmed)
+        sats_needed_for_source_channel = self.source_channel_capacity \
+                                         - self.sats_spendable_onchain
         for chan in sorted_chans:
             sats_so_far += chan.capacity
             chans_to_harvest.append(chan.chan_id)
@@ -378,7 +371,7 @@ class SinkSource:
     def notify_need_more_sats(self):
         sats_found = self.confirmed + self.unconfirmed + \
                     self.source_account_balance - self.min_onchain_balance
-        sats_needed = self.sats_required_for_sink_channel - sats_found
+        sats_needed = self.sink_channel_capacity - sats_found
         self.notify(self.log_msg_map['notify_need_more_sats'](sats_found, sats_needed))
 
     def try_open_sink_channel(self):
@@ -409,7 +402,10 @@ class SinkSource:
             "SOURCE_ACCOUNT_SEND_ONCHAIN": self.source_account_send_onchain,
         }
         for key in jobs:
-            map[key]()
+            if key == "TRY_OPEN_SOURCE_CHANNEL":
+                map[key]()
+            else:
+                self.notify(f"New Job!!! {key}")
 
     def execute(self):
         jobs = []
@@ -417,6 +413,7 @@ class SinkSource:
             jobs.append("TRY_CLOSE_EMPTY_SINK_CHANNELS")
 
         if not self.HAS_ENOUGH_SINK_CHANNELS and \
+                self.HAS_ENOUGH_SOURCE_CHANNELS and \
                 self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN:
             jobs.append("TRY_OPEN_SINK_CHANNEL")
 

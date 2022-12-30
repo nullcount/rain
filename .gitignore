@@ -2,8 +2,8 @@
 csv/*.csv
 logs/*.log
 creds.config
-playbook/config
-monitor.config
+playbook.config
+listen.config
 *__pycache__/
 venv
 .venv

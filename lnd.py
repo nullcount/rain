@@ -256,8 +256,13 @@ class Lnd:
         decoded = self.stub.DecodePayReq(request)
         return decoded
 
-    def pay_invoice(self, invoice_string):
-        send_request = ln.SendRequest(payment_request=invoice_string)
+    def pay_invoice(self, invoice_string, outgoing_chan_id=None, fee_limit=60000):  # ~$10 atm of writing
+        args = {"payment_request": invoice_string}
+        if outgoing_chan_id:
+            args["outgoing_chan_id"] = outgoing_chan_id
+        if fee_limit:
+            args["fee_limit"] = fee_limit
+        send_request = ln.SendRequest(**args)
         send_response = self.stub.SendPaymentSync(send_request)
         self.log.info(f"LND pay invoice response: {send_response}")
         return send_response

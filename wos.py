@@ -10,8 +10,8 @@ import urllib.parse as urlparse
 from urllib.parse import urlencode
 
 
-class wos:
-    def __init__(self):
+class Wos:
+    def __init__(self, WOS_CRED, log):
         self.session = requests.Session()
         self.base_url = "https://www.livingroomofsatoshi.com"
         self.conn = None
@@ -21,6 +21,14 @@ class wos:
         if not self.wallet:
             self.create_account()
         print(self.get_account_balance())
+
+    def wos_request(self, ext, data_str: str, sign: bool):
+        path_url = self.base_url + ext
+        if sign and data_str:
+            self.sign_session(ext, data_str)
+        resp_json = self.session.post(path_url, data=data_str.encode("utf-8")).json()
+        self.unsign_session()
+        return resp_json
 
     def load_wallet(self):
         cur = self.conn.cursor()
@@ -58,8 +66,8 @@ class wos:
         })
 
     def unsign_session(self):
-        self.session.headers.pop("signature")
-        self.session.headers.pop("nonce")
+        self.session.headers.pop("signature", None)
+        self.session.headers.pop("nonce", None)
 
     def insert_update_auth_data(self, json):
         api_secret = json["apiSecret"]
@@ -91,24 +99,18 @@ class wos:
         _sum = sum(map(float, [json[kwarg] for kwarg in ["btc", "lightning", "btcUnconfirmed"]]))
         return json["btc"], json["lightning"], json["btcUnconfirmed"]
 
-    def pay_invoice(self, invoice, amount_btc):
+    def pay_invoice(self, invoice: str, amount_btc: float):
         ext = "/api/v1/wallet/payment"
-        path_url = self.base_url + ext
         data_str = '{"address":"%s","currency":"LIGHTNING","amount":%d,"sendMaxLightning":true,"description":""}' % invoice, amount_btc
-        self.sign_session(ext, data_str)
-        resp_json = self.session.post(path_url, data=data_str.encode("utf-8")).json()
-        self.unsign_session()
+        resp_json = self.wos_request(ext, str(data_str), sign=True)
         status = resp_json["status"]
         tx_id = resp_json["transactionId"]
         return status == "PAID", tx_id
 
     def get_lightning_invoice(self, sats):
         ext = "/api/v1/wallet/createInvoice"
-        path_url = self.base_url + ext
         data_str = '{"amount":%d,"description":"Wallet of Satoshi"}' % sats
-        self.sign_session(ext, data_str)
-        resp_json = self.session.post(path_url, data=data_str.encode("utf-8")).json()
-        self.unsign_session()
+        resp_json = self.wos_request(ext, data_str, sign=True)
         invoice = resp_json["invoice"]
         return invoice
 
@@ -123,49 +125,8 @@ class wos:
 
     def send_onchain(self, address: str, amount_btc: float):
         ext = "/api/v1/wallet/payment"
-        path_url = self.base_url + ext
         data_str = '{"address":"%s","currency":"BTC","amount":%d,"sendMaxLightning":true,"description":null}' % address, amount_btc
-        self.sign_session(ext, data_str)
-        resp_json = self.session.post(path_url, data=data_str.encode("utf-8")).json()
-        self.unsign_session()
+        resp_json = self.wos_request(ext, str(data_str), sign=True)
         status = resp_json["status"]
         tx_id = resp_json["transactionId"]
         return status == "PAID", tx_id
-
-
-# {
-#   "address": "",
-#   "amount": 0.00000000, # BTC denominated
-#   "currency": "BTC",
-#   "fees": 0.00007,
-#   "id": "d41a4b53-00b7-49c1-99b8-ebb7194d9e7e",
-#   "paymentGroupId": "5f1ceaf2-9ba2-4683-a336-9731168fc96c",
-#   "status": "PAID",
-#   "transactionId": "30d3c35a37a392cbf39f09fb6560b5e9f09fdafc670744b4389ed20b10daa045",
-#   "type": "DEBIT"
-# }
-
-
-def sign_test():
-    test_signature = "b8309afc5c1d1092e420c6cf4e6d3a1bbbb5e9a9322993f303f6937d6fbeebda"
-    ext = "/api/v1/wallet/createInvoice"
-    api_secret = "YEqN3K9tXuHtmZ52EvJ4TkWMhhnGXPaL"
-    api_token = "6b84d506-42c5-488b-b087-c595a93569be"
-    nonce = "1672959120211"
-    params = '{"amount":%d,"description":"Wallet of Satoshi"}' % 0
-    hmac_key = api_secret.encode("utf-8")
-    m = ext + nonce + api_token + params
-    computed = hmac.new(hmac_key, m.encode('utf-8'), digestmod=hashlib.sha256).hexdigest()
-    print(test_signature)
-    print(computed)
-
-
-def main():
-    obj = wos()
-    # print(obj.estimate_onchain_fee())
-    # print(obj.get_lightning_invoice(0))
-    # sign_test()
-
-
-if __name__ == '__main__':
-    main()

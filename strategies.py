@@ -317,8 +317,8 @@ class SinkSource:
                 self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN:
             jobs.append("TRY_OPEN_SINK_CHANNEL")
 
-        if not self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN and \
-                self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT:
+        if (not self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_ONCHAIN and self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT) or (
+                not self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN and self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT):
             jobs.append("SOURCE_ACCOUNT_SEND_ONCHAIN")
 
         if not self.HAS_ENOUGH_SATS_FOR_SINK_CHANNEL_IN_ACCOUNT and \
@@ -328,10 +328,6 @@ class SinkSource:
         if not self.HAS_ENOUGH_SOURCE_CHANNELS and \
                 self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN:
             jobs.append("TRY_OPEN_SOURCE_CHANNEL")
-
-        if not self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_ONCHAIN and \
-                self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT:
-            jobs.append("SOURCE_ACCOUNT_SEND_ONCHAIN")
 
         if not self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_ACCOUNT and \
                 self.HAS_ENOUGH_SATS_FOR_SOURCE_CHANNEL_IN_SINK_CHANNELS:

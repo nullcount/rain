@@ -1,8 +1,11 @@
 import configparser
-from lnd import Lnd
-from strategies import FeeMatch, SinkSource
-from listeners import FundingListener, MempoolListener, HtlcStreamLogger, TelegramListener
+from listeners import FundingListenerConfig, FundingListener, MempoolListenerConfig, MempoolListener, HtlcStreamLoggerConfig, HtlcStreamLogger
+from channels import SinkNodeConfig, SinkNodeState, SinkNodeManager, SourceNodeConfig, SourceNodeState, SourceNodeManager
 from notify import Logger
+from kraken import Kraken, KrakenCreds
+from nicehash import Nicehash, NicehashCreds
+from muun import Muun, MuunCreds
+from telegram import TelegramCreds
 
 
 class Config:
@@ -37,24 +40,55 @@ class SwapMethod:
         raise NotImplementedError
 
 
-node_map = {
-    "LND": Lnd
+swap_methods = {
+    "KRAKEN": {
+        'creds': KrakenCreds,
+        'operator': Kraken
+    },
+    "NICEHASH": {
+        'creds': NicehashCreds,
+        'operator': Nicehash
+    },
+    "MUUN": {
+        'creds': MuunCreds,
+        'operator': Muun
+    }
 }
-strategy_map = {
-    'sink-source': SinkSource,
-    'fee-match': FeeMatch
+
+listen_methods = {
+    'HTLC_STREAM_LOGGER': {
+        'config': HtlcStreamLoggerConfig,
+        'listener': HtlcStreamLogger
+    },
+    "MEMPOOL_NOTIFY": {
+        'config': MempoolListenerConfig,
+        'listener': MempoolListener
+    },
+    "FUNDING_NOTIFY": {
+        'config': FundingListenerConfig,
+        'listener': FundingListener
+    }
 }
-listen_map = {
-    'HTLC_STREAM_LOGGER': HtlcStreamLogger,
-    "TELEGRAM_ACTIONS": TelegramListener,
-    "MEMPOOL_NOTIFY": MempoolListener,
-    "FUNDING_NOTIFY": FundingListener
+
+channel_managers = {
+    'SINK': {
+        'config': SinkNodeConfig,
+        'state': SinkNodeState,
+        'operator': SinkNodeManager
+    },
+    'SOURCE': {
+        'config': SourceNodeConfig,
+        'state': SourceNodeState,
+        'operator': SourceNodeManager
+    }
 }
+
 
 CREDS = Config('creds.config').config
-PLAYBOOK = Config('playbook.config').config
-LISTEN = Config('listen.config').config
+LISTEN_CONFIG = Config('listen.config').config
+CHANNELS_CONFIG = Config('channels.config').config
 
-LISTEN_LOG = Logger("logs/listen.log", CREDS['TELEGRAM'])
-PLAYBOOK_LOG = Logger("logs/play.log", CREDS['TELEGRAM'])
-RUN_LOG = Logger("logs/run.log", CREDS['TELEGRAM'])
+tg_creds = TelegramCreds(CREDS['TELEGRAM']['api_token'], CREDS['TELEGRAM']['chat_id'])
+
+PLAY_LOG = Logger("logs/play.log", tg_creds)
+LISTEN_LOG = Logger('logs/listen.log', tg_creds)

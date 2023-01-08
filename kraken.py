@@ -14,10 +14,10 @@ MAX_LN_DEPOSIT = COIN_SATS
 
 
 class KrakenCreds:
-    def __init__(self, api_key: str, api_secret: str, funding_key: str):
-        self.api_key = api_key
-        self.api_secret = api_secret
-        self.funding_key = funding_key
+    def __init__(self, creds: dict):
+        self.api_key = creds['api_key']
+        self.api_secret = creds['api_secret']
+        self.funding_key = creds['funding_key']
 
 
 class Kraken(SwapMethod):

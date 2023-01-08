@@ -15,11 +15,11 @@ MIN_LN_DEPOSIT = 1_001
 
 
 class NicehashCreds:
-    def __init__(self, api_key: str, api_secret: str, org_id: str, funding_key: str):
-        self.api_key = api_key
-        self.api_secret = api_secret
-        self.org_id = org_id
-        self.funding_key = funding_key
+    def __init__(self, creds: dict):
+        self.api_key = creds['api_key']
+        self.api_secret = creds['api_secret']
+        self.org_id = creds['org_id']
+        self.funding_key = creds['funding_key']
 
 
 class Nicehash(SwapMethod):

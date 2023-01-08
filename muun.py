@@ -14,9 +14,9 @@ def get_midpoint(bounds):
 
 
 class MuunCreds:
-    def __init__(self, device_name: str, widthdraw_address: str):
-        self.device_name = device_name
-        self.widthdraw_address = widthdraw_address
+    def __init__(self, creds: dict):
+        self.device_name = creds['device_name']
+        self.widthdraw_address = creds['widthdraw_address']
 
 
 class Muun(SwapMethod):

@@ -3,6 +3,7 @@ import json
 from mempool import Mempool
 from notify import Logger
 
+
 class RecordList:
     """Useful class for filtering a list of dicts"""
 
@@ -27,10 +28,10 @@ class RecordList:
 
 
 class LndgCreds:
-    def __init__(self, auth_user: str, auth_pass: str, api_url: str):
-        self.auth_user = auth_user
-        self.auth_pass = auth_pass
-        self.api_url = api_url
+    def __init__(self, creds: dict):
+        self.auth_user = creds['auth_user']
+        self.auth_pass = creds['auth_pass']
+        self.api_url = creds['api_url']
 
 
 class Lndg:

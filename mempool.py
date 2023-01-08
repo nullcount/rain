@@ -5,8 +5,8 @@ COIN_SATS = 100_000_000
 
 
 class MempoolCreds:
-    def __init__(self, api_url: str):
-        self.api_url = api_url
+    def __init__(self, creds: dict):
+        self.api_url = creds['api_url']
 
 
 class Mempool:

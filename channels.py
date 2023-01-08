@@ -162,7 +162,7 @@ class SourceNodeManager:
     def drain_channels(self):
         for chan_id in self.channels_to_loop_out:
             if not self.mock:
-                for i in range(self.state.config.source_loop_out_attempts):
+                for i in range(3):
                     invoice_amount = int(self.state.config.loop_out_amount * (self.state.config.loop_out_backoff ** i))
                     bolt11_invoice = self.state.swap_provider.get_lightning_invoice(invoice_amount)
                     payment_response = self.node.pay_invoice(bolt11_invoice)

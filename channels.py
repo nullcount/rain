@@ -81,7 +81,7 @@ class SinkNodeManager:
 
         self.channels_to_close = []  # for storing empty channels
         for chan in self.state.channels:
-            if float(chan.local_balance / chan.capacity) < self.source_close_ratio:
+            if float(chan.local_balance / chan.capacity) < self.close_ratio:
                 self.channels_to_close.append(chan.chan_id)
 
     def close_empty_channels(self):

@@ -190,7 +190,7 @@ class SourceNodeManager:
             jobs.append("OPEN_CHANNEL")
         if len(self.channels_to_drain) > 0:
             jobs.append("DRAIN_CHANNELS")
-        if self.state.config.max_account_balance > self.state.account_balance:
+        if self.state.config.max_account_balance < self.state.account_balance:
             jobs.append("ACCOUNT_SEND_ONCHAIN")
         return jobs
 

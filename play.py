@@ -38,11 +38,11 @@ def main():
 
             if strategy == "SOURCE":
                 source_config = Config(_config)
-                swap_method = source_config.swap_method.upper()
-                swap_creds = swap_methods[swap_method]['creds'](CREDS[swap_method])
-                operator = swap_methods[swap_method]['operator'](swap_creds, node, PLAY_LOG)
+                swap_method_name = source_config.swap_method.upper()
+                swap_creds = swap_methods[swap_method_name]['creds'](CREDS[swap_method_name])
+                swap_method = swap_methods[swap_method_name]['operator'](swap_creds, node, PLAY_LOG)
                 # get account balance
-                account_balance = operator.get_account_balance()
+                account_balance = swap_method.get_account_balance()
                 # create source chan state
                 source_state = State(channels=open_chans, sat_per_vbyte=sat_per_vbyte, account_balance=account_balance, config=source_config, swap_method=swap_method)
                 # create source chan operator

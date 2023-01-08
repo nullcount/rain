@@ -164,7 +164,7 @@ class SourceNodeManager:
             if not self.mock:
                 for i in range(3):
                     invoice_amount = int(self.state.config.loop_out_amount * (self.state.config.loop_out_backoff ** i))
-                    bolt11_invoice = self.state.swap_provider.get_lightning_invoice(invoice_amount)
+                    bolt11_invoice = self.state.swap_method.get_lightning_invoice(invoice_amount)
                     payment_response = self.node.pay_invoice(bolt11_invoice)
                     if not payment_response.payment_error:
                         break
@@ -180,7 +180,7 @@ class SourceNodeManager:
 
     def account_send_onchain(self):
         if not self.mock:
-            self.state.swap_provider.send_onchain(self.state.account_balance, self.state.sat_per_vbyte)
+            self.state.swap_method.send_onchain(self.state.account_balance, self.state.sat_per_vbyte)
         self.state.source_account_balance = 0
         return self.state
 

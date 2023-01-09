@@ -1,25 +1,26 @@
 import requests
-from os.path import join
-import sqlite3
 import time
-import base64
 import hmac
 import hashlib
-import json
-import urllib.parse as urlparse
-from urllib.parse import urlencode
+from json import dumps
+
+
+def create_wos_account():
+    base_url = "https://www.livingroomofsatoshi.com"
+    ext = "/api/v1/wallet/account"
+    data = {
+        "referrer": "walletofsatoshi"
+    }
+    json = requests.post(base_url + ext, json=data).json()
+    print(dumps(json, indent=2))
 
 
 class Wos:
     def __init__(self, WOS_CRED, log):
         self.session = requests.Session()
         self.base_url = "https://www.livingroomofsatoshi.com"
-        self.conn = None
-        self.init_db()
-        self.wallet = None
-        self.load_wallet()
-        if not self.wallet:
-            self.create_account()
+        self.wallet = WOS_CRED
+        self.session.headers.update({"api-token": self.wallet["apiToken"]})
         print(self.get_account_balance())
 
     def wos_request(self, ext, data_str: str, sign: bool):
@@ -29,26 +30,6 @@ class Wos:
         resp_json = self.session.post(path_url, data=data_str.encode("utf-8")).json()
         self.unsign_session()
         return resp_json
-
-    def load_wallet(self):
-        cur = self.conn.cursor()
-        cur.execute("SELECT apiSecret,apiToken,lightningAddress,btcDepositAddress FROM wallet")
-        rows = cur.fetchall()
-        if rows:
-            self.wallet = dict(zip(["apiSecret", "apiToken", "lightningAddress", "btcDepositAddress"], rows[0]))
-            self.session.headers.update({"api-token": self.wallet["apiToken"]})
-
-    def init_db(self):
-        db_file = "wos.db"
-        self.conn = sqlite3.connect(db_file)
-        sql_create_wallet_table = """CREATE TABLE IF NOT EXISTS wallet (
-                                        apiToken text PRIMARY KEY,
-                                        apiSecret text,
-                                        btcDepositAddress text,
-                                        lightningAddress text
-                                    );"""
-        c = self.conn.cursor()
-        c.execute(sql_create_wallet_table)
 
     def sign_session(self, ext, params):
         nonce = str(int(time.time() * 1000))
@@ -68,27 +49,6 @@ class Wos:
     def unsign_session(self):
         self.session.headers.pop("signature", None)
         self.session.headers.pop("nonce", None)
-
-    def insert_update_auth_data(self, json):
-        api_secret = json["apiSecret"]
-        api_token = json["apiToken"]
-        lightning_address = json["lightningAddress"]
-        bitcoin_address = json["btcDepositAddress"]
-        sql = ''' INSERT OR REPLACE INTO wallet (apiSecret,apiToken,btcDepositAddress,lightningAddress)
-                  VALUES(?,?,?,?) '''
-        cur = self.conn.cursor()
-        cur.execute(sql, (api_secret, api_token, bitcoin_address, lightning_address))
-        self.conn.commit()
-
-    def create_account(self):
-        ext = "/api/v1/wallet/account"
-        data = {
-            "referrer": "walletofsatoshi"
-        }
-        json = self.session.post(self.base_url + ext, json=data).json()
-        self.insert_update_auth_data(json)
-        self.load_wallet()
-        self.session.headers.update({"api-token": self.wallet["apiToken"]})
 
     def get_onchain_address(self):
         return self.wallet["btcDepositAddress"]

@@ -30,7 +30,14 @@ funding_key =
 #   withdrawl_address is an address for your node to recieve onchain from muun
 #   muun wallet must be already installed on the device
 device_name =
-withdraw_address = 
+withdraw_address =
+
+[WOS]
+# automate a WoS wallet via API calls
+apiSecret =
+apiToken =
+lightningAddress =
+btcDepositAddress =
 
 [TELEGRAM]
 # send yourself a telegram updates about your node using a bot

@@ -1,7 +1,8 @@
 from ppadb.client import Client as AdbClient
 from time import sleep
 from bs4 import BeautifulSoup as bs
-from config import SwapMethod
+from swap import SwapMethod
+from creds import MuunCreds
 from notify import Logger
 
 
@@ -11,12 +12,6 @@ def parse_bounds(bounds_str):
 
 def get_midpoint(bounds):
     return [(c1 + c2) / 2 for c1, c2 in zip(*bounds)]
-
-
-class MuunCreds:
-    def __init__(self, creds: dict):
-        self.device_name = creds['device_name']
-        self.widthdraw_address = creds['widthdraw_address']
 
 
 class Muun(SwapMethod):
@@ -38,7 +33,13 @@ class Muun(SwapMethod):
         if self.init_wallet():
             # change the denominated amount!!
             self.change_denomination()
+            sleep(1)
             self.get_backup_key()
+        # elif self.delete_wallet():
+        #     self.init_wallet()
+        #     self.change_denomination()
+        #     sleep(1)
+        #     self.get_backup_key()
         else:
             print("wallet initialized")
 
@@ -92,7 +93,7 @@ class Muun(SwapMethod):
     def get_account_balance(self):
         self.log.info("Getting (potentially inaccurate) balance...")
         self.restart_app()
-        sleep(2) # my phone is slow
+        sleep(2)  # my phone is slow
         screen = self.get_screen_layout()
         balance_obj = screen.find("node", element_dict["balance"])
         balance = None
@@ -164,7 +165,7 @@ class Muun(SwapMethod):
         if create_wallet_btn:
             self.log.info("Creating wallet....")
             self.tap(element_dict["create-wallet"])
-            sleep(2)
+            sleep(4)
             self.log.info("Doing a trick so we don't have to make a pin...")
             self.close_app()
             sleep(1)

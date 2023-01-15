@@ -1,15 +1,9 @@
 import requests
-from notify import Logger
-
-
-class TelegramCreds:
-    def __init__(self, api_token: str, chat_id: str):
-        self.api_token = api_token
-        self.chat_id = chat_id
+from creds import TelegramCreds
 
 
 class Telegram:
-    def __init__(self, creds: TelegramCreds, log: Logger):
+    def __init__(self, creds: TelegramCreds, log):
         self.creds = creds
         self.log = log
         self.last_update_id = None

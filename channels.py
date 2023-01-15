@@ -1,6 +1,4 @@
-from notify import Logger
 from lnd import Lnd, ChannelTemplate
-from config import SwapMethod
 
 
 class ChannelState:
@@ -54,7 +52,8 @@ class SinkNodeState:
 
 
 class SourceNodeState:
-    def __init__(self, channels: list[ChannelState], config: SourceNodeConfig, swap_method: SwapMethod, sat_per_vbyte: int, account_balance: int):
+    def __init__(self, channels: list[ChannelState], config: SourceNodeConfig, swap_method,
+                 sat_per_vbyte: int, account_balance: int):
         self.channels = channels
         self.sat_per_vbyte = sat_per_vbyte
         self.account_balance = account_balance
@@ -62,8 +61,11 @@ class SourceNodeState:
         self.swap_method = swap_method
 
 
+from notify import Logger
+
+
 class SinkNodeManager:
-    def __init__(self, state: SinkNodeState, node: Lnd=None, log: Logger=None, mock: bool=False):
+    def __init__(self, state: SinkNodeState, node: Lnd = None, log: Logger = None, mock: bool = False):
         self.node = node
         self.log = log
         self.mock = mock
@@ -99,7 +101,11 @@ class SinkNodeManager:
             self.log(f"Opening channel to {self.channel_template.node_pubkey}")
             if not self.mock:
                 self.node.open_channel(self.channel_template)
-            self.state.channels.append(ChannelState(chan_id='new-channel', capacity=self.channel_template.local_funding_amount, local_balance=self.channel_template.local_funding_amount - (0.01*self.channel_template.local_funding_amount), local_chan_reserve_sat=0.01*self.channel_template.local_funding_amount,))
+            self.state.channels.append(
+                ChannelState(chan_id='new-channel', capacity=self.channel_template.local_funding_amount,
+                             local_balance=self.channel_template.local_funding_amount - (
+                                         0.01 * self.channel_template.local_funding_amount),
+                             local_chan_reserve_sat=0.01 * self.channel_template.local_funding_amount, ))
         else:
             self.log.notify(f"Avoided opening a channel to {self.channel_template.node_pubkey}")
         return self.state
@@ -117,8 +123,8 @@ class SinkNodeManager:
         if not jobs:
             jobs = self.get_jobs()
         action_map = {
-                "CLOSE_EMPTY_CHANNELS": self.close_empty_channels,
-                "OPEN_CHANNEL": self.open_channel
+            "CLOSE_EMPTY_CHANNELS": self.close_empty_channels,
+            "OPEN_CHANNEL": self.open_channel
         }
         for job in jobs:
             self.state = action_map[job]()
@@ -126,7 +132,7 @@ class SinkNodeManager:
 
 
 class SourceNodeManager:
-    def __init__(self, state: SourceNodeState, node: Lnd=None, log: Logger=None, mock: bool=False):
+    def __init__(self, state: SourceNodeState, node: Lnd = None, log: Logger = None, mock: bool = False):
         self.state = state
         self.node = node
         self.log = log
@@ -154,7 +160,11 @@ class SourceNodeManager:
             self.log(f"Opening channel to {self.channel_template.node_pubkey}")
             if not self.mock:
                 self.node.open_channel(self.channel_template)
-            self.state.channels.append(ChannelState(chan_id='new-channel', capacity=self.channel_template.local_funding_amount, local_balance=self.channel_template.local_funding_amount - (0.01*self.channel_template.local_funding_amount), local_chan_reserve_sat=0.01*self.channel_template.local_funding_amount,))
+            self.state.channels.append(
+                ChannelState(chan_id='new-channel', capacity=self.channel_template.local_funding_amount,
+                             local_balance=self.channel_template.local_funding_amount - (
+                                         0.01 * self.channel_template.local_funding_amount),
+                             local_chan_reserve_sat=0.01 * self.channel_template.local_funding_amount, ))
         else:
             self.log.notify(f"Avoided opening a channel to {self.channel_template.node_pubkey}")
         return self.state

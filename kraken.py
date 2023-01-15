@@ -5,19 +5,13 @@ import urllib.parse
 import hashlib
 import hmac
 import base64
-from config import SwapMethod
+from swap import SwapMethod
+from creds import KrakenCreds
 from notify import Logger
 
 COIN_SATS = 100_000_000
 MIN_LN_DEPOSIT = 1000
 MAX_LN_DEPOSIT = COIN_SATS
-
-
-class KrakenCreds:
-    def __init__(self, creds: dict):
-        self.api_key = creds['api_key']
-        self.api_secret = creds['api_secret']
-        self.funding_key = creds['funding_key']
 
 
 class Kraken(SwapMethod):
@@ -29,7 +23,7 @@ class Kraken(SwapMethod):
             "get_onchain_address": lambda addr: f"kraken deposit address: {addr}",
             "send_onchain": lambda sats: f"kraken initiated {sats} sat widthdrawl",
             "get_onchain_fee": lambda fee, sats: f"kraken fee: {fee} sats widthdraw amount: {sats} sats",
-            "get_pending_send_sats": lambda status, ref, amt : f"kraken [{status}] widthdraw #{ref} of {amt} sats",
+            "get_pending_send_sats": lambda status, ref, amt: f"kraken [{status}] widthdraw #{ref} of {amt} sats",
             "get_account_balance": lambda sats: f"kraken account balance: {sats} sats",
             "send_to_acct": lambda sats: f"Hey boss, {int(sats)} sats ready for kraken deposit"
         }
@@ -71,7 +65,7 @@ class Kraken(SwapMethod):
 
     def get_onchain_address(self):
         payload = {
-            "nonce": str(int(1000*time.time())),
+            "nonce": str(int(1000 * time.time())),
             "asset": "XBT",
             "method": "Bitcoin",
         }
@@ -83,7 +77,7 @@ class Kraken(SwapMethod):
     def send_onchain(self, sats, fee):
         # kraken does not use variable fee
         payload = {
-            "nonce": str(int(1000*time.time())),
+            "nonce": str(int(1000 * time.time())),
             "asset": "XBT",
             "key": self.creds.funding_key,
             "amount": sats / COIN_SATS
@@ -94,7 +88,7 @@ class Kraken(SwapMethod):
 
     def estimate_onchain_fee(self, sats):
         payload = {
-            "nonce": str(int(1000*time.time())),
+            "nonce": str(int(1000 * time.time())),
             "asset": "XBT",
             "key": self.creds.funding_key,
             "amount": sats / COIN_SATS
@@ -118,14 +112,14 @@ class Kraken(SwapMethod):
 
     def get_recent_sends(self):
         payload = {
-            "nonce": str(int(1000*time.time())),
+            "nonce": str(int(1000 * time.time())),
             "asset": "XBT"
         }
         res = self.kraken_request('/0/private/WithdrawStatus', payload)
         return res
 
     def get_account_balance(self):
-        payload = {"nonce": str(int(1000*time.time()))}
+        payload = {"nonce": str(int(1000 * time.time()))}
         res = self.kraken_request('/0/private/Balance', payload)
         balance = int(float(res['XXBT']) * COIN_SATS)
         self.log.info(self.log_msg_map['get_account_balance'](balance))

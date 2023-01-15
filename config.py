@@ -1,43 +1,20 @@
 import configparser
-from listeners import FundingListenerConfig, FundingListener, MempoolListenerConfig, MempoolListener, HtlcStreamLoggerConfig, HtlcStreamLogger
-from channels import SinkNodeConfig, SinkNodeState, SinkNodeManager, SourceNodeConfig, SourceNodeState, SourceNodeManager
+from listeners import FundingListenerConfig, FundingListener, MempoolListenerConfig, MempoolListener, \
+    HtlcStreamLoggerConfig, HtlcStreamLogger
+from channels import SinkNodeConfig, SinkNodeState, SinkNodeManager, SourceNodeConfig, SourceNodeState, \
+    SourceNodeManager
 from notify import Logger
-from kraken import Kraken, KrakenCreds
-from nicehash import Nicehash, NicehashCreds
-from muun import Muun, MuunCreds
+from kraken import Kraken
+from nicehash import Nicehash
+from muun import Muun
 from telegram import TelegramCreds
+from creds import *
 
 
 class Config:
     def __init__(self, config_file):
         self.config = configparser.ConfigParser()
         self.config.read(config_file)
-
-
-class SwapMethod:
-    def get_onchain_address(self):
-        # returns address string
-        raise NotImplementedError
-
-    def send_onchain(self):
-        # sends entire account balance to saved onchain address
-        raise NotImplementedError
-
-    def get_account_balance(self):
-        # returns total balance in sats
-        raise NotImplementedError
-
-    def pay_invoice(self, inv):
-        # attempts to pay the invoice using account balance
-        raise NotImplementedError
-
-    def get_lightning_invoice(self):
-        # returns bolt11 invoice string
-        raise NotImplementedError
-
-    def estimate_onchain_fee(self):
-        # returns the total fee in satoshis
-        raise NotImplementedError
 
 
 swap_methods = {
@@ -82,7 +59,6 @@ channel_managers = {
         'operator': SourceNodeManager
     }
 }
-
 
 CREDS = Config('creds.config').config
 LISTEN_CONFIG = Config('listen.config').config

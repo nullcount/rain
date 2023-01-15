@@ -6,20 +6,13 @@ import requests
 import json
 from hashlib import sha256
 import sys
-from config import SwapMethod
+from swap import SwapMethod
+from creds import NicehashCreds
 from notify import Logger
 
 COIN_SATS = 100_000_000
 MAX_LN_DEPOSIT = 15_000_000
 MIN_LN_DEPOSIT = 1_001
-
-
-class NicehashCreds:
-    def __init__(self, creds: dict):
-        self.api_key = creds['api_key']
-        self.api_secret = creds['api_secret']
-        self.org_id = creds['org_id']
-        self.funding_key = creds['funding_key']
 
 
 class Nicehash(SwapMethod):
@@ -31,7 +24,7 @@ class Nicehash(SwapMethod):
             "get_onchain_address": lambda addr: f"nicehash deposit address: {addr}",
             "send_onchain": lambda sats: f"nicehash initiated {sats} sat widthdrawl",
             "get_onchain_fee": lambda fee, sats: f"nicehash fee: {fee} sats widthdraw amount: {sats} sats",
-            "get_pending_send_sats": lambda amt : f"nicehash widthdraw of {amt} sats",
+            "get_pending_send_sats": lambda amt: f"nicehash widthdraw of {amt} sats",
             "get_account_balance": lambda sats: f"nicehash account balance: {sats} sats",
             "send_to_acct": lambda sats: f"sending {int(sats)} sats into nicehash account",
             "get_lightning_invoice": lambda sats, invoice: f"nicehash requests {sats} sats invoice: {invoice}"
@@ -99,7 +92,8 @@ class Nicehash(SwapMethod):
         sys.exit()
 
     def get_onchain_address(self):
-        res = self.nicehash_request("GET", '/main/api/v2/accounting/depositAddresses', 'currency=BTC&walletType=BITGO', None)
+        res = self.nicehash_request("GET", '/main/api/v2/accounting/depositAddresses', 'currency=BTC&walletType=BITGO',
+                                    None)
         return res['list'][0]['address']
 
     def send_onchain(self, sats, fee):
@@ -123,7 +117,8 @@ class Nicehash(SwapMethod):
         events = self.get_recent_sends()['list']
         pending = 0
         for event in events:
-            if event['status']['description'] in ['SUBMITTED', 'ACCEPTED']:  # PROCESSING status is considered uncoinfirmed
+            if event['status']['description'] in ['SUBMITTED',
+                                                  'ACCEPTED']:  # PROCESSING status is considered uncoinfirmed
                 pending += float(event['amount'])
         self.log.info(self.log_msg_map['get_pending_send_sats'](pending * COIN_SATS))
         return int(pending * COIN_SATS)
@@ -151,7 +146,8 @@ class Nicehash(SwapMethod):
             node.pay_invoice(inv)
 
     def get_lightning_invoice(self, sats):
-        res = self.nicehash_request("GET", "/main/api/v2/accounting/depositAddresses", f'currency=BTC&walletType=LIGHTNING&amount={float(sats) / COIN_SATS}', None)
+        res = self.nicehash_request("GET", "/main/api/v2/accounting/depositAddresses",
+                                    f'currency=BTC&walletType=LIGHTNING&amount={float(sats) / COIN_SATS}', None)
         invoice = res['list'][0]['address']
         self.log.info(self.log_msg_map['get_lightning_invoice'](sats, invoice))
         return invoice

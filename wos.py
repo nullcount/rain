@@ -2,9 +2,8 @@ import requests
 import time
 import hmac
 import hashlib
-from json import dumps
-from config import SwapMethod
-from notify import Logger
+from swap import SwapMethod
+from creds import WosCreds
 
 BASE_URL = "https://www.livingroomofsatoshi.com"
 
@@ -15,19 +14,12 @@ def create_wos_account():
         "referrer": "walletofsatoshi"
     }
     json = requests.post(BASE_URL + ext, json=data).json()
-    print(dumps(json, indent=2))
-
-
-class WosCreds:
-    def __init__(self, creds: dict):
-        self.api_secret = creds['api_secret']
-        self.api_token = creds['api_token']
-        self.btc_deposit_address = creds['btc_deposit_address']
-        self.lightning_address = creds['lightning_address']
+    print("[WOS]")
+    print("\n".join([f"api_secret = {json['apiSecret']}", f"api_token = {json['apiToken']}", f"btc_deposit_address = {json['btcDepositAddress']}", f"lightning_address = {json['lightningAddress']}"]))
 
 
 class Wos(SwapMethod):
-    def __init__(self, creds: WosCreds, log: Logger):
+    def __init__(self, creds: WosCreds, log):
         self.session = requests.Session()
         self.creds = creds
         self.session.headers.update({"api-token": self.creds.api_token})

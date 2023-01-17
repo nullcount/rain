@@ -1,3 +1,11 @@
+class WosCreds:
+    def __init__(self, creds: dict):
+        self.api_secret = creds['api_secret']
+        self.api_token = creds['api_token']
+        self.btc_deposit_address = creds['btc_deposit_address']
+        self.lightning_address = creds['lightning_address']
+
+
 class KrakenCreds:
     def __init__(self, creds: dict):
         self.api_key = creds['api_key']

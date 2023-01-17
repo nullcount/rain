@@ -33,7 +33,9 @@ device_name =
 withdraw_address =
 
 [WOS]
-# automate a WoS wallet via API calls
+# automate a wallet of satoshi account directly with the API
+#   to create an account and get credentials, run the following command
+#   python3 run.py init wos
 apiSecret =
 apiToken =
 lightningAddress =

@@ -8,9 +8,12 @@ class WosCreds:
 
 class KrakenCreds:
     def __init__(self, creds: dict):
+        self.username = creds["username"]
+        self.password = creds["password"]
         self.api_key = creds['api_key']
         self.api_secret = creds['api_secret']
         self.funding_key = creds['funding_key']
+        self.otp_secret = creds['otp_secret']
 
 
 class MuunCreds:

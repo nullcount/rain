@@ -7,7 +7,6 @@ from notify import Logger
 from kraken import Kraken
 from nicehash import Nicehash
 from muun import Muun
-from telegram import TelegramCreds
 from creds import *
 
 

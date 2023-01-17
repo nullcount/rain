@@ -9,6 +9,14 @@ from swap import SwapMethod
 from creds import KrakenCreds
 from notify import Logger
 
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+import pyotp
+from selenium.webdriver.common.action_chains import ActionChains
+from tkinter import Tk
+
 COIN_SATS = 100_000_000
 MIN_LN_DEPOSIT = 1000
 MAX_LN_DEPOSIT = COIN_SATS
@@ -132,6 +140,67 @@ class Kraken(SwapMethod):
         # TODO kraken hasn't implemented yet
         return
 
-    def get_lightning_invoice(self):
-        # TODO kraken needs to implement
-        return
+    def get_lightning_invoice(self, amount_sats):
+        chrome_options = Options()
+        chrome_options.add_argument("user-data-dir=selenium") # create cookies to use next time
+        driver = webdriver.Chrome(chrome_options=chrome_options, executable_path="./chromedriver")
+        actions = ActionChains(driver)
+
+        # go to invoice page, login if necessary, you may have to approve a new device the first time as well
+        driver.get("https://www.kraken.com/u/funding/deposit?asset=BTC&method=1")
+        time.sleep(1)
+        location = driver.current_url
+        if location != "https://www.kraken.com/u/funding/deposit?asset=BTC&method=1":
+            if location == "https://www.kraken.com/sign-in":
+                driver.find_element(By.XPATH, '//input[@name="username"]').send_keys(self.creds.username)
+                driver.find_element(By.XPATH, '//input[@name="password"]').send_keys(self.creds.password)
+                time.sleep(1)
+                driver.find_element(By.XPATH, '//input[@name="password"]').send_keys(Keys.RETURN)
+                time.sleep(2)
+                if self.creds.otp_secret:
+                    hotp = pyotp.TOTP(self.creds.otp_secret)
+                    otp = hotp.now()
+                    driver.find_element(By.XPATH, '//input[@name="tfa"]').send_keys(otp)
+                    time.sleep(1)
+                    driver.find_element(By.XPATH, '//input[@name="tfa"]').send_keys(Keys.RETURN)
+                    time.sleep(3)
+                driver.get("https://www.kraken.com/u/funding/deposit?asset=BTC&method=1")
+                time.sleep(3)
+                location = driver.current_url
+        assert location == "https://www.kraken.com/u/funding/deposit?asset=BTC&method=1"
+        time.sleep(1)
+
+        # make everything on the page visible
+        driver.execute_script("document.body.style.zoom = '0.55'")
+
+        # remove tos popup
+        driver.execute_script(
+            "return document.getElementsByClassName('Dialog_dialog__f48Ay body-1 relative tos-dialog-lightning_dialog__hrFat')[0].parentElement.parentElement.parentElement.parentElement.remove();"
+            #     "return document.getElementsByClassName('Button_button__caA8R Button_primary__c5lrD Button_large__T4YrY no-tab-highlight')[0].click();"
+        )
+        time.sleep(1)
+
+        # toggle sats denomination if necessary
+        sats_toggle = driver.find_element(By.CLASS_NAME, 'LightningForm_toggle__ZQNS6')
+        if sats_toggle.get_attribute("class") == "LightningForm_toggle__ZQNS6 LightningForm_enabled__uWiT2":
+            pass
+        else:
+            sats_toggle.click()
+
+        # enter payment amount
+        amt_field = driver.find_element(By.XPATH, '//*[@id="lightningDepositAmount"]')
+        amt_field.send_keys(str(amount_sats))
+        time.sleep(1)
+
+        # select/submit button
+        for i in range(4):
+            actions = actions.send_keys(Keys.TAB)
+        actions = actions.send_keys(Keys.ENTER)
+        actions.perform()
+        time.sleep(1)
+
+        # copy lightning invoice to clipboard
+        driver.execute_script(
+            "document.getElementsByClassName('flex IconButton_button__g2fhQ caption-4 text-P500 mr1 no-tab-highlight')[0].click();")
+        invoice_str = Tk().clipboard_get()
+        return invoice_str

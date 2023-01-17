@@ -15,7 +15,7 @@ class SwapMethod:
         # attempts to pay the invoice using account balance
         raise NotImplementedError
 
-    def get_lightning_invoice(self):
+    def get_lightning_invoice(self, amount: int):
         # returns bolt11 invoice string
         raise NotImplementedError
 

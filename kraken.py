@@ -142,6 +142,7 @@ class Kraken(SwapMethod):
 
     def get_lightning_invoice(self, amount_sats):
         chrome_options = Options()
+        chrome_options.headless = True
         chrome_options.add_argument("user-data-dir=selenium") # create cookies to use next time
         driver = webdriver.Chrome(chrome_options=chrome_options, executable_path="./chromedriver")
         actions = ActionChains(driver)
@@ -192,9 +193,9 @@ class Kraken(SwapMethod):
         amt_field.send_keys(str(amount_sats))
         time.sleep(1)
 
-        # select/submit button
-        for i in range(4):
-            actions = actions.send_keys(Keys.TAB)
+        # focus submit button and press enter
+        driver.execute_script(
+            "document.getElementsByClassName('Button_button__caA8R Button_primary__c5lrD Button_large__T4YrY mt3 no-tab-highlight')[0].focus();")
         actions = actions.send_keys(Keys.ENTER)
         actions.perform()
         time.sleep(1)

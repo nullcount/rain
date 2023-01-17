@@ -143,7 +143,7 @@ class Kraken(SwapMethod):
     def get_lightning_invoice(self, amount_sats):
         chrome_options = Options()
         chrome_options.headless = True
-        chrome_options.add_argument("user-data-dir=selenium") # create cookies to use next time
+        chrome_options.add_argument("user-data-dir=selenium")  # create cookies to use next time
         driver = webdriver.Chrome(chrome_options=chrome_options, executable_path="./chromedriver")
         actions = ActionChains(driver)
 
@@ -169,7 +169,6 @@ class Kraken(SwapMethod):
                 time.sleep(3)
                 location = driver.current_url
         assert location == "https://www.kraken.com/u/funding/deposit?asset=BTC&method=1"
-        time.sleep(1)
 
         # make everything on the page visible
         driver.execute_script("document.body.style.zoom = '0.55'")
@@ -183,7 +182,7 @@ class Kraken(SwapMethod):
 
         # toggle sats denomination if necessary
         sats_toggle = driver.find_element(By.CLASS_NAME, 'LightningForm_toggle__ZQNS6')
-        if sats_toggle.get_attribute("class") == "LightningForm_toggle__ZQNS6 LightningForm_enabled__uWiT2":
+        if "enabled" in sats_toggle.get_attribute("class"):
             pass
         else:
             sats_toggle.click()

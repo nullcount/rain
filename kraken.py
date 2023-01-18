@@ -174,14 +174,11 @@ class Kraken(SwapMethod):
         driver.execute_script("document.body.style.zoom = '0.55'")
 
         # remove tos popup
-        driver.execute_script(
-            "return document.getElementsByClassName('Dialog_dialog__f48Ay body-1 relative tos-dialog-lightning_dialog__hrFat')[0].parentElement.parentElement.parentElement.parentElement.remove();"
-            #     "return document.getElementsByClassName('Button_button__caA8R Button_primary__c5lrD Button_large__T4YrY no-tab-highlight')[0].click();"
-        )
+        driver.execute_script("""document.querySelector("div[data-testid='tos-dialog']").remove();""")
         time.sleep(1)
 
         # toggle sats denomination if necessary
-        sats_toggle = driver.find_element(By.CLASS_NAME, 'LightningForm_toggle__ZQNS6')
+        sats_toggle = driver.find_element(By.CSS_SELECTOR, "div[class^='LightningForm_toggle']")
         if "enabled" in sats_toggle.get_attribute("class"):
             pass
         else:
@@ -194,13 +191,12 @@ class Kraken(SwapMethod):
 
         # focus submit button and press enter
         driver.execute_script(
-            "document.getElementsByClassName('Button_button__caA8R Button_primary__c5lrD Button_large__T4YrY mt3 no-tab-highlight')[0].focus();")
+            """document.querySelector("button[data-testid='lightning-request-btn']").focus();""".format())
         actions = actions.send_keys(Keys.ENTER)
         actions.perform()
-        time.sleep(1)
+        time.sleep(3)
 
         # copy lightning invoice to clipboard
-        driver.execute_script(
-            "document.getElementsByClassName('flex IconButton_button__g2fhQ caption-4 text-P500 mr1 no-tab-highlight')[0].click();")
+        driver.execute_script("""document.querySelector("div[data-testid='copy-address-button']").click();""")
         invoice_str = Tk().clipboard_get()
         return invoice_str

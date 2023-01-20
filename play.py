@@ -1,10 +1,11 @@
+import sys
 from config import CHANNELS_CONFIG, PLAY_LOG, CREDS, channel_managers, swap_methods
 from lnd import Lnd, LndCreds
 from mempool import Mempool, MempoolCreds
 from channels import ChannelState
 
 
-def main():
+def main(debug: bool):
     PLAY_LOG.info("Running...")
 
     lnd_creds = LndCreds(grpc_host=CREDS['LND']['grpc_host'], tls_cert_path=CREDS['LND']['tls_cert_path'], macaroon_path=CREDS['LND']['tls_cert_path'])
@@ -14,8 +15,9 @@ def main():
     mempool = Mempool(mempool_creds, PLAY_LOG)
 
     for managed_peer in CHANNELS_CONFIG:
+        if managed_peer == "DEFAULT":
+            continue
         _config = CHANNELS_CONFIG[managed_peer]
-
         if bool(_config['execute']):
             strategy = _config['strategy'].upper()
 
@@ -48,13 +50,26 @@ def main():
                 # create source chan operator
                 source_operator = Operator(state=source_state, node=node, log=PLAY_LOG)
                 # execute the jobs
-                source_operator.execute()
+                jobs = source_operator.get_jobs()
+                if debug:
+                    print("SOURCE")
+                    print(jobs)
+                else:
+                    source_operator.execute(jobs)
             elif strategy == "SINK":
                 sink_config = Config(_config)
                 sink_state = State(channels=open_chans, sat_per_vbyte=sat_per_vbyte, config=sink_config)
                 sink_operator = Operator(state=sink_state, node=node, log=PLAY_LOG)
-                sink_operator.execute()
+                jobs = sink_operator.get_jobs()
+                if debug:
+                    print("SINK")
+                    print(jobs)
+                else:
+                    sink_operator.execute(jobs)
 
 
 if __name__ == "__main__":
-    main()
+    if "debug" in sys.argv:
+        main(True)
+    else:
+        main(False)

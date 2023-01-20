@@ -2,6 +2,8 @@
 csv/*.csv
 logs/*.log
 creds.config
+admin.macaroon
+tls.cert
 playbook.config
 listen.config
 *__pycache__/

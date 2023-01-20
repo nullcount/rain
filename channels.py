@@ -61,29 +61,27 @@ class SourceNodeState:
         self.swap_method = swap_method
 
 
-from notify import Logger
-
-
 class SinkNodeManager:
-    def __init__(self, state: SinkNodeState, node: Lnd = None, log: Logger = None, mock: bool = False):
+    def __init__(self, state: SinkNodeState, node=None, log=None, mock: bool = False):
         self.node = node
         self.log = log
         self.mock = mock
+        self.state = state
 
         self.channel_template = ChannelTemplate(
             sat_per_vbyte=self.state.sat_per_vbyte,
-            node_pubkey=self.source_pub,
+            node_pubkey=self.state.config.pubkey,
             local_funding_amount=self.state.config.capacity,
             base_fee=self.state.config.base_fee,
             fee_rate=self.state.config.fee_ppm,
-            address=self.state.config.address,
+            address=self.state.config.host,
             min_htlc_sat=self.state.config.min_htlc_sat,
             spend_unconfirmed=True
         )
 
         self.channels_to_close = []  # for storing empty channels
         for chan in self.state.channels:
-            if float(chan.local_balance / chan.capacity) < self.close_ratio:
+            if float(chan.local_balance / chan.capacity) < self.state.config.close_ratio:
                 self.channels_to_close.append(chan.chan_id)
 
     def close_empty_channels(self):
@@ -112,9 +110,9 @@ class SinkNodeManager:
 
     def get_jobs(self):
         jobs = []
-        if len(self.channels_to_close > 0):
+        if len(self.channels_to_close) > 0:
             jobs.append("CLOSE_EMPTY_CHANNELS")
-        if len(self.channels) - len(self.channels_to_close) \
+        if len(self.state.channels) - len(self.channels_to_close) \
                 < self.state.config.num_channels:
             jobs.append("OPEN_CHANNEL")
         return jobs
@@ -132,7 +130,7 @@ class SinkNodeManager:
 
 
 class SourceNodeManager:
-    def __init__(self, state: SourceNodeState, node: Lnd = None, log: Logger = None, mock: bool = False):
+    def __init__(self, state: SourceNodeState, node=None, log=None, mock: bool = False):
         self.state = state
         self.node = node
         self.log = log
@@ -140,11 +138,11 @@ class SourceNodeManager:
 
         self.channel_template = ChannelTemplate(
             sat_per_vbyte=self.state.sat_per_vbyte,
-            node_pubkey=self.source_pub,
+            node_pubkey=self.state.config.pubkey,
             local_funding_amount=self.state.config.capacity,
             base_fee=self.state.config.base_fee,
             fee_rate=self.state.config.fee_ppm,
-            address=self.state.config.address,
+            address=self.state.config.host,
             min_htlc_sat=self.state.config.min_htlc_sat,
             spend_unconfirmed=True
         )

@@ -106,7 +106,8 @@ class Kraken(SwapMethod):
             'amount': int(float(res['amount']) * COIN_SATS),
             'fee': int(float(res['fee']) * COIN_SATS)
         }
-        self.log.info(self.log_msg_map['get_onchain_address'](fee_quote['fee'], sats))
+        self.log.info(self.log_msg_map['get_onchain_address'](
+            fee_quote['fee'], sats))
         return fee_quote['fee']
 
     def get_pending_send_sats(self):
@@ -115,7 +116,8 @@ class Kraken(SwapMethod):
         for w in sends:
             if w['status'] in ['Initial', 'Pending']:
                 pending_amt += int(float(w['amount']) * COIN_SATS)
-                self.log.info(self.log_msg_map['get_pending_send_sats'](w['status'].lower(), w['refid'], w['amount']))
+                self.log.info(self.log_msg_map['get_pending_send_sats'](
+                    w['status'].lower(), w['refid'], w['amount']))
         return pending_amt
 
     def get_recent_sends(self):
@@ -143,8 +145,10 @@ class Kraken(SwapMethod):
     def get_lightning_invoice(self, amount_sats):
         chrome_options = Options()
         chrome_options.headless = True
-        chrome_options.add_argument("user-data-dir=selenium")  # create cookies to use next time
-        driver = webdriver.Chrome(chrome_options=chrome_options, executable_path="./chromedriver")
+        # create cookies to use next time
+        chrome_options.add_argument("user-data-dir=selenium")
+        driver = webdriver.Chrome(
+            chrome_options=chrome_options, executable_path="./chromedriver")
         actions = ActionChains(driver)
 
         # go to invoice page, login if necessary, you may have to approve a new device the first time as well
@@ -153,19 +157,25 @@ class Kraken(SwapMethod):
         location = driver.current_url
         if location != "https://www.kraken.com/u/funding/deposit?asset=BTC&method=1":
             if location == "https://www.kraken.com/sign-in":
-                driver.find_element(By.XPATH, '//input[@name="username"]').send_keys(self.creds.username)
-                driver.find_element(By.XPATH, '//input[@name="password"]').send_keys(self.creds.password)
+                driver.find_element(
+                    By.XPATH, '//input[@name="username"]').send_keys(self.creds.username)
+                driver.find_element(
+                    By.XPATH, '//input[@name="password"]').send_keys(self.creds.password)
                 time.sleep(1)
-                driver.find_element(By.XPATH, '//input[@name="password"]').send_keys(Keys.RETURN)
+                driver.find_element(
+                    By.XPATH, '//input[@name="password"]').send_keys(Keys.RETURN)
                 time.sleep(2)
                 if self.creds.otp_secret:
                     hotp = pyotp.TOTP(self.creds.otp_secret)
                     otp = hotp.now()
-                    driver.find_element(By.XPATH, '//input[@name="tfa"]').send_keys(otp)
+                    driver.find_element(
+                        By.XPATH, '//input[@name="tfa"]').send_keys(otp)
                     time.sleep(1)
-                    driver.find_element(By.XPATH, '//input[@name="tfa"]').send_keys(Keys.RETURN)
+                    driver.find_element(
+                        By.XPATH, '//input[@name="tfa"]').send_keys(Keys.RETURN)
                     time.sleep(3)
-                driver.get("https://www.kraken.com/u/funding/deposit?asset=BTC&method=1")
+                driver.get(
+                    "https://www.kraken.com/u/funding/deposit?asset=BTC&method=1")
                 time.sleep(3)
                 location = driver.current_url
         assert location == "https://www.kraken.com/u/funding/deposit?asset=BTC&method=1"
@@ -174,18 +184,21 @@ class Kraken(SwapMethod):
         driver.execute_script("document.body.style.zoom = '0.55'")
 
         # remove tos popup
-        driver.execute_script("""document.querySelector("div[data-testid='tos-dialog']").remove();""")
+        driver.execute_script(
+            """document.querySelector("div[data-testid='tos-dialog']").remove();""")
         time.sleep(1)
 
         # toggle sats denomination if necessary
-        sats_toggle = driver.find_element(By.CSS_SELECTOR, "div[class^='LightningForm_toggle']")
+        sats_toggle = driver.find_element(
+            By.CSS_SELECTOR, "div[class^='LightningForm_toggle']")
         if "enabled" in sats_toggle.get_attribute("class"):
             pass
         else:
             sats_toggle.click()
 
         # enter payment amount
-        amt_field = driver.find_element(By.XPATH, '//*[@id="lightningDepositAmount"]')
+        amt_field = driver.find_element(
+            By.XPATH, '//*[@id="lightningDepositAmount"]')
         amt_field.send_keys(str(amount_sats))
         time.sleep(1)
 
@@ -197,6 +210,7 @@ class Kraken(SwapMethod):
         time.sleep(3)
 
         # copy lightning invoice to clipboard
-        driver.execute_script("""document.querySelector("div[data-testid='copy-address-button']").click();""")
+        driver.execute_script(
+            """document.querySelector("div[data-testid='copy-address-button']").click();""")
         invoice_str = Tk().clipboard_get()
         return invoice_str

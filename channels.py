@@ -1,4 +1,4 @@
-from lnd import Lnd, ChannelTemplate
+from lnd import ChannelTemplate
 
 
 class ChannelState:
@@ -88,25 +88,20 @@ class SinkNodeManager:
         for chan in self.channels_to_close:
             if self.state.config.max_sat_per_vbyte > self.state.sat_per_vbyte:
                 if not self.mock:
-                    self.node.close_channel(chan.chan_id, self.state.sat_per_vbyte)
-                self.state.channels = filter(lambda x: x.chan_id != chan.chan_id, state.channels)
+                    self.node.close_channel(
+                        chan.chan_id, self.state.sat_per_vbyte)
             else:
-                self.log.notify(f"Avoided opening a channel to {self.channel_template.node_pubkey}")
-        return self.state
+                self.log.notify(
+                    f"Avoided opening a channel to {self.channel_template.node_pubkey}")
 
     def open_channel(self):
         if self.state.config.max_sat_per_vbyte > self.state.sat_per_vbyte:
             self.log(f"Opening channel to {self.channel_template.node_pubkey}")
             if not self.mock:
                 self.node.open_channel(self.channel_template)
-            self.state.channels.append(
-                ChannelState(chan_id='new-channel', capacity=self.channel_template.local_funding_amount,
-                             local_balance=self.channel_template.local_funding_amount - (
-                                         0.01 * self.channel_template.local_funding_amount),
-                             local_chan_reserve_sat=0.01 * self.channel_template.local_funding_amount, ))
         else:
-            self.log.notify(f"Avoided opening a channel to {self.channel_template.node_pubkey}")
-        return self.state
+            self.log.notify(
+                f"Avoided opening a channel to {self.channel_template.node_pubkey}")
 
     def get_jobs(self):
         jobs = []
@@ -158,21 +153,18 @@ class SourceNodeManager:
             self.log(f"Opening channel to {self.channel_template.node_pubkey}")
             if not self.mock:
                 self.node.open_channel(self.channel_template)
-            self.state.channels.append(
-                ChannelState(chan_id='new-channel', capacity=self.channel_template.local_funding_amount,
-                             local_balance=self.channel_template.local_funding_amount - (
-                                         0.01 * self.channel_template.local_funding_amount),
-                             local_chan_reserve_sat=0.01 * self.channel_template.local_funding_amount, ))
         else:
-            self.log.notify(f"Avoided opening a channel to {self.channel_template.node_pubkey}")
-        return self.state
+            self.log.notify(
+                f"Avoided opening a channel to {self.channel_template.node_pubkey}")
 
     def drain_channels(self):
         for chan_id in self.channels_to_loop_out:
             if not self.mock:
                 for i in range(3):
-                    invoice_amount = int(self.state.config.loop_out_amount * (self.state.config.loop_out_backoff ** i))
-                    bolt11_invoice = self.state.swap_method.get_lightning_invoice(invoice_amount)
+                    invoice_amount = int(
+                        self.state.config.loop_out_amount * (self.state.config.loop_out_backoff ** i))
+                    bolt11_invoice = self.state.swap_method.get_lightning_invoice(
+                        invoice_amount)
                     payment_response = self.node.pay_invoice(bolt11_invoice)
                     if not payment_response.payment_error:
                         break
@@ -180,17 +172,11 @@ class SourceNodeManager:
                         self.log("No route.")
                     else:  # no break
                         self.log.info("error no routes")
-            # construct new channel state
-            for chan in self.state.channels:
-                if chan.chan_id == chan_id:
-                    chan.local_balance -= self.state.config.loop_out_amount
-        return self.state
 
     def account_send_onchain(self):
         if not self.mock:
-            self.state.swap_method.send_onchain(self.state.account_balance, self.state.sat_per_vbyte)
-        self.state.source_account_balance = 0
-        return self.state
+            self.state.swap_method.send_onchain(
+                self.state.account_balance, self.state.sat_per_vbyte)
 
     def get_jobs(self):
         jobs = []

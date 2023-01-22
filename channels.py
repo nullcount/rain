@@ -197,7 +197,7 @@ class SourceNodeManager(Manager):
         # get channels with enough to loop out
         self.channels_to_drain = []
         for chan in self.state.channels:
-            if chan.local_balance > self.state.config.loop_out_amount:
+            if chan.local_balance > self.state.config.loop_out_amount and not chan.pending:
                 self.channels_to_drain.append(chan)
 
         self.job_list = [

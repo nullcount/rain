@@ -190,7 +190,9 @@ class Kraken(SwapMethod):
         if "enabled" in sats_toggle.get_attribute("class"):
             pass
         else:
-            sats_toggle.click()
+            driver.execute_script(
+                """document.querySelector("div[class^='LightningForm_toggle']").click();""")
+            # sats_toggle.click()
 
         # enter payment amount
         amt_field = driver.find_element(

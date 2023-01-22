@@ -19,6 +19,7 @@ def main(debug: bool):
         if managed_peer == "DEFAULT":
             continue
         _config = CHANNELS_CONFIG[managed_peer]
+        _config['config_label'] = managed_peer
         if bool(_config['execute']):
             strategy = _config['strategy'].upper()
 
@@ -58,11 +59,7 @@ def main(debug: bool):
                     state=source_state, node=node, log=PLAY_LOG)
                 # execute the jobs
                 jobs = source_operator.get_jobs()
-                if debug:
-                    print("SOURCE")
-                    print(jobs)
-                else:
-                    source_operator.execute(jobs)
+                source_operator.execute(jobs, debug=debug)
             elif strategy == "SINK":
                 sink_config = Config(_config)
                 sink_state = State(
@@ -70,15 +67,8 @@ def main(debug: bool):
                 sink_operator = Operator(
                     state=sink_state, node=node, log=PLAY_LOG)
                 jobs = sink_operator.get_jobs()
-                if debug:
-                    print("SINK")
-                    print(jobs)
-                else:
-                    sink_operator.execute(jobs)
+                sink_operator.execute(jobs, debug=debug)
 
 
 if __name__ == "__main__":
-    if "debug" in sys.argv:
-        main(True)
-    else:
-        main(False)
+    main(debug="debug" in sys.argv)

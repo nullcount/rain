@@ -15,7 +15,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 import pyotp
 from selenium.webdriver.common.action_chains import ActionChains
-from tkinter import Tk
+import pyperclip
 
 COIN_SATS = 100_000_000
 MIN_LN_DEPOSIT = 1000
@@ -210,5 +210,5 @@ class Kraken(SwapMethod):
         # copy lightning invoice to clipboard
         driver.execute_script(
             """document.querySelector("div[data-testid='copy-address-button']").click();""")
-        invoice_str = Tk().clipboard_get()
+        invoice_str = pyperclip.paste()
         return invoice_str

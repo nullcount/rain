@@ -7,33 +7,33 @@ from lnd import Lnd
 
 
 class FundingListenerConfig:
-    def __init__(self, onchain_deposit: str, onchain_send: str, channel_open_broadcast: str, channel_open_confirmed: str, channel_open_active: str, channel_close_broadcast: str, channel_close_confirmed: str, ln_payment_sent: str, ln_invoice_paid: str):
-        self.onchain_deposit = bool(onchain_deposit)
-        self.onchain_send = bool(onchain_send)
-        self.channel_open_broadcast = bool(channel_open_broadcast)
-        self.channel_open_confirmed = bool(channel_open_confirmed)
-        self.channel_open_active = bool(channel_open_active)
-        self.channel_close_broadcast = bool(channel_close_broadcast)
-        self.channel_close_confirmed = bool(channel_close_confirmed)
-        self.ln_payment_sent = bool(ln_payment_sent)
-        self.ln_invoice_paid = bool(ln_invoice_paid)
+    def __init__(self, config: dict):
+        self.onchain_deposit = bool(config['onchain_deposit'])
+        self.onchain_send = bool(config['onchain_send'])
+        self.channel_open_broadcast = bool(config['channel_open_broadcast'])
+        self.channel_open_confirmed = bool(config['channel_open_confirmed'])
+        self.channel_open_active = bool(config['channel_open_active'])
+        self.channel_close_broadcast = bool(config['channel_close_broadcast'])
+        self.channel_close_confirmed = bool(config['channel_close_confirmed'])
+        self.ln_payment_sent = bool(config['ln_payment_sent'])
+        self.ln_invoice_paid = bool(config['ln_invoice_paid'])
 
 
 class FundingListener:
     """Get notificatinos when the node sends/recieves funds"""
 
-    def __init_(self, config: FundingListenerConfig, _, node: Lnd, log: Logger):
+    def __init__(self, config: FundingListenerConfig, creds: dict, node: Lnd, log: Logger):
         self.tg = log.notify_connector
         self.node = node
-        self.onchain_deposit = config['onchain_deposit']
-        self.onchain_send = config['onchain_send']
-        self.channel_open_broadcast = config['channel_open_broadcast']
-        self.channel_open_confirmed = config['channel_open_confirmed']
-        self.channel_open_active = config['channel_open_active']
-        self.channel_close_broadcast = config['channel_close_broadcast']
-        self.channel_close_confirmed = config['channel_close_confirmed']
-        self.ln_payment_sent = config['ln_payment_sent']
-        self.ln_invoice_paid = config['ln_invoice_paid']
+        self.onchain_deposit = config.onchain_deposit
+        self.onchain_send = config.onchain_send
+        self.channel_open_broadcast = config.channel_open_broadcast
+        self.channel_open_confirmed = config.channel_open_confirmed
+        self.channel_open_active = config.channel_open_active
+        self.channel_close_broadcast = config.channel_close_broadcast
+        self.channel_close_confirmed = config.channel_close_confirmed
+        self.ln_payment_sent = config.ln_payment_sent
+        self.ln_invoice_paid = config.ln_invoice_paid
 
     def mainLoop(self):
         while True:
@@ -41,12 +41,12 @@ class FundingListener:
 
 
 class MempoolListenerConfig:
-    def __init__(self, on_mempool_empty: str, mempool_empty_mb: str, on_mempool_change: str, mempool_delta_mb: str, on_channel_confirmed: str):
-        self.on_mempool_empty = bool(on_mempool_empty)
-        self.mempool_empty_mb = int(mempool_empty_mb)
-        self.on_mempool_change = bool(on_mempool_change)
-        self.mempool_delta_mb = int(mempool_delta_mb)
-        self.on_channel_confirmed = bool(on_channel_confirmed) 
+    def __init__(self, config: dict):
+        self.on_mempool_empty = bool(config['on_mempool_empty'])
+        self.mempool_empty_mb = int(config['mempool_empty_mb'])
+        self.on_mempool_change = bool(config['on_mempool_change'])
+        self.mempool_delta_mb = int(config['mempool_delta_mb'])
+        self.on_channel_confirmed = bool(config['on_channel_confirmed'])
 
 
 class MempoolListener:
@@ -54,11 +54,12 @@ class MempoolListener:
     Get notifications about mempool activity
     """
 
-    def __init__(self, config: MempoolListenerConfig, CREDS: dict, node: Lnd, log: Logger):
+    def __init__(self, config: MempoolListenerConfig, creds: dict, node: Lnd, log: Logger):
         self.tg = log.notify_connector
         self.node = node
         self.config = config
-        self.mempool = Mempool(MempoolCreds(api_url=CREDS['MEMPOOL']['api_url']), log)
+        self.mempool = Mempool(MempoolCreds(
+            api_url=CREDS['MEMPOOL']['api_url']), log)
         self.bytes = self.get_bytes()
         self.last_notify_bytes = None
         self.pending_channels = self.get_pending_channels()
@@ -77,22 +78,26 @@ class MempoolListener:
         MB_BYTES = 1_000_000
         while True:
             # get latest bytes
-            self.get_bytes()
+            bytes = self.get_bytes()
             mb = round(bytes/MB_BYTES, 2)
             if self.config.on_mempool_empty:
                 if mb < self.config.mempool_empty_mb and not self.last_notify_bytes/MB_BYTES < self.empty_mb:
                     self.last_notify_bytes = bytes
-                    self.tg.send_message(f"🫗  Mempool is good as empty! Currently {mb}MB")
+                    self.tg.send_message(
+                        f"🫗  Mempool is good as empty! Currently {mb}MB")
             elif self.config.on_mempool_change:
                 if mb > ((self.last_notify_bytes/MB_BYTES) + self.config.mempool_delta_mb):
                     self.last_notify_bytes = bytes
-                    self.tg.send_message(f"⬆️  Mempool growing! Currently {mb}MB")
+                    self.tg.send_message(
+                        f"⬆️  Mempool growing! Currently {mb}MB")
                 elif mb < ((self.last_notify_bytes/MB_BYTES) - self.config.mempool_delta_mb):
                     self.last_notify_bytes = bytes
-                    self.tg.send_message(f"⬇️  Mempool shrinking! Currently {mb}MB")
+                    self.tg.send_message(
+                        f"⬇️  Mempool shrinking! Currently {mb}MB")
             elif self.config.on_channel_confirmed:
                 for channel in self.pending_channels:
-                    tx_status = self.mempool.check_tx(channel.chanel_point.split(":")[0])
+                    tx_status = self.mempool.check_tx(
+                        channel.chanel_point.split(":")[0])
                     if tx_status["confirmed"]:
                         conf_block_height = int(tx_status["block_height"])
                         tip = int(self.mempool.get_tip_height())
@@ -104,10 +109,10 @@ class MempoolListener:
 
 
 class HtlcStreamLoggerConfig:
-    def __init__(self, csv_file: str, log_to_console: bool, notify_events: str):
-        self.csv_file = csv_file
-        self.log_to_console = log_to_console
-        self.notify_events = notify_events.split(' ')
+    def __init__(self, config: dict):
+        self.csv_file = config['csv_file']
+        self.log_to_console = bool(config['log_to_console'])
+        self.notify_events = config['notify_events'].split(' ')
 
 
 class HtlcStreamLogger:
@@ -115,7 +120,8 @@ class HtlcStreamLogger:
     Monitor and store HTLCs as they sream across your node. 
         Optional notify telegram on forwards, sends, etc.
     """
-    def __init__(self, config: HtlcStreamLoggerConfig, _, node: Lnd, log: Logger):
+
+    def __init__(self, config: HtlcStreamLoggerConfig, creds: dict, node: Lnd, log: Logger):
         self.log = log
         self.node = node
         self.config = config
@@ -130,7 +136,8 @@ class HtlcStreamLogger:
         Uses a cache that times out after `chandatatimeout` seconds
         Also queries closed channels if `chanid` is not in open channels
         """
-        uptodate = (time.time() - self.lastchannelfetchtime < self.chandatatimeout)
+        uptodate = (time.time() - self.lastchannelfetchtime <
+                    self.chandatatimeout)
 
         if uptodate and chanid in self.mychannels:
             return self.mychannels[chanid]
@@ -177,7 +184,7 @@ class HtlcStreamLogger:
         while True:
             events = self.node.subscribe_htlc_events()
             try:
-                _ = self.node.get_info() # test connection
+                _ = self.node.get_info()  # test connection
                 print('Connected to LND. Waiting for first event...')
                 for e in events:
                     yield e
@@ -192,7 +199,8 @@ class HtlcStreamLogger:
 
                 print('Error:', details)
                 unavailable = ('Connection refused' in details)
-                unready = ('not yet ready' in details or 'wallet locked' in details)
+                unready = (
+                    'not yet ready' in details or 'wallet locked' in details)
                 terminated = (details == "htlc event subscription terminated")
 
                 if any((unavailable, unready, terminated)):
@@ -254,7 +262,8 @@ class HtlcStreamLogger:
                 fwdcachekey = (in_htlc_id, out_htlc_id, inchanid, outchanid)
                 if outcome == 'forward_event':
                     note = '💸 HTLC in flight.'
-                    self.forward_event_cache[fwdcachekey] = {'amt':amount, 'fee':fee}
+                    self.forward_event_cache[fwdcachekey] = {
+                        'amt': amount, 'fee': fee}
 
                 elif outcome == 'forward_fail_event':
                     note = '❌ Downstream fwding failure.'
@@ -264,8 +273,10 @@ class HtlcStreamLogger:
 
                 elif outcome == 'link_fail_event':
                     failure_string = eventinfo.failure_string
-                    failure_detail = self.getFailureAttribute(eventinfo, 'failure_detail')
-                    wire_failure = self.getFailureAttribute(eventinfo, 'wire_failure')
+                    failure_detail = self.getFailureAttribute(
+                        eventinfo, 'failure_detail')
+                    wire_failure = self.getFailureAttribute(
+                        eventinfo, 'wire_failure')
 
                     if eventtype == 'RECEIVE' and failure_detail == 'UNKNOWN_INVOICE':
                         note += 'Probe detected. '
@@ -287,23 +298,25 @@ class HtlcStreamLogger:
                             fee_ppm = "--"
                             if (isinstance(fee, float) or isinstance(fee, int)) and (isinstance(amount, float) or isinstance(amount, int)):
                                 fee_ppm = round((fee/amount) * 1_000_000)
-                            self.log.notify(f"✅ FORWARD {inalias} ➜ {outalias} for {fee} \[{fee_ppm}]")
+                            self.log.notify(
+                                f"✅ FORWARD {inalias} ➜ {outalias} for {fee} \[{fee_ppm}]")
                     elif "sends" in self.config.notify_events:
                         if eventtype == "SEND" and outcome == "settle_event":
-                            self.log.notify(f"✅ SEND {amount} out {outalias} for {fee}")
+                            self.log.notify(
+                                f"✅ SEND {amount} out {outalias} for {fee}")
 
                 if self.config.log_to_console:
                     print(eventtype,
-                        in_htlc_id, out_htlc_id,
-                        timetext, amount,'for', fee,
-                        inalias, f'{inrbal}/{incap}',
-                        '➜',
-                        outalias, f'{outlbal}/{outcap}',
-                        # ~ inchanid, '➜', outchanid,
-                        outcome,
-                        # ~ eventinfo,
-                        note,
-                            )
+                          in_htlc_id, out_htlc_id,
+                          timetext, amount, 'for', fee,
+                          inalias, f'{inrbal}/{incap}',
+                          '➜',
+                          outalias, f'{outlbal}/{outcap}',
+                          # ~ inchanid, '➜', outchanid,
+                          outcome,
+                          # ~ eventinfo,
+                          note,
+                          )
 
                 with open(self.config.csv_file, 'a', newline='') as f:
                     writer = csv.writer(f)
@@ -311,11 +324,11 @@ class HtlcStreamLogger:
                     if i % 30 == 0:
                         writer.writerow(['Eventtype', 'Htlc_id_in', 'Htlc_id_out',
                                         'Timestamp', 'Amount', 'Fee',
-                                        'Alias_in','Alias_out',
-                                        'Balance_in','Capacity_in',
-                                        'Balance_out', 'Capacity_out',
-                                        'Chanid_in','Chanid_out',
-                                        'Outcome', 'Details', 'Note'])
+                                         'Alias_in', 'Alias_out',
+                                         'Balance_in', 'Capacity_in',
+                                         'Balance_out', 'Capacity_out',
+                                         'Chanid_in', 'Chanid_out',
+                                         'Outcome', 'Details', 'Note'])
 
                     writer.writerow([eventtype,
                                     event.incoming_htlc_id,
@@ -325,7 +338,7 @@ class HtlcStreamLogger:
                                     inrbal, incap,
                                     outlbal, outcap,
                                     f"{inchanid}", f"{outchanid}",
-                                    outcome, eventinfo, note])
+                                     outcome, eventinfo, note])
 
             except Exception as e:
                 print('Exception while handling event.', repr(e))

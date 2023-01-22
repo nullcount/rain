@@ -285,6 +285,7 @@ class Lnd:
 
     # ~$10 atm of writing
     def pay_invoice(self, invoice_string, outgoing_chan_id=None, fee_limit=60000):
+        self.log.info(f"LND found invoice to pay: {invoice_string}")
         args = {"payment_request": invoice_string}
         if outgoing_chan_id:
             args["outgoing_chan_id"] = outgoing_chan_id

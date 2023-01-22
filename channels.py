@@ -2,8 +2,9 @@ from lnd import ChannelTemplate
 
 
 class ChannelState:
-    def __init__(self, chan_id: str, capacity: int, local_balance: int, local_chan_reserve_sat: int):
+    def __init__(self, chan_id: str, pending: bool, capacity: int, local_balance: int, local_chan_reserve_sat: int):
         self.chan_id = chan_id
+        self.pending = pending
         self.capacity = capacity
         self.local_balance = local_balance
         self.local_chan_reserve_sat = local_chan_reserve_sat

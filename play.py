@@ -37,10 +37,15 @@ def main(debug: bool):
 
             # get channels for peer in ChannelState list
             open_chans = []
-            lnd_chans = node.get_shared_channels(_config['pubkey'])
-            for chan in lnd_chans:
-                open_chans.append(ChannelState(chan_id=chan.chan_id, capacity=chan.capacity,
+            lnd_active_chans = node.get_shared_channels(_config['pubkey'])
+            lnd_pending_chans = [chan for chan in node.get_pending_channel_opens(
+            ) if chan.remote_node_pub == _config['pubkey']]
+            for chan in lnd_active_chans:
+                open_chans.append(ChannelState(chan_id=chan.chan_id, pending=False, capacity=chan.capacity,
                                   local_balance=chan.local_balance, local_chan_reserve_sat=chan.local_chan_reserve_sat))
+            for chan in lnd_pending_chans:
+                open_chans.append(ChannelState(chan_id=chan.channel_point, pending=True, capacity=chan.capacity,
+                                               local_balance=chan.local_balance, local_chan_reserve_sat=chan.local_chan_reserve_sat))
 
             if strategy == "SOURCE":
                 source_config = Config(_config)

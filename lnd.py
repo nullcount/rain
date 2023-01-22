@@ -289,7 +289,7 @@ class Lnd:
         if outgoing_chan_id:
             args["outgoing_chan_id"] = outgoing_chan_id
         if fee_limit:
-            args["fee_limit"] = fee_limit
+            args["fee_limit"] = ln.FeeLimit(fixed=fee_limit)
         send_request = ln.SendRequest(**args)
         send_response = self.stub.SendPaymentSync(send_request)
         self.log.info(f"LND pay invoice response: {send_response}")

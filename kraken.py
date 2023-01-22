@@ -138,13 +138,9 @@ class Kraken(SwapMethod):
     def send_to_acct(self, sats, node):
         self.log.notify(self.log_msg_map['send_to_acct'](int(sats)))
 
-    def pay_invoice(self, invoice_code):
-        # TODO kraken hasn't implemented yet
-        return
-
     def get_lightning_invoice(self, amount_sats):
         chrome_options = Options()
-        chrome_options.headless = True
+        # chrome_options.headless = True
         # create cookies to use next time
         chrome_options.add_argument("user-data-dir=selenium")
         driver = webdriver.Chrome(

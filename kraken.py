@@ -140,75 +140,60 @@ class Kraken(SwapMethod):
 
     def get_lightning_invoice(self, amount_sats):
         chrome_options = Options()
-        # chrome_options.headless = True
         # create cookies to use next time
         chrome_options.add_argument("user-data-dir=selenium")
-        driver = webdriver.Chrome(
-            chrome_options=chrome_options, executable_path="./chromedriver")
+        driver = webdriver.Chrome(chrome_options=chrome_options, executable_path="./chromedriver")
         actions = ActionChains(driver)
 
         # go to invoice page, login if necessary, you may have to approve a new device the first time as well
         driver.get("https://www.kraken.com/u/funding/deposit?asset=BTC&method=1")
         time.sleep(1)
         location = driver.current_url
-        if location != "https://www.kraken.com/u/funding/deposit?asset=BTC&method=1":
-            if location == "https://www.kraken.com/sign-in":
-                driver.find_element(
-                    By.XPATH, '//input[@name="username"]').send_keys(self.creds.username)
-                driver.find_element(
-                    By.XPATH, '//input[@name="password"]').send_keys(self.creds.password)
-                time.sleep(1)
-                driver.find_element(
-                    By.XPATH, '//input[@name="password"]').send_keys(Keys.RETURN)
-                time.sleep(2)
-                if self.creds.otp_secret:
-                    hotp = pyotp.TOTP(self.creds.otp_secret)
-                    otp = hotp.now()
-                    driver.find_element(
-                        By.XPATH, '//input[@name="tfa"]').send_keys(otp)
-                    time.sleep(1)
-                    driver.find_element(
-                        By.XPATH, '//input[@name="tfa"]').send_keys(Keys.RETURN)
-                    time.sleep(3)
-                driver.get(
-                    "https://www.kraken.com/u/funding/deposit?asset=BTC&method=1")
-                time.sleep(3)
-                location = driver.current_url
+        if location == "https://www.kraken.com/sign-in":
+            self.login(driver)
+            driver.get("https://www.kraken.com/u/funding/deposit?asset=BTC&method=1")
+            time.sleep(3)
+            location = driver.current_url
         assert location == "https://www.kraken.com/u/funding/deposit?asset=BTC&method=1"
 
         # make everything on the page visible
         driver.execute_script("document.body.style.zoom = '0.55'")
 
         # remove tos popup
-        driver.execute_script(
-            """document.querySelector("div[data-testid='tos-dialog']").remove();""")
+        driver.execute_script("""document.querySelector("div[data-testid='tos-dialog']").remove();""")
         time.sleep(1)
 
         # toggle sats denomination if necessary
-        sats_toggle = driver.find_element(
-            By.CSS_SELECTOR, "div[class^='LightningForm_toggle']")
-        if "enabled" in sats_toggle.get_attribute("class"):
-            pass
-        else:
-            driver.execute_script(
-                """document.querySelector("div[class^='LightningForm_toggle']").click();""")
-            # sats_toggle.click()
+        sats_toggle = driver.find_element(By.CSS_SELECTOR, "div[class^='LightningForm_toggle']")
+        if "enabled" not in sats_toggle.get_attribute("class"):
+            driver.execute_script("""document.querySelector("div[class^='LightningForm_toggle']").click();""")
 
         # enter payment amount
-        amt_field = driver.find_element(
-            By.XPATH, '//*[@id="lightningDepositAmount"]')
+        amt_field = driver.find_element(By.XPATH, '//*[@id="lightningDepositAmount"]')
         amt_field.send_keys(str(amount_sats))
         time.sleep(1)
 
         # focus submit button and press enter
-        driver.execute_script(
-            """document.querySelector("button[data-testid='lightning-request-btn']").focus();""".format())
+        driver.execute_script("""document.querySelector("button[data-testid='lightning-request-btn']").focus();""")
         actions = actions.send_keys(Keys.ENTER)
         actions.perform()
         time.sleep(3)
 
         # copy lightning invoice to clipboard
-        driver.execute_script(
-            """document.querySelector("div[data-testid='copy-address-button']").click();""")
+        driver.execute_script("""document.querySelector("div[data-testid='copy-address-button']").click();""")
         invoice_str = pyperclip.paste()
         return invoice_str
+
+    def login(self, driver):
+        driver.find_element(By.XPATH, '//input[@name="username"]').send_keys(self.creds.username)
+        driver.find_element(By.XPATH, '//input[@name="password"]').send_keys(self.creds.password)
+        time.sleep(1)
+        driver.find_element(By.XPATH, '//input[@name="password"]').send_keys(Keys.RETURN)
+        time.sleep(2)
+        if self.creds.otp_secret:
+            hotp = pyotp.TOTP(self.creds.otp_secret)
+            otp = hotp.now()
+            driver.find_element(By.XPATH, '//input[@name="tfa"]').send_keys(otp)
+            time.sleep(1)
+            driver.find_element(By.XPATH, '//input[@name="tfa"]').send_keys(Keys.RETURN)
+            time.sleep(3)

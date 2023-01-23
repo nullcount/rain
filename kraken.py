@@ -160,40 +160,64 @@ class Kraken(SwapMethod):
         driver.execute_script("document.body.style.zoom = '0.55'")
 
         # remove tos popup
-        driver.execute_script("""document.querySelector("div[data-testid='tos-dialog']").remove();""")
+        remove_tos_cmd = construct_js(element_dict["tos_dialog"], "remove")
+        driver.execute_script(remove_tos_cmd)
         time.sleep(1)
 
         # toggle sats denomination if necessary
-        sats_toggle = driver.find_element(By.CSS_SELECTOR, "div[class^='LightningForm_toggle']")
+        sats_toggle = driver.find_element(By.CSS_SELECTOR, element_dict["lightning_toggle"])
         if "enabled" not in sats_toggle.get_attribute("class"):
-            driver.execute_script("""document.querySelector("div[class^='LightningForm_toggle']").click();""")
+            click_toggle_cmd = construct_js(element_dict["lightning_toggle"], "click")
+            driver.execute_script(click_toggle_cmd)
 
         # enter payment amount
-        amt_field = driver.find_element(By.XPATH, '//*[@id="lightningDepositAmount"]')
+        amt_field = driver.find_element(By.XPATH, element_dict["amt_field"])
         amt_field.send_keys(str(amount_sats))
         time.sleep(1)
 
         # focus submit button and press enter
-        driver.execute_script("""document.querySelector("button[data-testid='lightning-request-btn']").focus();""")
+        focus_submit_cmd = construct_js(element_dict["submit_btn"], "focus")
+        driver.execute_script(focus_submit_cmd)
         actions = actions.send_keys(Keys.ENTER)
         actions.perform()
         time.sleep(3)
 
         # copy lightning invoice to clipboard
-        driver.execute_script("""document.querySelector("div[data-testid='copy-address-button']").click();""")
+        copy_invoice_cmd = construct_js(element_dict["clipboard"], "click")
+        driver.execute_script(copy_invoice_cmd)
         invoice_str = pyperclip.paste()
         return invoice_str
 
     def login(self, driver):
-        driver.find_element(By.XPATH, '//input[@name="username"]').send_keys(self.creds.username)
-        driver.find_element(By.XPATH, '//input[@name="password"]').send_keys(self.creds.password)
+        driver.find_element(By.XPATH, element_dict["username_field"]).send_keys(self.creds.username)
+        driver.find_element(By.XPATH, element_dict["password_field"]).send_keys(self.creds.password)
         time.sleep(1)
-        driver.find_element(By.XPATH, '//input[@name="password"]').send_keys(Keys.RETURN)
+        driver.find_element(By.XPATH, element_dict["password_field"]).send_keys(Keys.RETURN)
         time.sleep(2)
         if self.creds.otp_secret:
             hotp = pyotp.TOTP(self.creds.otp_secret)
             otp = hotp.now()
-            driver.find_element(By.XPATH, '//input[@name="tfa"]').send_keys(otp)
+            driver.find_element(By.XPATH, element_dict["tfa_field"]).send_keys(otp)
             time.sleep(1)
-            driver.find_element(By.XPATH, '//input[@name="tfa"]').send_keys(Keys.RETURN)
+            driver.find_element(By.XPATH, element_dict["tfa_field"]).send_keys(Keys.RETURN)
             time.sleep(3)
+
+
+def construct_js(query, dot_method: str):
+    js_script = \
+        f"""var element = document.querySelector("{query}"); 
+        if (element === null) {{  throw new Error('Element not found');}} 
+        element.{dot_method}();"""
+    return js_script
+
+
+element_dict = {
+    "username_field": '//input[@name="username"]',
+    "password_field": '//input[@name="password"]',
+    "amt_field": '//*[@id="lightningDepositAmount"]',
+    "tfa_field": '//input[@name="tfa"]',
+    "clipboard": "div[data-testid='copy-address-button']",
+    "submit_btn": "button[data-testid='lightning-request-btn']",
+    "lightning_toggle": "div[class^='LightningForm_toggle']",
+    "tos_dialog": "div[data-testid='tos-dialog']"
+}

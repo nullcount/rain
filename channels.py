@@ -148,8 +148,11 @@ class SinkNodeManager(Manager):
 
     def close_empty_channels_debug_msg(self):
         a = []
+        i = 1
         for chan in self.channels_to_close:
+            a.append(f"CHANNEL ({i}/{len(self.channels_to_close)})")
             a.append(chan.get_debug_str())
+            i += 1
         return "\n".join(a)
 
     def close_empty_channels(self):
@@ -237,10 +240,13 @@ class SourceNodeManager(Manager):
 
     def drain_channels_debug_msg(self):
         a = []
+        i = 1
         for chan in self.channels_to_drain:
+            a.append(f"CHANNEL ({i}/{len(self.channels_to_drain)})")
             a.append(
                 f"drain_amount_sats_target = {self.state.config.loop_out_amount}")
             a.append(chan.get_debug_str())
+            i += 1
         return "\n".join(a)
 
     def drain_channels(self):

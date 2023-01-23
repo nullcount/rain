@@ -3,7 +3,7 @@ import codecs
 import grpc
 import sys
 import re
-from grpc_generated import rpc_pb2_grpc as lnrpc, rpc_pb2 as ln
+from grpc_generated import lightning_pb2_grpc as lnrpc, lightning_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
 from notify import Logger
 
@@ -40,7 +40,11 @@ class ChannelTemplate:
             local_funding_amount=self.local_funding_amount,
             sat_per_vbyte=self.sat_per_vbyte,
             min_htlc_msat=self.min_htlc_sat * SAT_MSATS,
-            spend_unconfirmed=self.spend_unconfirmed
+            spend_unconfirmed=self.spend_unconfirmed,
+            use_base_fee=True,
+            use_fee_rate=True,
+            base_fee=self.base_fee,
+            fee_rate=self.fee_rate
         )
 
 

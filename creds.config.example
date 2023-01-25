@@ -8,11 +8,17 @@ macaroon_path =
 
 [KRAKEN]
 # create a kraken API key with funding permissions
-#   add a withdrawl address to your account and name 
-#   it `funding_key` 
+#     go to the onchain bitcoin widthdraw page on kraken.com and 
+#     add a new withdraw address, give it a description and use that 
+#     same description string for `funding_key` below
+#     add your kraken account `username` and `password`
+#     re-add your 2fa using a secret key and put the same `otp_secret` below
 api_key = 
 api_secret =
 funding_key =
+username = 
+password = 
+otp_secret = 
 
 [NICEHASH]
 # create a nicehash API key with wallet permissions
@@ -33,7 +39,9 @@ device_name =
 withdraw_address =
 
 [WOS]
-# automate a WoS wallet via API calls
+# automate a wallet of satoshi account directly with the API
+#   to create an account and get credentials, run the following command
+#   python3 run.py init wos
 apiSecret =
 apiToken =
 lightningAddress =

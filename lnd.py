@@ -3,8 +3,9 @@ import codecs
 import grpc
 import sys
 import re
-from grpc_generated import rpc_pb2_grpc as lnrpc, rpc_pb2 as ln
+from grpc_generated import lightning_pb2_grpc as lnrpc, lightning_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
+from notify import Logger
 
 MESSAGE_SIZE_MB = 50 * 1024 * 1024
 SAT_MSATS = 1000
@@ -26,30 +27,46 @@ class ChannelTemplate:
         self.address = address
         self.spend_unconfirmed = spend_unconfirmed
 
+    def get_debug_str(self):
+        attrs = vars(self)
+        a = []
+        for key, value in attrs.items():
+            a.append(f'{key} = {value}')
+        return "\n".join(a)
+
     def get_open_req(self):
         return ln.OpenChannelRequest(
             node_pubkey_string=self.node_pubkey,
             local_funding_amount=self.local_funding_amount,
             sat_per_vbyte=self.sat_per_vbyte,
             min_htlc_msat=self.min_htlc_sat * SAT_MSATS,
-            spend_unconfirmed=self.spend_unconfirmed
+            spend_unconfirmed=self.spend_unconfirmed,
+            use_base_fee=True,
+            use_fee_rate=True,
+            base_fee=self.base_fee,
+            fee_rate=self.fee_rate
         )
 
 
-class Lnd:
-    def __init__(self, LND_NODE_CONFIG, logger):
-        self.log = logger
-        grpc_host = LND_NODE_CONFIG['grpc_host']
-        tls_cert_path = LND_NODE_CONFIG['tls_cert_path']
-        macaroon_path = LND_NODE_CONFIG['macaroon_path']
+class LndCreds:
+    def __init__(self, grpc_host: str, tls_cert_path: str, macaroon_path: str):
+        self.grpc_host = grpc_host
+        self.tls_cert_path = tls_cert_path
+        self.macaroon_path = macaroon_path
 
+
+class Lnd:
+    def __init__(self, creds: LndCreds, log: Logger):
+        self.log = log
         os.environ['GRPC_SSL_CIPHER_SUITES'] = 'HIGH+ECDSA'
-        combined_credentials = self.get_credentials(tls_cert_path, macaroon_path)
+        combined_credentials = self.get_credentials(
+            creds.tls_cert_path, creds.macaroon_path)
         channel_options = [
             ('grpc.max_message_length', MESSAGE_SIZE_MB),
             ('grpc.max_receive_message_length', MESSAGE_SIZE_MB)
         ]
-        grpc_channel = grpc.secure_channel(grpc_host, combined_credentials, channel_options)
+        grpc_channel = grpc.secure_channel(
+            creds.grpc_host, combined_credentials, channel_options)
         self.stub = lnrpc.LightningStub(grpc_channel)
         self.routerstub = routerrpc.RouterStub(grpc_channel)
         self.graph = None
@@ -67,8 +84,10 @@ class Lnd:
         tls_certificate = open(tls_cert_path, 'rb').read()
         ssl_credentials = grpc.ssl_channel_credentials(tls_certificate)
         macaroon = codecs.encode(open(macaroon_path, 'rb').read(), 'hex')
-        auth_credentials = grpc.metadata_call_credentials(lambda _, callback: callback([('macaroon', macaroon)], None))
-        combined_credentials = grpc.composite_channel_credentials(ssl_credentials, auth_credentials)
+        auth_credentials = grpc.metadata_call_credentials(
+            lambda _, callback: callback([('macaroon', macaroon)], None))
+        combined_credentials = grpc.composite_channel_credentials(
+            ssl_credentials, auth_credentials)
         return combined_credentials
 
     def get_info(self):
@@ -94,7 +113,8 @@ class Lnd:
             self.get_peers()
         for peer in self.peers:
             if peer.pub_key == peer_pubkey:
-                self.log.info("LND is already peered with {}".format(peer_pubkey))
+                self.log.info(
+                    "LND is already peered with {}".format(peer_pubkey))
                 return True
         return False
 
@@ -123,13 +143,15 @@ class Lnd:
 
     def get_node_info(self, nodepubkey):
         if nodepubkey not in self.node_info:
-            self.node_info[nodepubkey] = self.stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=nodepubkey))
+            self.node_info[nodepubkey] = self.stub.GetNodeInfo(
+                ln.NodeInfoRequest(pub_key=nodepubkey))
         return self.node_info[nodepubkey]
 
     def get_chan_info(self, chanid):
         if chanid not in self.chan_info:
             try:
-                self.chan_info[chanid] = self.stub.GetChanInfo(ln.ChanInfoRequest(chan_id=chanid))
+                self.chan_info[chanid] = self.stub.GetChanInfo(
+                    ln.ChanInfoRequest(chan_id=chanid))
             except:
                 print("Failed to lookup {}".format(chanid), file=sys.stderr)
                 return None
@@ -149,14 +171,20 @@ class Lnd:
             funding_txid_str=chan_info.chan_point.split(':')[0],
             output_index=int(chan_info.chan_point.split(':')[1])
         )
-        my_policy = chan_info.node1_policy if chan_info.node1_pub == self.get_own_pubkey() else chan_info.node2_policy 
-        base_fee_msat = (base_fee_msat if base_fee_msat is not None else my_policy.fee_base_msat)
+        my_policy = chan_info.node1_policy if chan_info.node1_pub == self.get_own_pubkey(
+        ) else chan_info.node2_policy
+        base_fee_msat = (
+            base_fee_msat if base_fee_msat is not None else my_policy.fee_base_msat)
         fee_rate = fee_ppm if fee_ppm is not None else my_policy.fee_rate_milli_msat
-        min_htlc_msat = (min_htlc_msat if min_htlc_msat is not None else my_policy.min_htlc)
-        max_htlc_msat = (max_htlc_msat if max_htlc_msat is not None else my_policy.max_htlc_msat)
-        time_lock_delta = (time_lock_delta if time_lock_delta is not None else my_policy.time_lock_delta)
+        min_htlc_msat = (
+            min_htlc_msat if min_htlc_msat is not None else my_policy.min_htlc)
+        max_htlc_msat = (
+            max_htlc_msat if max_htlc_msat is not None else my_policy.max_htlc_msat)
+        time_lock_delta = (
+            time_lock_delta if time_lock_delta is not None else my_policy.time_lock_delta)
 
-        self.log.info(f"base_fee_msat: {base_fee_msat} ppm: {fee_rate} min_htlc_msat: {min_htlc_msat} max_htlc_msat: {max_htlc_msat} time_lock_delta: {time_lock_delta}")
+        self.log.info(
+            f"base_fee_msat: {base_fee_msat} ppm: {fee_rate} min_htlc_msat: {min_htlc_msat} max_htlc_msat: {max_htlc_msat} time_lock_delta: {time_lock_delta}")
 
         res = self.stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(
             chan_point=channel_point,
@@ -176,7 +204,8 @@ class Lnd:
 
     def get_graph(self, refresh=False):
         if self.graph is None or refresh:
-            self.graph = self.stub.DescribeGraph(ln.ChannelGraphRequest(include_unannounced=True))
+            self.graph = self.stub.DescribeGraph(
+                ln.ChannelGraphRequest(include_unannounced=True))
         return self.graph
 
     def get_own_pubkey(self):
@@ -206,7 +235,8 @@ class Lnd:
         byte_peerid = bytes.fromhex(peerid)
         if peerid not in self.peer_channels:
             request = ln.ListChannelsRequest(peer=byte_peerid)
-            self.peer_channels[peerid] = self.stub.ListChannels(request).channels
+            self.peer_channels[peerid] = self.stub.ListChannels(
+                request).channels
         return self.peer_channels[peerid]
 
     def min_version(self, major, minor, patch=0):
@@ -230,7 +260,8 @@ class Lnd:
             funding_txid_str=chan_info.chan_point.split(':')[0],
             output_index=int(chan_info.chan_point.split(':')[1])
         )
-        my_policy = chan_info.node1_policy if chan_info.node1_pub == self.get_own_pubkey() else chan_info.node2_policy
+        my_policy = chan_info.node1_policy if chan_info.node1_pub == self.get_own_pubkey(
+        ) else chan_info.node2_policy
         # ugly code, retries with 'AUTO' if channel turns out not to be active.
         # Alternative is to iterate or index the channel list, just to get active status
         try:
@@ -256,12 +287,14 @@ class Lnd:
         decoded = self.stub.DecodePayReq(request)
         return decoded
 
-    def pay_invoice(self, invoice_string, outgoing_chan_id=None, fee_limit=60000):  # ~$10 atm of writing
+    # ~$10 atm of writing
+    def pay_invoice(self, invoice_string, outgoing_chan_id=None, fee_limit=60000):
+        self.log.info(f"LND found invoice to pay: {invoice_string}")
         args = {"payment_request": invoice_string}
         if outgoing_chan_id:
             args["outgoing_chan_id"] = outgoing_chan_id
         if fee_limit:
-            args["fee_limit"] = fee_limit
+            args["fee_limit"] = ln.FeeLimit(fixed=fee_limit)
         send_request = ln.SendRequest(**args)
         send_response = self.stub.SendPaymentSync(send_request)
         self.log.info(f"LND pay invoice response: {send_response}")
@@ -283,12 +316,14 @@ class Lnd:
             self.add_peer(channel.node_pubkey, channel.address)
         try:
             channel_point = self.stub.OpenChannelSync(channel.get_open_req())
-            self.log.info(f"LND open channel {channel.local_funding_amount} sats with peer: {channel.node_pubkey}")
+            self.log.info(
+                f"LND open channel {channel.local_funding_amount} sats with peer: {channel.node_pubkey}")
         except grpc._channel._InactiveRpcError as e:
-            if "Number of pending channels exceed maximum" in e.debug_error_string(): 
-                return channel_point # done for now
+            if "Number of pending channels exceed maximum" in e.debug_error_string():
+                return channel_point  # done for now
             else:
-                self.log.notify(f"An error occurred while opening channel: {e}")
+                self.log.notify(
+                    f"An error occurred while opening channel: {e}")
         return channel_point
 
     def close_channel(self, chan_id, sat_per_vbyte, force=False, target_conf=None, delivery_address=None):
@@ -297,28 +332,33 @@ class Lnd:
                           f"chan_id: {chan_id}, sat_per_vbyte: {sat_per_vbyte}")
             return
 
-        target_channels = list(filter(lambda channel: channel.chan_id == chan_id, self.get_channels()))
+        target_channels = list(
+            filter(lambda channel: channel.chan_id == chan_id, self.get_channels()))
         if not len(target_channels) > 0:
-            self.log.info(f"The channel id provided does not exist:  {chan_id}")
+            self.log.info(
+                f"The channel id provided does not exist:  {chan_id}")
             return
         target_channel = target_channels[0]
         channel_point_str = target_channel.channel_point
         funding_txid_str, output_index = channel_point_str.split(':')
 
         close_channel_request = ln.CloseChannelRequest(
-            channel_point=ln.ChannelPoint(funding_txid_str=funding_txid_str, output_index=int(output_index)),
+            channel_point=ln.ChannelPoint(
+                funding_txid_str=funding_txid_str, output_index=int(output_index)),
             sat_per_vbyte=sat_per_vbyte,
             force=force,
             target_conf=target_conf,
             delivery_address=delivery_address)
-        close_status_update_response = self.stub.CloseChannel(close_channel_request)
+        close_status_update_response = self.stub.CloseChannel(
+            close_channel_request)
         return close_status_update_response
 
     def get_onchain_balance(self):
         balance_request = ln.WalletBalanceRequest()
         balance_response = self.stub.WalletBalance(balance_request)
         confirmed = balance_response.confirmed_balance
-        self.log.info("LND confirmed onchain balance: {} sats".format(confirmed))
+        self.log.info(
+            "LND confirmed onchain balance: {} sats".format(confirmed))
         return confirmed
 
     def get_onchain_address(self):
@@ -363,16 +403,20 @@ class Lnd:
 
     def get_pending_channel_opens(self):
         pending_channels_request = ln.PendingChannelsRequest()
-        pending_channels_response = self.stub.PendingChannels(pending_channels_request)
+        pending_channels_response = self.stub.PendingChannels(
+            pending_channels_request)
         pending_open_channels = pending_channels_response.pending_open_channels
-        pending_open_channels = list(map(lambda x: x.channel, pending_open_channels))
+        pending_open_channels = list(
+            map(lambda x: x.channel, pending_open_channels))
         return pending_open_channels
 
     def get_pending_channel_open_tx_ids(self):
         pending_channels_request = ln.PendingChannelsRequest()
-        pending_channels_response = self.stub.PendingChannels(pending_channels_request)
+        pending_channels_response = self.stub.PendingChannels(
+            pending_channels_request)
         pending_open_channels = pending_channels_response.pending_open_channels
-        pending_open_channel_tx_ids = [x.channel.channel_point.split(":")[0] for x in pending_open_channels]
+        pending_open_channel_tx_ids = [x.channel.channel_point.split(
+            ":")[0] for x in pending_open_channels]
         return pending_open_channel_tx_ids
 
     def should_pay_invoice(self, invoice):

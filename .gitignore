@@ -1,7 +1,11 @@
+selenium
 *.pkl
 csv/*.csv
 logs/*.log
 creds.config
+channels.config
+admin.macaroon
+tls.cert
 playbook.config
 listen.config
 *__pycache__/

@@ -11,7 +11,7 @@ class SwapMethod:
         # returns total balance in sats
         raise NotImplementedError
 
-    def pay_invoice(self, inv):
+    def pay_invoice(self, inv: str):
         # attempts to pay the invoice using account balance
         raise NotImplementedError
 
@@ -19,6 +19,6 @@ class SwapMethod:
         # returns bolt11 invoice string
         raise NotImplementedError
 
-    def estimate_onchain_fee(self):
+    def estimate_onchain_fee(self, amount: int):
         # returns the total fee in satoshis
         raise NotImplementedError

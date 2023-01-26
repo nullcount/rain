@@ -7,6 +7,7 @@ from notify import Logger
 from kraken import Kraken
 from nicehash import Nicehash
 from muun import Muun
+from wos import Wos
 from creds import *
 
 
@@ -28,6 +29,10 @@ swap_methods = {
     "MUUN": {
         'creds': MuunCreds,
         'operator': Muun
+    },
+    "WOS": {
+        'creds': WosCreds,
+        'operator': Wos
     }
 }
 
@@ -63,7 +68,8 @@ CREDS = Config('creds.config').config
 LISTEN_CONFIG = Config('listen.config').config
 CHANNELS_CONFIG = Config('channels.config').config
 
-tg_creds = TelegramCreds(CREDS['TELEGRAM']['api_token'], CREDS['TELEGRAM']['chat_id'])
+tg_creds = TelegramCreds(
+    CREDS['TELEGRAM']['api_token'], CREDS['TELEGRAM']['chat_id'])
 
 PLAY_LOG = Logger("logs/play.log", tg_creds)
 LISTEN_LOG = Logger('logs/listen.log', tg_creds)

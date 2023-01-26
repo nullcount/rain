@@ -16,8 +16,8 @@ def debug(message):
 
 
 class ChannelTemplate:
-    def __init__(self, node_pubkey, local_funding_amount, address, sat_per_vbyte, base_fee, fee_rate, min_htlc_sat,
-                 spend_unconfirmed):
+    def __init__(self, node_pubkey: str, local_funding_amount: int, address: str, sat_per_vbyte: int, base_fee: int, fee_rate: int, min_htlc_sat: int,
+                 spend_unconfirmed: bool):
         self.node_pubkey = node_pubkey
         self.local_funding_amount = local_funding_amount
         self.sat_per_vbyte = sat_per_vbyte

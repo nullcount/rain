@@ -82,8 +82,10 @@ class SourceNodeConfig:
         self.cltv_delta = int(config['cltv_delta'])
         self.min_htlc_sat = int(config['min_htlc_sat'])
         self.swap_method = config['swap_method']
-        self.loop_out_amount = int(config['loop_out_amount'])
+        self.min_local_balance_ratio = float(config['min_local_balance_ratio'])
+        self.max_local_balance_ratio = float(config['max_local_balance_ratio'])
         self.loop_out_backoff = float(config['loop_out_backoff'])
+        self.loop_out_retries = int(config['loop_out_retries'])
         self.max_account_balance = int(config['max_account_balance'])
         self.mempool_fee_rec = config['mempool_fee_rec']
         self.mempool_fee_factor = float(config['mempool_fee_factor'])
@@ -200,7 +202,7 @@ class SourceNodeManager(Manager):
         # get channels with enough to loop out
         self.channels_to_drain = []
         for chan in self.state.channels:
-            if chan.local_balance * 1.10 > self.state.config.loop_out_amount and not chan.pending:
+            if float(chan.local_balance / chan.capacity) > self.state.config.max_local_balance_ratio and not chan.pending:
                 self.channels_to_drain.append(chan)
 
         self.job_list = [
@@ -242,9 +244,19 @@ class SourceNodeManager(Manager):
         a = []
         i = 1
         for chan in self.channels_to_drain:
+            invoice_amount = chan.local_balance - \
+                int(chan.capacity * self.state.config.min_local_balance_ratio)
             a.append(f"CHANNEL ({i}/{len(self.channels_to_drain)})")
             a.append(
-                f"drain_amount_sats_target = {self.state.config.loop_out_amount}")
+                f"drain_amount_sats_target = {invoice_amount}")
+            a.append(
+                f"min_local_balance_ratio = {self.state.config.min_local_balance_ratio}")
+            a.append(
+                f"max_local_balance_ratio = {self.state.config.max_local_balance_ratio}")
+            a.append(
+                f"loop_out_backoff = {self.state.config.loop_out_backoff}")
+            a.append(
+                f"loop_out_retries = {self.state.config.loop_out_retries}")
             a.append(chan.get_debug_str())
             i += 1
         return "\n".join(a)
@@ -252,9 +264,9 @@ class SourceNodeManager(Manager):
     def drain_channels(self):
         for chan in self.channels_to_drain:
             if not self.mock:
-                for i in range(3):
-                    invoice_amount = int(
-                        self.state.config.loop_out_amount * (self.state.config.loop_out_backoff ** i))
+                for i in range(self.state.config.loop_out_retries):
+                    invoice_amount = (chan.local_balance - int(chan.capacity *
+                                      self.state.config.min_local_balance_ratio)) * (self.state.config.loop_out_backoff ** i)
                     bolt11_invoice = self.state.swap_method.get_lightning_invoice(
                         invoice_amount)
                     payment_response = self.node.pay_invoice(
@@ -269,6 +281,9 @@ class SourceNodeManager(Manager):
     def account_send_onchain_debug_msg(self):
         a = [f"amount_sats = {self.state.account_balance}",
              f"sat_per_vbyte = {self.state.sat_per_vbyte}"]
+        if self.state.account_balance > self.state.config.max_account_balance:
+            a.append(
+                f"onchain_fee = {self.state.swap_method.estimate_onchain_fee(self.state.account_balance)}")
         return "\n".join(a)
 
     def account_send_onchain(self):

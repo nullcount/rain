@@ -46,7 +46,10 @@ class Muun(SwapMethod):
     def get_onchain_address(self):
         return
 
-    def send_onchain(self, _, sat_per_vbyte):
+    def estimate_onchain_fee(self, amount: int):
+        return "depends on sat/vbyte"
+
+    def send_onchain(self, _, sat_per_vbyte: int):
         self.restart_app()
         self.tap(element_dict["send-btn"])
         self.tap(element_dict["address-input"])
@@ -87,7 +90,8 @@ class Muun(SwapMethod):
             return True
         else:
             print("Balance is {}...".format(balance))
-            self.log.info("ERROR: Attempted to delete wallet with non-zero balance...")
+            self.log.info(
+                "ERROR: Attempted to delete wallet with non-zero balance...")
             return False
 
     def get_account_balance(self):
@@ -100,7 +104,8 @@ class Muun(SwapMethod):
         try:
             balance = int(float(balance_obj["text"].replace(",", "")) * 1e6)
         except TypeError:
-            self.log.notify("Err! Could not read balance from Muun. Check your android device!")
+            self.log.notify(
+                "Err! Could not read balance from Muun. Check your android device!")
         return balance
 
     def get_lightning_invoice(self, sats):
@@ -155,7 +160,8 @@ class Muun(SwapMethod):
     def restart_app(self):
         self.log.info("Restarting app...")
         self.device.shell("am force-stop io.muun.apollo")
-        self.device.shell("monkey -p io.muun.apollo -c android.intent.category.LAUNCHER 1")
+        self.device.shell(
+            "monkey -p io.muun.apollo -c android.intent.category.LAUNCHER 1")
         sleep(1)
 
     def init_wallet(self):
@@ -169,7 +175,8 @@ class Muun(SwapMethod):
             self.log.info("Doing a trick so we don't have to make a pin...")
             self.close_app()
             sleep(1)
-            self.device.shell("monkey -p io.muun.apollo -c android.intent.category.LAUNCHER 1")
+            self.device.shell(
+                "monkey -p io.muun.apollo -c android.intent.category.LAUNCHER 1")
             return True
         else:
             self.log.info("Wallet already created...")
@@ -194,14 +201,17 @@ class Muun(SwapMethod):
         if screen.find("node", element_dict["email-skipped"]):
             pass
         else:
-            self.tap({"text": backup_steps[0]["text"], **element_dict["backup-step"]})
+            self.tap(
+                {"text": backup_steps[0]["text"], **element_dict["backup-step"]})
             self.tap(element_dict["no-email"])
             self.tap(element_dict["confirm-btn"])
-        self.tap({"text": backup_steps[1]["text"], **element_dict["backup-step"]})
+        self.tap({"text": backup_steps[1]["text"],
+                 **element_dict["backup-step"]})
         self.tap(element_dict["start-backup"])
 
         screen = self.get_screen_layout()
-        key = " ".join([x["text"] for x in screen.findAll("node", element_dict["backup-chunk"])])
+        key = " ".join([x["text"] for x in screen.findAll(
+            "node", element_dict["backup-chunk"])])
         self.log.info(key)
         return key
 
@@ -211,7 +221,8 @@ class Muun(SwapMethod):
         self.tap(element_dict["payment"])
         self.device.input_swipe(400, 500, 400, 0, duration=1000)
         screen = self.get_screen_layout()
-        transaction_obj = screen.findAll("node", element_dict["payment-detail"])[-1]
+        transaction_obj = screen.findAll(
+            "node", element_dict["payment-detail"])[-1]
         transaction = transaction_obj["text"]
         return transaction
 

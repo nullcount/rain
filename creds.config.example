@@ -23,8 +23,9 @@ otp_secret =
 [NICEHASH]
 # create a nicehash API key with wallet permissions
 #   add a whitelisted withdrawl address and use the API to find the withdrawlAddressId
-#   use https://www.nicehash.com/docs/rest/get-main-api-v2-accounting-withdrawalAddresses
-#   with your API keys to get the id for funding_key should look like xxxxxxxx-xxxx-xxxx-xxxxx-xxxxxxxxxxxx
+#   after adding, click "Edit" to reveal the id for funding_key 
+#   should look like xxxxxxxx-xxxx-xxxx-xxxxx-xxxxxxxxxxxx
+#   nicehash will delay your first widthdraw to a new address for many hours
 api_key = 
 api_secret =
 org_id = 

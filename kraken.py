@@ -48,7 +48,7 @@ class Kraken(SwapMethod):
     def check_errors(self, response, payload, endpoint):
         if response['error']:
             for err in response['error']:
-                err_msg = f"kraken responded with error: {err}"
+                err_msg = f"kraken responded with error: {err}\nendpoint: {endpoint}\npayload: {payload}"
                 self.log.error(err_msg)
                 self.log.notify(err_msg)
             self.log.error('using payload: {}'.format(payload))
@@ -94,12 +94,12 @@ class Kraken(SwapMethod):
         self.log.info(self.log_msg_map['send_onchain'](sats))
         return res
 
-    def estimate_onchain_fee(self, sats):
+    def estimate_onchain_fee(self, amount: int):
         payload = {
             "nonce": str(int(1000 * time.time())),
             "asset": "XBT",
             "key": self.creds.funding_key,
-            "amount": sats / COIN_SATS
+            "amount": float(amount / COIN_SATS)
         }
         res = self.kraken_request('/0/private/WithdrawInfo', payload)
         fee_quote = {
@@ -107,7 +107,7 @@ class Kraken(SwapMethod):
             'fee': int(float(res['fee']) * COIN_SATS)
         }
         self.log.info(self.log_msg_map['get_onchain_address'](
-            fee_quote['fee'], sats))
+            fee_quote['fee'], fee_quote['amount']))
         return fee_quote['fee']
 
     def get_pending_send_sats(self):
@@ -142,7 +142,8 @@ class Kraken(SwapMethod):
         chrome_options = Options()
         # create cookies to use next time
         chrome_options.add_argument("user-data-dir=selenium")
-        driver = webdriver.Chrome(chrome_options=chrome_options, executable_path="./chromedriver")
+        driver = webdriver.Chrome(
+            chrome_options=chrome_options, executable_path="./chromedriver")
         actions = ActionChains(driver)
 
         # go to invoice page, login if necessary, you may have to approve a new device the first time as well
@@ -151,7 +152,8 @@ class Kraken(SwapMethod):
         location = driver.current_url
         if location == "https://www.kraken.com/sign-in":
             self.login(driver)
-            driver.get("https://www.kraken.com/u/funding/deposit?asset=BTC&method=1")
+            driver.get(
+                "https://www.kraken.com/u/funding/deposit?asset=BTC&method=1")
             time.sleep(3)
             location = driver.current_url
         assert location == "https://www.kraken.com/u/funding/deposit?asset=BTC&method=1"
@@ -165,9 +167,11 @@ class Kraken(SwapMethod):
         time.sleep(1)
 
         # toggle sats denomination if necessary
-        sats_toggle = driver.find_element(By.CSS_SELECTOR, element_dict["lightning_toggle"])
+        sats_toggle = driver.find_element(
+            By.CSS_SELECTOR, element_dict["lightning_toggle"])
         if "enabled" not in sats_toggle.get_attribute("class"):
-            click_toggle_cmd = construct_js(element_dict["lightning_toggle"], "click")
+            click_toggle_cmd = construct_js(
+                element_dict["lightning_toggle"], "click")
             driver.execute_script(click_toggle_cmd)
 
         # enter payment amount
@@ -189,17 +193,22 @@ class Kraken(SwapMethod):
         return invoice_str
 
     def login(self, driver):
-        driver.find_element(By.XPATH, element_dict["username_field"]).send_keys(self.creds.username)
-        driver.find_element(By.XPATH, element_dict["password_field"]).send_keys(self.creds.password)
+        driver.find_element(By.XPATH, element_dict["username_field"]).send_keys(
+            self.creds.username)
+        driver.find_element(By.XPATH, element_dict["password_field"]).send_keys(
+            self.creds.password)
         time.sleep(1)
-        driver.find_element(By.XPATH, element_dict["password_field"]).send_keys(Keys.RETURN)
+        driver.find_element(
+            By.XPATH, element_dict["password_field"]).send_keys(Keys.RETURN)
         time.sleep(2)
         if self.creds.otp_secret:
             hotp = pyotp.TOTP(self.creds.otp_secret)
             otp = hotp.now()
-            driver.find_element(By.XPATH, element_dict["tfa_field"]).send_keys(otp)
+            driver.find_element(
+                By.XPATH, element_dict["tfa_field"]).send_keys(otp)
             time.sleep(1)
-            driver.find_element(By.XPATH, element_dict["tfa_field"]).send_keys(Keys.RETURN)
+            driver.find_element(
+                By.XPATH, element_dict["tfa_field"]).send_keys(Keys.RETURN)
             time.sleep(3)
 
 

@@ -11,8 +11,6 @@ from creds import NicehashCreds
 from notify import Logger
 
 COIN_SATS = 100_000_000
-MAX_LN_DEPOSIT = 15_000_000
-MIN_LN_DEPOSIT = 1_001
 
 
 class Nicehash(SwapMethod):
@@ -24,9 +22,7 @@ class Nicehash(SwapMethod):
             "get_onchain_address": lambda addr: f"nicehash deposit address: {addr}",
             "send_onchain": lambda sats: f"nicehash initiated {sats} sat widthdrawl",
             "get_onchain_fee": lambda fee, sats: f"nicehash fee: {fee} sats widthdraw amount: {sats} sats",
-            "get_pending_send_sats": lambda amt: f"nicehash widthdraw of {amt} sats",
             "get_account_balance": lambda sats: f"nicehash account balance: {sats} sats",
-            "send_to_acct": lambda sats: f"sending {int(sats)} sats into nicehash account",
             "get_lightning_invoice": lambda sats, invoice: f"nicehash requests {sats} sats invoice: {invoice}"
         }
 
@@ -53,7 +49,8 @@ class Nicehash(SwapMethod):
             message += bytearray('\x00', 'utf-8')
             message += bytearray(body_json, 'utf-8')
 
-        digest = hmac.new(bytearray(self.creds.api_secret, 'utf-8'), message, sha256).hexdigest()
+        digest = hmac.new(bytearray(self.creds.api_secret,
+                          'utf-8'), message, sha256).hexdigest()
         xauth = self.creds.api_key + ":" + digest
         headers = {
             'X-Time': str(xtime),
@@ -79,7 +76,8 @@ class Nicehash(SwapMethod):
 
     def get_epoch_ms_from_now(self):
         now = datetime.now()
-        now_ec_since_epoch = mktime(now.timetuple()) + now.microsecond / 1000000.0
+        now_ec_since_epoch = mktime(
+            now.timetuple()) + now.microsecond / 1000000.0
         return int(now_ec_since_epoch * 1000)
 
     def check_errors(self, response, payload, endpoint):
@@ -94,7 +92,9 @@ class Nicehash(SwapMethod):
     def get_onchain_address(self):
         res = self.nicehash_request("GET", '/main/api/v2/accounting/depositAddresses', 'currency=BTC&walletType=BITGO',
                                     None)
-        return res['list'][0]['address']
+        addr = res['list'][0]['address']
+        self.log.info(self.log_msg_map['get_onchain_address'](addr))
+        return addr
 
     def send_onchain(self, sats, fee):
         amt = str(float(sats) / COIN_SATS)
@@ -103,47 +103,30 @@ class Nicehash(SwapMethod):
             "amount": amt,
             "withdrawalAddressId": self.creds.funding_key
         }
-        res = self.nicehash_request("POST", "/main/api/v2/accounting/withdrawal", '', body)
+        res = self.nicehash_request(
+            "POST", "/main/api/v2/accounting/withdrawal", '', body)
         self.log.info(self.log_msg_map['send_onchain'](sats))
         return res
 
-    def estimate_onchain_fee(self, sats):
-        res = self.nicehash_request("GET", "/main/api/v2/public/service/fee/info", '', None)
-        fee = int(float(res['withdrawal']['BITGO']['rules']['BTC']['intervals'][0]['element']['sndValue']) * COIN_SATS)
-        self.log.info(self.log_msg_map['get_onchain_fee'](sats, fee))
+    def estimate_onchain_fee(self, amount: int):
+        res = self.nicehash_request(
+            "GET", "/main/api/v2/public/service/fee/info", '', None)
+        fee = int(float(res['withdrawal']['BITGO']['rules']['BTC']
+                  ['intervals'][0]['element']['sndValue']) * COIN_SATS)
+        self.log.info(self.log_msg_map['get_onchain_fee'](amount, fee))
         return fee
 
-    def get_pending_send_sats(self):
-        events = self.get_recent_sends()['list']
-        pending = 0
-        for event in events:
-            if event['status']['description'] in ['SUBMITTED',
-                                                  'ACCEPTED']:  # PROCESSING status is considered uncoinfirmed
-                pending += float(event['amount'])
-        self.log.info(self.log_msg_map['get_pending_send_sats'](pending * COIN_SATS))
-        return int(pending * COIN_SATS)
-
     def get_recent_sends(self):
-        res = self.nicehash_request("GET", "/main/api/v2/accounting/withdrawals/BTC", '', None)
+        res = self.nicehash_request(
+            "GET", "/main/api/v2/accounting/withdrawals/BTC", '', None)
         return res
 
     def get_account_balance(self):
-        res = self.nicehash_request("GET", "/main/api/v2/accounting/account2/BTC", '', None)
+        res = self.nicehash_request(
+            "GET", "/main/api/v2/accounting/account2/BTC", '', None)
         balance = int(float(res['available']) * COIN_SATS)
         self.log.info(self.log_msg_map['get_account_balance'](balance))
         return balance
-
-    def send_to_acct(self, sats, node):
-        # generate multiple invoices if needed
-        invs = []
-        self.log.info(self.log_msg_map['send_to_acct'](sats))
-        while sats > MAX_LN_DEPOSIT:
-            invs.append(self.get_lightning_invoice(MAX_LN_DEPOSIT))
-            sats = sats - MAX_LN_DEPOSIT
-        if (sats > MIN_LN_DEPOSIT):
-            invs.append(self.get_lightning_invoice(sats))
-        for inv in invs:
-            node.pay_invoice(inv)
 
     def get_lightning_invoice(self, sats):
         res = self.nicehash_request("GET", "/main/api/v2/accounting/depositAddresses",

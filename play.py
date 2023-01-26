@@ -20,7 +20,7 @@ def main(debug: bool):
             continue
         _config = CHANNELS_CONFIG[managed_peer]
         _config['config_label'] = managed_peer
-        if bool(_config['execute']):
+        if _config['execute'] == '1' or _config['execute'].lower() == "true" or _config['execute'].lower() == 'yes':
             strategy = _config['strategy'].upper()
 
             # calculate sat per vbyte

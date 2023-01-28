@@ -87,7 +87,7 @@ class Wos(SwapMethod):
 
     def get_lightning_invoice(self, sats: int):
         ext = "/api/v1/wallet/createInvoice"
-        data_str = '{"amount":%d,"description":"Wallet of Satoshi"}' % sats
+        data_str = '{"amount":{:e},"description":"Wallet of Satoshi"}'.format(sats / 1000000)
         resp_json = self.wos_request(ext, data_str, sign=True)
         invoice = resp_json["invoice"]
         self.log.info(self.log_msg_map['get_lightning_invoice'](sats, invoice))

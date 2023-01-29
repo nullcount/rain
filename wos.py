@@ -25,7 +25,7 @@ class Wos(SwapMethod):
         self.log = log
         self.session = requests.Session()
         self.creds = creds
-        self.onchain_fee = None
+        self.onchain_fee = 0
         self.session.headers.update({"api-token": self.creds.api_token})
         self.log_msg_map = {
             "get_onchain_address": lambda addr: f"WoS deposit address: {addr}",
@@ -85,7 +85,7 @@ class Wos(SwapMethod):
 
     def get_lightning_invoice(self, sats: int):
         ext = "/api/v1/wallet/createInvoice"
-        data_str = '{{"amount":{:.8e},"description":"Wallet of Satoshi"}}'.format(
+        data_str = '{{"amount":{:e},"description":"Wallet of Satoshi"}}'.format(
             sats / COIN_SATS)
         resp_json = self.wos_request(ext, data_str, sign=True)
         invoice = resp_json["invoice"]

@@ -4,6 +4,7 @@ class WosCreds:
         self.api_token = creds['api_token']
         self.btc_deposit_address = creds['btc_deposit_address']
         self.lightning_address = creds['lightning_address']
+        self.loop_out_address = creds['loop_out_address']
 
 
 class KrakenCreds:

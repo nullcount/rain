@@ -28,6 +28,9 @@ min_htlc_sat = 100_000
 #    options: KRAKEN|NICEHASH|MUUN|WOS
 swap_method = KRAKEN
 
+# the max fee to pay a service provider for onchain withdraws
+max_account_onchain_fee = 1000
+
 # when the local balance of the channel reaches this, initiate a loop-out
 max_local_balance_ratio = 0.7
 

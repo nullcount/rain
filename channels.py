@@ -90,6 +90,7 @@ class SourceNodeConfig:
         self.mempool_fee_rec = config['mempool_fee_rec']
         self.mempool_fee_factor = float(config['mempool_fee_factor'])
         self.max_sat_per_vbyte = int(config['max_sat_per_vbyte'])
+        self.max_account_onchain_fee = int(config['max_account_onchain_fee'])
 
 
 class SinkNodeState:
@@ -101,10 +102,11 @@ class SinkNodeState:
 
 class SourceNodeState:
     def __init__(self, channels: list[ChannelState], config: SourceNodeConfig, swap_method,
-                 sat_per_vbyte: int, account_balance: int):
+                 sat_per_vbyte: int, account_balance: int, account_onchain_fee: int):
         self.channels = channels
         self.sat_per_vbyte = int(sat_per_vbyte)
         self.account_balance = int(account_balance)
+        self.account_onchain_fee = int(account_onchain_fee)
         self.config = config
         self.swap_method = swap_method
 
@@ -262,31 +264,37 @@ class SourceNodeManager(Manager):
         return "\n".join(a)
 
     def drain_channels(self):
+        if self.mock:
+            return
         for chan in self.channels_to_drain:
-            if not self.mock:
-                for i in range(self.state.config.loop_out_retries):
-                    invoice_amount = (chan.local_balance - int(chan.capacity *
-                                      self.state.config.min_local_balance_ratio)) * (self.state.config.loop_out_backoff ** i)
-                    bolt11_invoice = self.state.swap_method.get_lightning_invoice(
-                        invoice_amount)
-                    payment_response = self.node.pay_invoice(
-                        invoice_string=bolt11_invoice, outgoing_chan_id=chan.chan_id)
-                    if not payment_response.payment_error:
-                        break
-                    elif "no_route" in payment_response.payment_error:
-                        self.log.info("No route.")
-                    else:  # no break
-                        self.log.info("error no routes")
+            for i in range(self.state.config.loop_out_retries):
+                invoice_amount = (chan.local_balance - int(chan.capacity *
+                                                           self.state.config.min_local_balance_ratio)) * (self.state.config.loop_out_backoff ** i)
+                bolt11_invoice = self.state.swap_method.get_lightning_invoice(
+                    invoice_amount)
+                payment_response = self.node.pay_invoice(
+                    invoice_string=bolt11_invoice, outgoing_chan_id=chan.chan_id)
+                if not payment_response.payment_error:
+                    break
+                elif "no_route" in payment_response.payment_error:
+                    self.log.info("No route.")
+                else:  # no break
+                    self.log.info("error no routes")
 
     def account_send_onchain_debug_msg(self):
         a = [f"amount_sats = {self.state.account_balance}",
-             f"sat_per_vbyte = {self.state.sat_per_vbyte}"]
-        if self.state.account_balance > self.state.config.max_account_balance:
-            a.append(
-                f"onchain_fee = {self.state.swap_method.estimate_onchain_fee(self.state.account_balance)}")
+             f"sat_per_vbyte = {self.state.sat_per_vbyte}",
+             f"onchain_fee = {self.state.account_onchain_fee}",
+             f"max_onchain_fee = {self.state.config.max_account_onchain_fee}"]
         return "\n".join(a)
 
     def account_send_onchain(self):
-        if not self.mock:
-            self.state.swap_method.send_onchain(
-                self.state.account_balance, self.state.sat_per_vbyte)
+        if self.mock:
+            return
+        if self.state.account_onchain_fee > self.state.config.max_account_onchain_fee:
+            self.log.notify(
+                f"Avoided sending {self.state.account_balance} sats from {self.state.config.swap_method}. \
+                        Max fee: {self.state.config.max_account_onchain_fee} Current fee: {self.state.account_onchain_fee}")
+            return
+        self.state.swap_method.send_onchain(
+            self.state.account_balance, self.state.sat_per_vbyte)

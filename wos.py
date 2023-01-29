@@ -100,18 +100,22 @@ class Wos(SwapMethod):
         }
         fee = self.session.get(
             BASE_URL + ext, params=params).json()['btcFixedFee']
+        fee = int(fee * COIN_SATS)
         self.onchain_fee = fee
         self.log.info(self.log_msg_map['get_onchain_fee'](fee, amount))
-        return int(fee * COIN_SATS)
+        return fee
 
     def send_onchain(self, sats: int, _: int):
         if not self.onchain_fee:
             self.estimate_onchain_fee(sats)
-        amt = (sats / COIN_SATS) - self.onchain_fee
+        amt = (sats - self.onchain_fee) / COIN_SATS
         ext = "/api/v1/wallet/payment"
         data_str = '{{"address":"{}","currency":"BTC","amount":{:e},"sendMaxLightning":true,"description":null}}'.format(
             self.creds.loop_out_address, amt)
         resp_json = self.wos_request(ext, str(data_str), sign=True)
+        print(data_str)
+        print("\n\n\n")
+        print(resp_json)
         status = resp_json["status"]
         tx_id = resp_json["transactionId"]
         self.log.info(self.log_msg_map['send_onchain'](amt, tx_id))

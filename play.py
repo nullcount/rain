@@ -56,9 +56,13 @@ def main(debug: bool):
                     swap_creds, PLAY_LOG)
                 # get account balance
                 account_balance = swap_method.get_account_balance()
+                account_onchain_fee = 0  # only matters if a withdraw is needed
+                if account_balance > source_config.max_account_balance:
+                    account_onchain_fee = swap_method.estimate_onchain_fee(
+                        account_balance)
                 # create source chan state
                 source_state = State(channels=open_chans, sat_per_vbyte=sat_per_vbyte,
-                                     account_balance=account_balance, config=source_config, swap_method=swap_method)
+                                     account_balance=account_balance, account_onchain_fee=account_onchain_fee, config=source_config, swap_method=swap_method)
                 # create source chan operator
                 source_operator = Operator(
                     state=source_state, node=node, log=PLAY_LOG)

@@ -43,10 +43,11 @@ withdraw_address =
 # automate a wallet of satoshi account directly with the API
 #   to create an account and get credentials, run the following command
 #   python3 run.py init wos
-apiSecret =
-apiToken =
-lightningAddress =
-btcDepositAddress =
+api_secret =
+api_token =
+lightning_address =
+btc_deposit_address =
+loop_out_address =
 
 [TELEGRAM]
 # send yourself a telegram updates about your node using a bot

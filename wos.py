@@ -85,7 +85,7 @@ class Wos(SwapMethod):
 
     def get_lightning_invoice(self, sats: int):
         ext = "/api/v1/wallet/createInvoice"
-        data_str = '{{"amount":{:e},"description":"Wallet of Satoshi"}}'.format(
+        data_str = '{{"amount":{:.7e},"description":"Wallet of Satoshi"}}'.format(
             sats / COIN_SATS)
         resp_json = self.wos_request(ext, data_str, sign=True)
         invoice = resp_json["invoice"]
@@ -100,7 +100,7 @@ class Wos(SwapMethod):
         }
         fee = self.session.get(
             BASE_URL + ext, params=params).json()['btcFixedFee']
-        fee = int(fee * COIN_SATS)
+        fee = round(fee * COIN_SATS)
         self.onchain_fee = fee
         self.log.info(self.log_msg_map['get_onchain_fee'](fee, amount))
         return fee
@@ -108,13 +108,14 @@ class Wos(SwapMethod):
     def send_onchain(self, sats: int, _: int):
         if not self.onchain_fee:
             self.estimate_onchain_fee(sats)
+        print((sats - self.onchain_fee) / COIN_SATS)
         amt = (sats - self.onchain_fee) / COIN_SATS
         ext = "/api/v1/wallet/payment"
-        data_str = '{{"address":"{}","currency":"BTC","amount":{:e},"sendMaxLightning":true,"description":null}}'.format(
+        data_str = '{{"address":"{}","currency":"BTC","amount":{:.7e},"sendMaxLightning":true,"description":null}}'.format(
             self.creds.loop_out_address, amt)
         resp_json = self.wos_request(ext, str(data_str), sign=True)
         print(data_str)
-        print("\n\n\n")
+        print()
         print(resp_json)
         status = resp_json["status"]
         tx_id = resp_json["transactionId"]

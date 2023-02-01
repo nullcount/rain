@@ -82,7 +82,7 @@ class Kraken(SwapMethod):
         self.log.info(self.log_msg_map['get_onchain_address'](addr))
         return addr
 
-    def send_onchain(self, sats, fee):
+    def send_onchain(self, sats, _):
         # kraken does not use variable fee
         payload = {
             "nonce": str(int(1000 * time.time())),

@@ -1,3 +1,11 @@
+class OkCreds:
+    def __init__(self, creds: dict):
+        self.loop_out_address = creds['loop_out_address']
+        self.api_token = creds['api_token']
+        self.api_secret = creds['api_secret']
+        self.api_passphrase = creds['api_passphrase']
+
+
 class WosCreds:
     def __init__(self, creds: dict):
         self.api_secret = creds['api_secret']

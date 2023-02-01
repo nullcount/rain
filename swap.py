@@ -3,7 +3,7 @@ class SwapMethod:
         # returns address string
         raise NotImplementedError
 
-    def send_onchain(self):
+    def send_onchain(self, sats: int, fee: int):
         # sends entire account balance to saved onchain address
         raise NotImplementedError
 
@@ -11,14 +11,14 @@ class SwapMethod:
         # returns total balance in sats
         raise NotImplementedError
 
-    def pay_invoice(self, inv: str):
+    def pay_invoice(self, invoice: str):
         # attempts to pay the invoice using account balance
         raise NotImplementedError
 
-    def get_lightning_invoice(self, amount: int):
+    def get_lightning_invoice(self, sats: int):
         # returns bolt11 invoice string
         raise NotImplementedError
 
-    def estimate_onchain_fee(self, amount: int):
+    def estimate_onchain_fee(self, sats: int):
         # returns the total fee in satoshis
         raise NotImplementedError

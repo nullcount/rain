@@ -1035,10 +1035,10 @@ def get_closed_channels(pubkey):
 
 
 def filter_channel(channel):
-    # return channel["node_left"].get("balance", False)
-    return channel["node_left"]["closing_balance"] + channel["node_right"]["closing_balance"] > 0 and \
-           (channel["node_left"]["closing_balance"] > 0 and channel["node_right"]["closing_balance"] > 0) and \
-           (channel["node_left"]["closing_balance"] + channel["node_right"]["closing_balance"] < channel["capacity"])
+    left, right = channel["node_left"], channel["node_right"]
+    return left["closing_balance"] + right["closing_balance"] > 0 and \
+           (left["closing_balance"] > 0 and right["closing_balance"] > 0) and \
+           (left["closing_balance"] + right["closing_balance"] + channel["closing_fee"] == channel["capacity"])
 
 
 requests = requests_cache.CachedSession("demo_cache")
@@ -1049,7 +1049,7 @@ for node in top_nodes:
     for closed_channel in closed_channels:
         if closed_channel["node_left"]["public_key"] == node:
             sink_score = closed_channel["node_left"]["closing_balance"] / closed_channel["capacity"]
-        else:
+        elif closed_channel["node_right"]["public_key"] == node:
             sink_score = closed_channel["node_right"]["closing_balance"] / closed_channel["capacity"]
         sink_scores.append(sink_score)
         capacities.append(closed_channel["capacity"])

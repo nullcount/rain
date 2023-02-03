@@ -1,7 +1,4 @@
-import json
-
 import requests_cache
-import multiprocessing
 
 top_nodes = ['033d8656219478701227199cbd6f670335c8d408a92ae88b962c49d4dc0e83e025',
              '03cde60a6323f7122d5178255766e38114b4722ede08f7c9e0c5df9b912cc201d6',
@@ -1005,18 +1002,6 @@ top_nodes = ['033d8656219478701227199cbd6f670335c8d408a92ae88b962c49d4dc0e83e025
              '02361f3687a21d4f0e77d2fb024803e7fd431cdf4d746cd7ef89704b38b3b81b18']
 
 
-def get_addr_inf(addr):
-    try:
-        addr_info_addr = "https://mempool.space/api/address/{}/txs".format(addr)
-        resp = requests.get(addr_info_addr)
-        node_info = resp.json()
-        return node_info
-    except:
-        print("ERROR")
-        print(addr)
-        return ""
-
-
 def get_node_info(pubkey):
     node_info_addr = "https://mempool.space/api/v1/lightning/nodes/{}".format(pubkey)
     resp = requests.get(node_info_addr)
@@ -1029,11 +1014,12 @@ def get_closed_channels(pubkey):
     closed_channel_count = node_info["closed_channel_count"]
     node_alias = node_info["alias"]
     closed_channels = []
-    for i in range(min(closed_channel_count // 10, 10)):
+    for i in range(min(closed_channel_count // 10, 15)):
         closed_channels_addr = "https://mempool.space/api/v1/lightning/channels?public_key={}&index={}&status=closed".format(
             pubkey, i * 10)
         resp = requests.get(closed_channels_addr)
         closed_channels.extend(resp.json())
+
     detailed_closed_channels = []
     # get channel closing tx ids
     for closed_channel in closed_channels:
@@ -1049,140 +1035,33 @@ def get_closed_channels(pubkey):
 
 
 def filter_channel(channel):
-    return channel["node_left"].get("balance", False)
-
-
-def filter_outputs(output):
-    return output["spent"]
-
-
-def get_outspends(closing_tx_id):
-    addr = "https://mempool.space/api/v1/outspends?txId%5B%5D={}".format(closing_tx_id)
-    resp = requests.get(addr)
-    outspends = resp.json()
-    return outspends
-
-
-def get_next_outputs(tx_id):
-    addr = "https://mempool.space/api/v1/lightning/channels/txids/?txId%5B%5D={}".format(tx_id)
-    resp = requests.get(addr)
-    next_outputs = resp.json()
-    return next_outputs
-
-
-def lookup_txids(tx_ids):
-    params = {
-        'txId[]': tx_ids,
-    }
-    resp = requests.get('https://mempool.space/api/v1/lightning/channels/txids/', params=params)
-    next_outputs = resp.json()
-    return next_outputs
-
-
-def get_tx_info(closing_tx_id):
-    addr = "https://mempool.space/api/tx/{}".format(closing_tx_id)
-    resp = requests.get(addr)
-    tx_info = resp.json()
-    return tx_info
-
-
-def worker(center_node):
-    """Process worker function"""
-    # print("Process {} starting".format(center_node))
-    # center_node = "02b515c74f334dee09821bee299fcbd9668182730c5719b25a8f262b28893198b0"
-    closed_channels = get_closed_channels(center_node)
-    for i, closed_channel in enumerate(closed_channels[:1000]):
-        closed_channel_id = closed_channel["id"]
-        if closed_channel["node_left"]["public_key"] == center_node:
-            neighbor = closed_channel["node_right"]["public_key"]
-        else:
-            neighbor = closed_channel["node_left"]["public_key"]
-        closing_tx_id = closed_channel.get("closing_transaction_id", False)
-        if not closing_tx_id:
-            continue
-        closing_tx_info = get_tx_info(closing_tx_id)
-        if len(closing_tx_info["vout"]) == 1:
-            continue
-        fee = closing_tx_info["fee"]
-
-        outspends = get_outspends(closing_tx_id)
-        outspend = list(filter(filter_outputs, outspends[0]))
-        for output in outspend:
-            spend_out_tx_info = get_tx_info(output["txid"])
-            next_outputs = get_next_outputs(output["txid"])
-            output_pair = next_outputs[0]
-            op = output_pair["outputs"]
-            if op:
-                for k, v in op.items():
-                    left_node, right_node = v["node_left"], v["node_right"]
-                    pubkeys = [x["public_key"] for x in [left_node, right_node]]
-                    if bool(neighbor in pubkeys) ^ bool(center_node in pubkeys):
-                        pubkey = next(filter(lambda x: x in pubkeys, [neighbor, center_node]))
-                        # get all vins of opening tx that are in the vout of the closing tx
-                        value = sum([x["prevout"]["value"] for x in
-                                     spend_out_tx_info["vin"] if
-                                     x["txid"] == closing_tx_info["txid"]])
-                        if pubkey == closed_channel["node_left"]["public_key"]:
-                            closed_channel["node_left"]["balance"] = value
-                            closed_channel["node_right"]["balance"] = closed_channel["capacity"] - value - fee
-                        elif pubkey == closed_channel["node_right"]["public_key"]:
-                            closed_channel["node_left"]["balance"] = closed_channel["capacity"] - value - fee
-                            closed_channel["node_right"]["balance"] = value
-
-    closed_channels = list(filter(lambda x: filter_channel(x), closed_channels))
-    sink_scores = []
-    capacities = []
-    if closed_channels and len(closed_channels) >= 10:
-        for closed_channel in closed_channels:
-            sink_score = 0
-            if closed_channel["node_left"]["public_key"] == center_node:
-                sink_score = closed_channel["node_left"]["balance"] / closed_channel["capacity"]
-            else:
-                sink_score = closed_channel["node_right"]["balance"] / closed_channel["capacity"]
-            sink_scores.append(sink_score)
-            capacities.append(closed_channel["capacity"])
-        # with open(center_node + ".json", "w") as file_obj:
-        #     json.dump(closed_channels, file_obj)
-        # print(json.dumps(closed_channels, indent=2))
-        cap_sum = sum(capacities)
-        norm_cap = [x / cap_sum for x in capacities]
-
-        simple_score = sum(sink_scores) / len(sink_scores)
-        weighted_score = sum([x * y for x, y in zip(sink_scores, norm_cap)])
-        if weighted_score < 0.1:
-            print(get_node_info(center_node)["alias"])
-            print(len(closed_channels))
-            print(center_node)
-            print(simple_score)
-            print(weighted_score)
-            print()
-
-    # print("Process {} ending".format(center_node))
-
-
-def determine_funder(channel):
-    node_left = channel["node_left"]
-    node_right = channel["node_right"]
-    print(node_left["funding_balance"])
-    print(node_right["funding_balance"])
-
-    if node_left["funding_balance"] == 0:
-        return node_right["public_key"]
-    elif node_right["funding_balance"] == 0:
-        return node_left["public_key"]
-    else:
-        return ""
+    # return channel["node_left"].get("balance", False)
+    return channel["node_left"]["closing_balance"] + channel["node_right"]["closing_balance"] > 0 and \
+           (channel["node_left"]["closing_balance"] > 0 and channel["node_right"]["closing_balance"] > 0) and \
+           (channel["node_left"]["closing_balance"] + channel["node_right"]["closing_balance"] < channel["capacity"])
 
 
 requests = requests_cache.CachedSession("demo_cache")
-if __name__ == '__main__':
+sink_scores = []
+capacities = []
+for node in top_nodes:
+    closed_channels = list(filter(filter_channel, get_closed_channels(node)))
+    for closed_channel in closed_channels:
+        if closed_channel["node_left"]["public_key"] == node:
+            sink_score = closed_channel["node_left"]["closing_balance"] / closed_channel["capacity"]
+        else:
+            sink_score = closed_channel["node_right"]["closing_balance"] / closed_channel["capacity"]
+        sink_scores.append(sink_score)
+        capacities.append(closed_channel["capacity"])
+    cap_sum = sum(capacities)
+    norm_cap = [x / cap_sum for x in capacities]
 
-    processes = [multiprocessing.Process(target=worker, args=(pubkey,)) for pubkey in top_nodes]
-    batch_size = 10
-
-    for i in range(0, len(processes), batch_size):
-        batch = processes[i:i + batch_size]
-        for p in batch:
-            p.start()
-        for p in batch:
-            p.join()
+    simple_score = sum(sink_scores) / len(sink_scores)
+    weighted_score = sum([x * y for x, y in zip(sink_scores, norm_cap)])
+    if weighted_score < 1:
+        print(get_node_info(node)["alias"])
+        print(len(closed_channels))
+        print(node)
+        print(simple_score)
+        print(weighted_score)
+        print()

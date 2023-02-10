@@ -1,4 +1,7 @@
-import requests_cache
+import many_requests
+from many_requests import ManyRequests
+import shelve
+from requests_cache import CachedSession
 
 top_nodes = ['033d8656219478701227199cbd6f670335c8d408a92ae88b962c49d4dc0e83e025',
              '03cde60a6323f7122d5178255766e38114b4722ede08f7c9e0c5df9b912cc201d6',
@@ -1000,6 +1003,8 @@ top_nodes = ['033d8656219478701227199cbd6f670335c8d408a92ae88b962c49d4dc0e83e025
              '0219c2f8818bd2124dcc41827b726fd486c13cdfb6edf4e1458194663fb07891c7',
              '023139fa0b1abae119396d1e854561f0dd77b0560cba66247ff59de294f8ee3ade',
              '02361f3687a21d4f0e77d2fb024803e7fd431cdf4d746cd7ef89704b38b3b81b18']
+shelf_filename = "closed_channels"
+requests = CachedSession("channels.ch")
 
 
 def get_node_info(pubkey):
@@ -1012,56 +1017,85 @@ def get_node_info(pubkey):
 def get_closed_channels(pubkey):
     node_info = get_node_info(pubkey)
     closed_channel_count = node_info["closed_channel_count"]
-    node_alias = node_info["alias"]
-    closed_channels = []
-    for i in range(min(closed_channel_count // 10, 15)):
-        closed_channels_addr = "https://mempool.space/api/v1/lightning/channels?public_key={}&index={}&status=closed".format(
-            pubkey, i * 10)
-        resp = requests.get(closed_channels_addr)
-        closed_channels.extend(resp.json())
-
+    closed_channel_addrs = [
+        "https://mempool.space/api/v1/lightning/channels?public_key={}&index={}&status=closed".format(pubkey, i * 10)
+        for i in range(min(closed_channel_count // 10, 10))
+    ]
+    responses = [requests.get(addr).json() for addr in closed_channel_addrs]
+    closed_channels = [channel for response in responses for channel in response]
     detailed_closed_channels = []
-    # get channel closing tx ids
-    for closed_channel in closed_channels:
-        closed_channel_id = closed_channel["id"]
-        addr = "https://mempool.space/api/v1/lightning/channels/{}".format(closed_channel_id)
-        resp = requests.get(addr)
-        try:
-            detailed_closed_channels.append(resp.json())
-        except:
-            pass
+    with shelve.open(shelf_filename) as db:
+        shelved_channel_ids = []
+        unshelved_channel_ids = []
+        for channel in closed_channels:
+            if db.get(str(channel["id"]), None) is None:
+                unshelved_channel_ids.append(channel["id"])
+            else:
+                shelved_channel_ids.append(channel["id"])
+        detailed_addrs = ["https://mempool.space/api/v1/lightning/channels/{}".format(closed_channel_id) for
+                          closed_channel_id in unshelved_channel_ids]
+        if detailed_addrs:
+            detailed_closed_channels = list(ManyRequests(n_workers=100, n_connections=10, json=True)(
+                method='GET',
+                url=detailed_addrs))
 
-    return detailed_closed_channels
+        detailed_closed_channels.extend([db[str(channel_id)] for channel_id in shelved_channel_ids])
+        return detailed_closed_channels
 
 
 def filter_channel(channel):
+    if type(channel) is many_requests.BadResponse:
+        return False
     left, right = channel["node_left"], channel["node_right"]
     return left["closing_balance"] + right["closing_balance"] > 0 and \
-           (left["closing_balance"] > 0 and right["closing_balance"] > 0) and \
-           (left["closing_balance"] + right["closing_balance"] + channel["closing_fee"] == channel["capacity"])
+        (left["closing_balance"] > 0 and right["closing_balance"] > 0) and \
+        (left["closing_balance"] + right["closing_balance"] + channel["closing_fee"] == channel["capacity"])
 
 
-requests = requests_cache.CachedSession("demo_cache")
-sink_scores = []
-capacities = []
+sinks = []
+sources = []
 for node in top_nodes:
-    closed_channels = list(filter(filter_channel, get_closed_channels(node)))
+    sink_scores = []
+    capacities = []
+    closed_channels = get_closed_channels(node)
+    with shelve.open(shelf_filename) as db:
+        for channel in closed_channels:
+            if type(channel) is not many_requests.BadResponse:
+                db[str(channel["id"])] = channel
+    closed_channels = list(filter(filter_channel, closed_channels))
     for closed_channel in closed_channels:
+        if closed_channel["node_left"]["funding_balance"] > 0:
+            closed_channel["node_left"]["funding_balance"] = closed_channel["capacity"]
+        else:
+            closed_channel["node_right"]["funding_balance"] = closed_channel["capacity"]
+        score = 0
         if closed_channel["node_left"]["public_key"] == node:
-            sink_score = closed_channel["node_left"]["closing_balance"] / closed_channel["capacity"]
+            score = (closed_channel["node_left"]["funding_balance"] -
+                     closed_channel["node_left"]["closing_balance"]) / closed_channel["capacity"]
         elif closed_channel["node_right"]["public_key"] == node:
-            sink_score = closed_channel["node_right"]["closing_balance"] / closed_channel["capacity"]
-        sink_scores.append(sink_score)
+            score = (closed_channel["node_right"]["funding_balance"] -
+                     closed_channel["node_right"]["closing_balance"]) / closed_channel["capacity"]
+        sink_scores.append(score)
         capacities.append(closed_channel["capacity"])
+    if len(sink_scores) < 10:
+        continue
     cap_sum = sum(capacities)
     norm_cap = [x / cap_sum for x in capacities]
 
     simple_score = sum(sink_scores) / len(sink_scores)
     weighted_score = sum([x * y for x, y in zip(sink_scores, norm_cap)])
-    if weighted_score < 1:
-        print(get_node_info(node)["alias"])
-        print(len(closed_channels))
-        print(node)
-        print(simple_score)
-        print(weighted_score)
-        print()
+    x = get_node_info(node)["alias"], len(closed_channels), node, simple_score, weighted_score
+    if weighted_score < -0.5:
+        sinks.append(x)
+    elif weighted_score > 0.5:
+        sources.append(x)
+
+print("SINKS:")
+for node in sorted(sinks, key=lambda x: x[-1]):
+    print("\n".join(list(map(str, node))))
+    print()
+
+print("SOURCE:")
+for node in sorted(sources, key=lambda x: x[-1]):
+    print("\n".join(list(map(str, node))))
+    print()

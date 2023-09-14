@@ -160,7 +160,7 @@ class Kraken(SwapMethod):
 
         # make everything on the page visible
         driver.execute_script("document.body.style.zoom = '0.55'")
-
+        time.sleep(3)
         # remove tos popup
         remove_tos_cmd = construct_js(element_dict["tos_dialog"], "remove")
         driver.execute_script(remove_tos_cmd)

@@ -426,3 +426,14 @@ class Lnd:
             elif hint.fee_proportional_millionths > 1500:
                 return False
         return True
+
+    def estimate_route_fee(self, amount, dest_pubkey, outgoing_chan_id):
+        request = ln.QueryRoutesRequest(
+            pub_key=dest_pubkey,
+            amt=amount,
+            outgoing_chan_id=outgoing_chan_id,
+            # route_hints=<RouteHint>,  # needed for Muun invoices
+            # fee_limit=<FeeLimit>,  # might be nice
+        )
+        response = self.stub.QueryRoutes(request)
+        print(response)

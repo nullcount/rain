@@ -15,6 +15,9 @@ def main(debug: bool):
     mempool_creds = MempoolCreds(CREDS['MEMPOOL'])
     mempool = Mempool(mempool_creds, PLAY_LOG)
 
+   # node.estimate_route_fee(
+    #    1000, "03cde60a6323f7122d5178255766e38114b4722ede08f7c9e0c5df9b912cc201d6", 850576697807273985)
+
     for managed_peer in CHANNELS_CONFIG:
         if managed_peer == "DEFAULT":
             continue

@@ -1,3 +1,24 @@
+class AdminChatBot:
+    """
+    Extend with chat protocol APIs
+        to notify node operator (admin) of events
+        and ask for approval/confirmation of actions
+    """
+    def send_message(self, message: str):
+        print(message)
+        raise NotImplementedError
+    
+    def get_response(self) -> str:
+        raise NotImplementedError
+    
+    def await_confirmation(self, prompt: str, callback: callable):
+        self.send_message(f"{prompt} [N/y]")
+        if(self.get_response() in ['yes', 'y']):
+            callback()
+        raise NotImplementedError
+
+
+
 class TrustedSwapService:
     """
     Extend with exchange/wallet APIs 

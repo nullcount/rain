@@ -1,7 +1,8 @@
 import requests
+from base import AdminChatBot
 from const import TELEGRAM_API_URL
 
-class Telegram:
+class Telegram(AdminChatBot):
     def __init__(self, creds):
         self.creds = creds
         self.last_update_id = None

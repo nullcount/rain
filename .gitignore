@@ -1,15 +1,13 @@
-selenium
-*.pkl
-csv/*.csv
-logs/*.log
-creds.config
-channels.config
+# LND auth
 admin.macaroon
 tls.cert
-playbook.config
-listen.config
+# Rain config
+config.yml
+config.yaml
+creds.yml
+creds.yaml
+# Python cache
 *__pycache__/
 venv
 .venv
 /.idea/*
-playground.py

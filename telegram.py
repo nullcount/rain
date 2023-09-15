@@ -1,19 +1,17 @@
 import requests
-from creds import TelegramCreds
-
+from const import TELEGRAM_API_URL
 
 class Telegram:
-    def __init__(self, creds: TelegramCreds, log):
+    def __init__(self, creds):
         self.creds = creds
-        self.log = log
         self.last_update_id = None
 
     def telegram_request(self, endpoint, params):
-        url = f"https://api.telegram.org/bot{self.creds.api_token}/{endpoint}{params}"
+        url = f"{TELEGRAM_API_URL}bot{self.creds.api_token}/{endpoint}{params}"
         res = requests.get(url).json()
         if res['ok']:
             return res['result']
-        self.log.warning(f"Telegram failed !!! {endpoint}{params}")
+        # TODO self.log.warning(f"Telegram failed !!! {endpoint}{params}")
 
     def send_message(self, message):
         return self.telegram_request('sendMessage', f'?chat_id={self.creds.chat_id}&text={message}&parse_mode=Markdown')
@@ -23,3 +21,5 @@ class Telegram:
 
     def ack_update(self, update_id):
         self.last_update_id = int(update_id) + 1
+
+    # TODO get confirm from permissioned user in chat i.e. y/N then do callback

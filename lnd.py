@@ -5,15 +5,10 @@ import sys
 import re
 from grpc_generated import lightning_pb2_grpc as lnrpc, lightning_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
-from notify import Logger
-
-MESSAGE_SIZE_MB = 50 * 1024 * 1024
-SAT_MSATS = 1000
-
+from const import SAT_MSATS, MILLION, MESSAGE_SIZE_MB
 
 def debug(message):
     sys.stderr.write(message + "\n")
-
 
 class ChannelTemplate:
     def __init__(self, node_pubkey: str, local_funding_amount: int, address: str, sat_per_vbyte: int, base_fee: int, fee_rate: int, min_htlc_sat: int,
@@ -48,16 +43,8 @@ class ChannelTemplate:
         )
 
 
-class LndCreds:
-    def __init__(self, grpc_host: str, tls_cert_path: str, macaroon_path: str):
-        self.grpc_host = grpc_host
-        self.tls_cert_path = tls_cert_path
-        self.macaroon_path = macaroon_path
-
-
 class Lnd:
-    def __init__(self, creds: LndCreds, log: Logger):
-        self.log = log
+    def __init__(self, creds):
         os.environ['GRPC_SSL_CIPHER_SUITES'] = 'HIGH+ECDSA'
         combined_credentials = self.get_credentials(
             creds.tls_cert_path, creds.macaroon_path)
@@ -112,9 +99,7 @@ class Lnd:
         if self.peers is None:
             self.get_peers()
         for peer in self.peers:
-            if peer.pub_key == peer_pubkey:
-                self.log.info(
-                    "LND is already peered with {}".format(peer_pubkey))
+            if peer.pub_key == peer_pubkey
                 return True
         return False
 
@@ -136,9 +121,10 @@ class Lnd:
         res = None
         try:
             res = self.stub.ConnectPeer(connectRequest)
-            self.log.info(f"LND connected to peer {pubkey}@{address}")
+            # TODO self.log.info(f"LND connected to peer {pubkey}@{address}")
         except grpc._channel._InactiveRpcError as e:
-            self.log.notify(f"An error occurred while adding peer: {e}")
+            pass
+            # TODO self.log.notify(f"An error occurred while adding peer: {e}")
         return res
 
     def get_node_info(self, nodepubkey):
@@ -153,7 +139,7 @@ class Lnd:
                 self.chan_info[chanid] = self.stub.GetChanInfo(
                     ln.ChanInfoRequest(chan_id=chanid))
             except:
-                print("Failed to lookup {}".format(chanid), file=sys.stderr)
+                # TODO print("Failed to lookup {}".format(chanid), file=sys.stderr)
                 return None
         return self.chan_info[chanid]
 
@@ -183,13 +169,10 @@ class Lnd:
         time_lock_delta = (
             time_lock_delta if time_lock_delta is not None else my_policy.time_lock_delta)
 
-        self.log.info(
-            f"base_fee_msat: {base_fee_msat} ppm: {fee_rate} min_htlc_msat: {min_htlc_msat} max_htlc_msat: {max_htlc_msat} time_lock_delta: {time_lock_delta}")
-
-        res = self.stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(
+        res = self.stub.UpdateChannelPolicy(ln.Poliself.logcyUpdateRequest(
             chan_point=channel_point,
             base_fee_msat=base_fee_msat,
-            fee_rate=(fee_rate / 1_000_000),
+            fee_rate=(fee_rate / MILLION),
             min_htlc_msat=min_htlc_msat,
             max_htlc_msat=max_htlc_msat,
             time_lock_delta=time_lock_delta
@@ -287,9 +270,8 @@ class Lnd:
         decoded = self.stub.DecodePayReq(request)
         return decoded
 
-    # ~$10 atm of writing
     def pay_invoice(self, invoice_string, outgoing_chan_id=None, fee_limit=60000):
-        self.log.info(f"LND found invoice to pay: {invoice_string}")
+        #TODO self.log.info(f"LND found invoice to pay: {invoice_string}")
         args = {"payment_request": invoice_string}
         if outgoing_chan_id:
             args["outgoing_chan_id"] = outgoing_chan_id
@@ -297,7 +279,7 @@ class Lnd:
             args["fee_limit"] = ln.FeeLimit(fixed=fee_limit)
         send_request = ln.SendRequest(**args)
         send_response = self.stub.SendPaymentSync(send_request)
-        self.log.info(f"LND pay invoice response: {send_response}")
+        #TODO self.log.info(f"LND pay invoice response: {send_response}")
         return send_response
 
     def send_onchain(self, dest_addr, amount_sats, target_conf, sat_per_vbyte):
@@ -316,27 +298,23 @@ class Lnd:
             self.add_peer(channel.node_pubkey, channel.address)
         try:
             channel_point = self.stub.OpenChannelSync(channel.get_open_req())
-            self.log.info(
-                f"LND open channel {channel.local_funding_amount} sats with peer: {channel.node_pubkey}")
         except grpc._channel._InactiveRpcError as e:
             if "Number of pending channels exceed maximum" in e.debug_error_string():
                 return channel_point  # done for now
             else:
-                self.log.notify(
-                    f"An error occurred while opening channel: {e}")
+                pass
+                #TODO self.log.notify(f"An error occurred while opening channel: {e}")
         return channel_point
 
     def close_channel(self, chan_id, sat_per_vbyte, force=False, target_conf=None, delivery_address=None):
         if (not chan_id) or (not sat_per_vbyte):
-            self.log.info(f"Must provide chan_id and sat_per_vbyte to close a channel. "
-                          f"chan_id: {chan_id}, sat_per_vbyte: {sat_per_vbyte}")
+            # TODO self.log.info(f"Must provide chan_id and sat_per_vbyte to close a channel. " f"chan_id: {chan_id}, sat_per_vbyte: {sat_per_vbyte}")
             return
 
         target_channels = list(
             filter(lambda channel: channel.chan_id == chan_id, self.get_channels()))
         if not len(target_channels) > 0:
-            self.log.info(
-                f"The channel id provided does not exist:  {chan_id}")
+            # TODO self.log.info(f"The channel id provided does not exist:  {chan_id}")
             return
         target_channel = target_channels[0]
         channel_point_str = target_channel.channel_point
@@ -357,8 +335,7 @@ class Lnd:
         balance_request = ln.WalletBalanceRequest()
         balance_response = self.stub.WalletBalance(balance_request)
         confirmed = balance_response.confirmed_balance
-        self.log.info(
-            "LND confirmed onchain balance: {} sats".format(confirmed))
+        #TODO self.log.info("LND confirmed onchain balance: {} sats".format(confirmed))
         return confirmed
 
     def get_onchain_address(self):
@@ -373,7 +350,7 @@ class Lnd:
         new_address_request = ln.NewAddressRequest(type=2)
         new_address_response = self.stub.NewAddress(new_address_request)
         addr = new_address_response.address
-        self.log.info("LND generated deposit address: {}".format(addr))
+        #TODO self.log.info("LND generated deposit address: {}".format(addr))
         return addr
 
     def add_lightning_invoice(self, amount, memo=None):
@@ -391,7 +368,7 @@ class Lnd:
         if len(txns) > 0:
             for tx in txns:
                 total += tx.amount
-        self.log.info("LND unconfirmed balance: {} sats".format(total))
+        #TODO self.log.info("LND unconfirmed balance: {} sats".format(total))
         return total
 
     def has_channel_with(self, peer_pubkey):
@@ -427,13 +404,4 @@ class Lnd:
                 return False
         return True
 
-    def estimate_route_fee(self, amount, dest_pubkey, outgoing_chan_id):
-        request = ln.QueryRoutesRequest(
-            pub_key=dest_pubkey,
-            amt=amount,
-            outgoing_chan_id=outgoing_chan_id,
-            # route_hints=<RouteHint>,  # needed for Muun invoices
-            # fee_limit=<FeeLimit>,  # might be nice
-        )
-        response = self.stub.QueryRoutes(request)
-        print(response)
+

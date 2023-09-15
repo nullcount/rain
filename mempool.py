@@ -1,23 +1,14 @@
 import requests
-from notify import Logger
-
-COIN_SATS = 100_000_000
-
-
-class MempoolCreds:
-    def __init__(self, creds: dict):
-        self.api_url = creds['api_url']
-
+from mempool import MEMPOOL_API_URL
 
 class Mempool:
-    def __init__(self, creds: MempoolCreds, log: Logger):
-        self.log = log
+    def __init__(self, creds):
         self.creds = creds
+        self.api_url = f"{creds.api_url}/api/v1" if creds.api_url else  MEMPOOL_API_URL
 
-    def mempool_request(self, uri_path, data={}, obj=True, use_mempool=False):
-        url = self.creds.api_url if not use_mempool else "https://mempool.space/api/v1/"
+    def mempool_request(self, uri_path, data={}, obj=True):
         req = requests.get(
-            url + uri_path,
+            self.api_url + uri_path,
             data=data
         )
         if obj:

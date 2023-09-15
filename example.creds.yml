@@ -1,83 +1,54 @@
-[LND]
+lnd:
 # connect an LND node using an admin macaroon for full autopilot
 #   if connecting a remote lnd, you may need to add extratls=<IP_OF_LND>
 #   to lnd.conf
-grpc_host = 
-tls_cert_path = 
-macaroon_path =
+  grpc_host: YOUR_LND_NODE_IP_PORT 
+  tls_cert_path: YOUR_LND_NODE_TLS_CERT
+  macaroon_path: YOUR_LND_NODE_MACAROON
 
-[KRAKEN]
+kraken:
 # create a kraken API key with funding permissions
 #     go to the onchain bitcoin widthdraw page on kraken.com and 
 #     add a new withdraw address, give it a description and use that 
 #     same description string for `funding_key` below
 #     add your kraken account `username` and `password`
 #     re-add your 2fa using a secret key and put the same `otp_secret` below
-api_key = 
-api_secret =
-funding_key =
-username = 
-password = 
-otp_secret = 
+  api_key: YOUR_KRAKEN_API_KEY
+  api_secret: YOUR_KRAKEN_API_SECRET
+  funding_key: YOUR_KRAKEN_API_FUNDING_KEY
 
-[NICEHASH]
+nicehash:
 # create a nicehash API key with wallet permissions
 #   add a whitelisted withdrawl address and use the API to find the withdrawlAddressId
 #   after adding, click "Edit" to reveal the id for funding_key 
 #   should look like xxxxxxxx-xxxx-xxxx-xxxxx-xxxxxxxxxxxx
 #   nicehash will delay your first widthdraw to a new address for many hours
-api_key = 
-api_secret =
-org_id = 
-funding_key =
+  api_key: YOUR_NICEHASH_API_KEY
+  api_secret: YOUR_NICEHASH_API_SECRET
+  org_id: YOUR_NICEHASH_ORG_ID
+  funding_key: YOUR_NICEHASH_FUNDING_KEY
 
-[MUUN]
-# automate a muun wallet using ADB via emulation or connected device
-#   device_name is the adb name of the device to automate
-#   withdrawl_address is an address for your node to recieve onchain from muun
-#   muun wallet must be already installed on the device
-device_name =
-withdraw_address =
-
-[WOS]
+wos:
 # automate a wallet of satoshi account directly with the API
 #   to create an account and get credentials, run the following command
 #   python3 run.py init wos
-api_secret =
-api_token =
-lightning_address =
-btc_deposit_address =
-loop_out_address =
+  api_secret: YOUR_WOS_API_SECRET
+  api_token: YOUR_WOS_API_TOKEN
+  lightning_address: YOUR_WOS_LIGHTNING_ADDRESS
+  btc_deposit_address: YOUR_WOS_ONCHAIN_DEPOSIT_ADDRESS
+  loop_out_address: YOUR_LND_NODE_ONCHAIN_ADDRESS_FOR_WOS_WIDTHDRAWS
 
-[OKCOIN]
-# create an okcoin api key and passphrase
-#     enter an onchain address to recieve loop outs from the account
-api_secret = 
-api_token = 
-api_passphrase = 
-loop_out_address = 
-
-[TELEGRAM]
+telegram:
 # send yourself a telegram updates about your node using a bot
 #   1. visit https://telegram.me/BotFather to begin chatting with the BotFather 
 #   2. /start and /newbot to create your bot, copy the api_token
 #   3. /start a chat with the bot and send the bot a plaintext message
 #   4. use this tool: https://codesandbox.io/s/get-telegram-chat-id-q3qkk
 #       to get the chat_id 
-api_token =
-chat_id = 
+  api_token: YOUR_TELEGRAM_API_TOKEN
+  chat_id: YOUR_TELEGRAM_CHAT_ID
 
-[MEMPOOL]
+mempool:
 # use a mempool.space block explorer for mempool fee estimation
 #    use https://mempool.space/api/v1/ or your own instance 
-api_url = 
-
-[LNDG]
-# connect to an instance of LNDg
-#    use http://IP.OF.NO.DE/api/ for api_url
-# umbrel users need to disable app proxy SSO to use the API
-#    edit your umbrel/scripts/support/docker-compose.app_proxy.yml and set "PROXY_ADD_AUTH" to "false"
-#    then restart umbrel -- this disables umbrel's login proxy on all apps! use with caution!
-auth_user = 
-auth_pass = 
-api_url = 
+  api_url: YOUR_MEMPOOL_INSTANCE_API_URL

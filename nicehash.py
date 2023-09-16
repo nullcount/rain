@@ -8,11 +8,11 @@ from hashlib import sha256
 import sys
 from base import TrustedSwapService
 from const import COIN_SATS, NICEHASH_API_URL
-
+from config import get_creds
 
 class Nicehash(TrustedSwapService):
-    def __init__(self, creds):
-        self.creds = creds   
+    def __init__(self):
+        self.creds = get_creds('nicehash')  
 
     def nicehash_request(self, method, path, query, body):
         xtime = self.get_epoch_ms_from_now()

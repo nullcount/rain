@@ -4,6 +4,7 @@ import hmac
 import hashlib
 from base import TrustedSwapService
 from const import COIN_SATS, WOS_API_URL
+from config import get_creds
 
 # TODO if creds are not filled, get creds
 def create_wos_account():
@@ -19,9 +20,9 @@ def create_wos_account():
 
 
 class Wos(TrustedSwapService):
-    def __init__(self, creds):
+    def __init__(self):
         self.session = requests.Session()
-        self.creds = creds
+        self.creds = get_creds('wos')
         self.onchain_fee = 0
         self.session.headers.update({"api-token": self.creds.api_token})
 

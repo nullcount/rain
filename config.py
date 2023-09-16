@@ -2,9 +2,10 @@ from os import path
 from box import Box
 
 
-def parse_creds(key: str):
-    f = "config.yml" if not path.exists("config.yaml") else "config.yaml"
-    return parse_yaml(f)[key]
+def get_creds(key: str):
+    f = "creds.yml" if not path.exists("creds.yaml") else "creds.yaml"
+    yml = parse_yaml(f)
+    return yml[key]
 
 
 def parse_yaml(path: str) -> dict:

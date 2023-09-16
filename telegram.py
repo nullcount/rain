@@ -1,10 +1,11 @@
 import requests
 from base import AdminChatBot
 from const import TELEGRAM_API_URL
+from config import get_creds
 
 class Telegram(AdminChatBot):
-    def __init__(self, creds):
-        self.creds = creds
+    def __init__(self):
+        self.creds = get_creds('telegram')
         self.last_update_id = None
 
     def telegram_request(self, endpoint, params):

@@ -6,6 +6,7 @@
 # classify a node as a sink/source for active balance management
 # name each section something descriptive, it will be printed as debug
 # file is intrepreted top down so put your most critial channels first
+rain_config_version: 1
 
 trusted_swap_services:
   kraken:
@@ -14,12 +15,12 @@ trusted_swap_services:
     max_custody_minutes: 60
     max_widthdraw_fee_sats: 10_000
 
-channels:
+automated_channels:
 
   - node_label: Kraken
     # connection info
-    pubkey: 02f1a8c87607f415c8f22c00593002775941dea48869ce23096af27b0cfdcc0b69
-    host: 52.13.118.208:9735 
+    peer_pubkey: 02f1a8c87607f415c8f22c00593002775941dea48869ce23096af27b0cfdcc0b69
+    peer_host: 52.13.118.208:9735 
 
     # automate channel opens
     #     automator will try to open channels 
@@ -42,8 +43,12 @@ channels:
     min_htlc_sat: 100_000
 
     # automate channel liquidity
-    #     When your local balance 
-    trusted_swap: kraken
+    #     When your local balance
+    automate_liquidity: true
+
+    # automate liquidty using a trusted off-chain/on-chain swap
+    #     options: Kraken|Nicehash|Wos
+    trusted_swap_service: Kraken
     decrease_local_balance: true
     increase_local_balance: false
     max_local_balance_ratio: 0.8

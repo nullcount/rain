@@ -1,9 +1,10 @@
 import requests
 from mempool import MEMPOOL_API_URL
+from config import get_creds
 
 class Mempool:
-    def __init__(self, creds):
-        self.creds = creds
+    def __init__(self):
+        creds = get_creds('mempool')
         self.api_url = f"{creds.api_url}/api/v1" if creds.api_url else  MEMPOOL_API_URL
 
     def mempool_request(self, uri_path, data={}, obj=True):

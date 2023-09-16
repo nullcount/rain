@@ -1,80 +1,35 @@
-import sys
-from config import 
-from lnd import Lnd, LndCreds
-from mempool import Mempool, MempoolCreds
+from os import path
+from config import parse_yaml
+from lnd import Lnd
+from mempool import Mempool
 
+# trusted swap services
+from kraken import Kraken
+from nicehash import Nicehash
+from wos import Wos
 
 def main():
-    lnd_creds = LndCreds(grpc_host=CREDS['LND']['grpc_host'], tls_cert_path=CREDS['LND']
-                         ['tls_cert_path'], macaroon_path=CREDS['LND']['macaroon_path'])
-    node = Lnd(lnd_creds)
-
-    mempool_creds = MempoolCreds(CREDS['MEMPOOL'])
-    mempool = Mempool(mempool_creds, PLAY_LOG)
-    
-    for managed_peer in CHANNELS_CONFIG:
-        if managed_peer == "DEFAULT":
+    config = parse_yaml('config.yml' if path.exists('config.yml') else 'config.yaml')
+    node = Lnd()
+    for _config in config.automated_channels:
+        opened = node.get_shared_open_channels(_config.peer_pubkey)
+        pending = node.get_shared_pending_channels(_config.peer_pubkey)
+        total = len(opened) + len(pending)
+        if len(total) < _config.channel_count:
+            # try to open a channel
             continue
-        _config = CHANNELS_CONFIG[managed_peer]
-        _config['config_label'] = managed_peer
-        if _config['execute'] == '1' or _config['execute'].lower() == "true" or _config['execute'].lower() == 'yes':
-            strategy = _config['strategy'].upper()
-
-            # calculate sat per vbyte
-            mempool_fee_rec = _config['mempool_fee_rec']
-            mempool_fee_factor = float(_config['mempool_fee_factor'])
-            sat_per_vbyte = int(mempool.get_fee(
-            )[mempool_fee_rec]) * mempool_fee_factor
-
-            manager = channel_managers[strategy]
-
-            State = manager['state']
-            Config = manager['config']
-            Operator = manager['operator']
-
-            # get channels for peer in ChannelState list
-            open_chans = []
-            lnd_active_chans = node.get_shared_channels(_config['pubkey'])
-            lnd_pending_chans = [chan for chan in node.get_pending_channel_opens(
-            ) if chan.remote_node_pub == _config['pubkey']]
-            for chan in lnd_active_chans:
-                open_chans.append(ChannelState(chan_id=chan.chan_id, pending=False, capacity=chan.capacity,
-                                  local_balance=chan.local_balance, local_chan_reserve_sat=chan.local_chan_reserve_sat))
-            for chan in lnd_pending_chans:
-                open_chans.append(ChannelState(chan_id=chan.channel_point, pending=True, capacity=chan.capacity,
-                                               local_balance=chan.local_balance, local_chan_reserve_sat=chan.local_chan_reserve_sat))
-
-            if strategy == "SOURCE":
-                source_config = Config(_config)
-                swap_method_name = source_config.swap_method.upper()
-                swap_creds = swap_methods[swap_method_name]['creds'](
-                    CREDS[swap_method_name])
-                swap_method = swap_methods[swap_method_name]['operator'](
-                    swap_creds, PLAY_LOG)
-                # get account balance
-                account_balance = swap_method.get_account_balance()
-                account_onchain_fee = 0  # only matters if a withdraw is needed
-                if account_balance > source_config.max_account_balance:
-                    account_onchain_fee = swap_method.estimate_onchain_fee(
-                        account_balance)
-                # create source chan state
-                source_state = State(channels=open_chans, sat_per_vbyte=sat_per_vbyte,
-                                     account_balance=account_balance, account_onchain_fee=account_onchain_fee, config=source_config, swap_method=swap_method)
-                # create source chan operator
-                source_operator = Operator(
-                    state=source_state, node=node, log=PLAY_LOG)
-                # execute the jobs
-                jobs = source_operator.get_jobs()
-                source_operator.execute(jobs, debug=debug)
-            elif strategy == "SINK":
-                sink_config = Config(_config)
-                sink_state = State(
-                    channels=open_chans, sat_per_vbyte=sat_per_vbyte, config=sink_config)
-                sink_operator = Operator(
-                    state=sink_state, node=node, log=PLAY_LOG)
-                jobs = sink_operator.get_jobs()
-                sink_operator.execute(jobs, debug=debug)
+        if _config.automate_liquidity:
+            # create an instance of TrustedSwapService
+            trusted_swap_service = globals()[_config.trusted_swap_service]()
+            for chan in opened:
+                local_balance_ratio = chan.local_balance / chan.capacity
+                if local_balance_ratio > _config.max_local_balance_ratio and _config.decrease_local_balance:
+                    # try to pay a ln invoice from the swap
+                    continue
+                if local_balance_ratio < _config.min_local_balance_ratio and _config.increase_local_balance:
+                    # try to pay your own ln invoice using the swap's balance
+                    continue
 
 
 if __name__ == "__main__":
-    main(debug="debug" in sys.argv)
+    main()

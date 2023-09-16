@@ -7,11 +7,11 @@ import hmac
 import base64
 from base import TrustedSwapService
 from const import COIN_SATS, KRAKEN_API_URL
-
+from config import get_creds
 
 class Kraken(TrustedSwapService):
-    def __init__(self, creds):
-        self.creds = creds
+    def __init__(self):
+        self.creds = get_creds("kraken")
 
     @staticmethod
     def get_kraken_signature(urlpath, data, secret):
@@ -21,6 +21,10 @@ class Kraken(TrustedSwapService):
         mac = hmac.new(base64.b64decode(secret), message, hashlib.sha512)
         sigdigest = base64.b64encode(mac.digest())
         return sigdigest.decode()
+
+    @staticmethod
+    def get_nonce():
+        return str(int(1000 * time.time()))
 
     def check_errors(self, response, payload, endpoint):
         if response['error']:
@@ -46,33 +50,33 @@ class Kraken(TrustedSwapService):
 
     def get_address(self):
         payload = {
-            "nonce": str(int(1000 * time.time())),
+            "nonce": self.get_nonce(),
             "asset": "XBT",
             "method": "Bitcoin",
         }
-        res = self.kraken_request('/0/private/DepositAddresses', payload)
+        res = self.kraken_request('0/private/DepositAddresses', payload)
         addr = res[0]['address']
         return addr
 
     def send_onchain(self, sats, _):
         # kraken does not use variable fee
         payload = {
-            "nonce": str(int(1000 * time.time())),
+            "nonce": self.get_nonce(),
             "asset": "XBT",
             "key": self.creds.funding_key,
             "amount": sats / COIN_SATS
         }
-        res = self.kraken_request('/0/private/Withdraw', payload)
+        res = self.kraken_request('0/private/Withdraw', payload)
         return res
 
     def estimate_onchain_fee(self, amount: int):
         payload = {
-            "nonce": str(int(1000 * time.time())),
+            "nonce": self.get_nonce(),
             "asset": "XBT",
             "key": self.creds.funding_key,
             "amount": float(amount / COIN_SATS)
         }
-        res = self.kraken_request('/0/private/WithdrawInfo', payload)
+        res = self.kraken_request('0/private/WithdrawInfo', payload)
         fee_quote = {
             'amount': int(float(res['amount']) * COIN_SATS),
             'fee': int(float(res['fee']) * COIN_SATS)
@@ -89,17 +93,26 @@ class Kraken(TrustedSwapService):
 
     def get_recent_sends(self):
         payload = {
-            "nonce": str(int(1000 * time.time())),
+            "nonce": self.get_nonce(),
             "asset": "XBT"
         }
-        res = self.kraken_request('/0/private/WithdrawStatus', payload)
+        res = self.kraken_request('0/private/WithdrawStatus', payload)
         return res
 
     def get_balance(self):
-        payload = {"nonce": str(int(1000 * time.time()))}
-        res = self.kraken_request('/0/private/Balance', payload)
+        payload = {"nonce": self.get_nonce()}
+        res = self.kraken_request('0/private/Balance', payload)
         balance = int(float(res['XXBT']) * COIN_SATS)
         return balance
 
-    def get_invoice(self, amount_sats):
-        print('todo')
+    def get_invoice(self, sats):
+        payload = {
+            "nonce": self.get_nonce(),
+            "asset": "XBT",
+            "method": "Bitcoin Lightning",
+            "new": True,
+            "amount": sats / COIN_SATS
+        }
+        res = self.kraken_request('0/private/DepositAddresses', payload)
+        addr = res[0]['address']
+        return addr

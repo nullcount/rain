@@ -6,7 +6,7 @@ import re
 from grpc_generated import lightning_pb2_grpc as lnrpc, lightning_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
 from const import SAT_MSATS, MILLION, MESSAGE_SIZE_MB
-
+from config import get_creds
 def debug(message):
     sys.stderr.write(message + "\n")
 
@@ -44,7 +44,8 @@ class ChannelTemplate:
 
 
 class Lnd:
-    def __init__(self, creds):
+    def __init__(self):
+        creds = get_creds("lnd")
         os.environ['GRPC_SSL_CIPHER_SUITES'] = 'HIGH+ECDSA'
         combined_credentials = self.get_credentials(
             creds.tls_cert_path, creds.macaroon_path)
@@ -99,7 +100,7 @@ class Lnd:
         if self.peers is None:
             self.get_peers()
         for peer in self.peers:
-            if peer.pub_key == peer_pubkey
+            if peer.pub_key == peer_pubkey:
                 return True
         return False
 
@@ -221,6 +222,9 @@ class Lnd:
             self.peer_channels[peerid] = self.stub.ListChannels(
                 request).channels
         return self.peer_channels[peerid]
+
+    def get_shared_pending_channels(self, peerid):
+        return [chan for chan in self.get_pending_channel_opens() if chan.remote_node_pub == peerid]
 
     def min_version(self, major, minor, patch=0):
         p = re.compile("(\d+)\.(\d+)\.(\d+).*")

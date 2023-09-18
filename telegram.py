@@ -1,7 +1,7 @@
 import requests
 from base import AdminChatBot
 from const import TELEGRAM_API_URL
-from config import get_creds
+from config import get_creds, log
 
 class Telegram(AdminChatBot):
     def __init__(self):

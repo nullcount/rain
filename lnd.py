@@ -6,7 +6,7 @@ import re
 from grpc_generated import lightning_pb2_grpc as lnrpc, lightning_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
 from const import SAT_MSATS, MILLION, MESSAGE_SIZE_MB
-from config import get_creds
+from config import get_creds, log
 def debug(message):
     sys.stderr.write(message + "\n")
 
@@ -201,7 +201,7 @@ class Lnd:
     def get_edges(self):
         return self.get_graph().edges
 
-    def get_channels(self):
+    def get_open_channels(self):
         if self.channels is None:
             request = ln.ListChannelsRequest()
             self.channels = self.stub.ListChannels(request).channels
@@ -214,7 +214,7 @@ class Lnd:
         return self.closed_channels
 
     # Get all channels shared with a node
-    def get_shared_channels(self, peerid):
+    def get_shared_open_channels(self, peerid):
         # See example: https://github.com/lightningnetwork/lnd/issues/3930#issuecomment-596041700
         byte_peerid = bytes.fromhex(peerid)
         if peerid not in self.peer_channels:
@@ -224,7 +224,7 @@ class Lnd:
         return self.peer_channels[peerid]
 
     def get_shared_pending_channels(self, peerid):
-        return [chan for chan in self.get_pending_channel_opens() if chan.remote_node_pub == peerid]
+        return [chan for chan in self.get_pending_channels() if chan.remote_node_pub == peerid]
 
     def min_version(self, major, minor, patch=0):
         p = re.compile("(\d+)\.(\d+)\.(\d+).*")
@@ -316,7 +316,7 @@ class Lnd:
             return
 
         target_channels = list(
-            filter(lambda channel: channel.chan_id == chan_id, self.get_channels()))
+            filter(lambda channel: channel.chan_id == chan_id, self.get_open_channels()))
         if not len(target_channels) > 0:
             # TODO self.log.info(f"The channel id provided does not exist:  {chan_id}")
             return
@@ -382,7 +382,7 @@ class Lnd:
                 chans.append(chan)
         return chans
 
-    def get_pending_channel_opens(self):
+    def get_pending_channels(self):
         pending_channels_request = ln.PendingChannelsRequest()
         pending_channels_response = self.stub.PendingChannels(
             pending_channels_request)

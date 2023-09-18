@@ -8,7 +8,7 @@ from hashlib import sha256
 import sys
 from base import TrustedSwapService
 from const import COIN_SATS, NICEHASH_API_URL
-from config import get_creds
+from config import get_creds, log
 
 class Nicehash(TrustedSwapService):
     def __init__(self):

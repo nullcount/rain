@@ -1,6 +1,6 @@
 import requests
-from mempool import MEMPOOL_API_URL
-from config import get_creds
+from const import MEMPOOL_API_URL
+from config import get_creds, log
 
 class Mempool:
     def __init__(self):

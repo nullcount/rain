@@ -7,7 +7,7 @@ import hmac
 import base64
 from base import TrustedSwapService
 from const import COIN_SATS, KRAKEN_API_URL
-from config import get_creds
+from config import get_creds, log
 
 class Kraken(TrustedSwapService):
     def __init__(self):

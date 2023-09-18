@@ -4,7 +4,7 @@ import hmac
 import hashlib
 from base import TrustedSwapService
 from const import COIN_SATS, WOS_API_URL
-from config import get_creds
+from config import get_creds, log
 
 # TODO if creds are not filled, get creds
 def create_wos_account():

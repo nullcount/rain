@@ -6,15 +6,16 @@ import hashlib
 import hmac
 import base64
 from base import TrustedSwapService
-from const import COIN_SATS, KRAKEN_API_URL
+from const import COIN_SATS, KRAKEN_API_URL, LOG_ERROR, LOG_INFO, LOG_TRUSTED_SWAP_SERVICE as logs
 from config import get_creds, log
+from typing import Dict, Any
 
 class Kraken(TrustedSwapService):
-    def __init__(self):
+    def __init__(self) -> None:
         self.creds = get_creds("kraken")
 
     @staticmethod
-    def get_kraken_signature(urlpath, data, secret):
+    def get_kraken_signature(urlpath: str, data: Dict, secret: str) -> str:
         postdata = urllib.parse.urlencode(data)
         encoded = (str(data['nonce']) + postdata).encode()
         message = urlpath.encode() + hashlib.sha256(encoded).digest()
@@ -23,16 +24,17 @@ class Kraken(TrustedSwapService):
         return sigdigest.decode()
 
     @staticmethod
-    def get_nonce():
+    def get_nonce() -> str:
         return str(int(1000 * time.time()))
 
-    def check_errors(self, response, payload, endpoint):
+    @staticmethod
+    def check_errors(response: Dict, payload: Dict, endpoint: str) -> None:
         if response['error']:
             for err in response['error']:
-                err_msg = f"kraken responded with error: {err}\nendpoint: {endpoint}\npayload: {payload}"
+                log(LOG_ERROR, f"kraken responded with error: {err}\nendpoint: {endpoint}\npayload: {payload}")
             sys.exit()
 
-    def kraken_request(self, uri_path, data):
+    def kraken_request(self, uri_path: str, data: Dict) -> dict[Any, Any]:
         headers = {}
         headers['API-Key'] = self.creds.api_key
         headers['API-Sign'] = self.get_kraken_signature(
@@ -40,79 +42,76 @@ class Kraken(TrustedSwapService):
             data,
             self.creds.api_secret
         )
-        req = requests.post(
+        req: dict[Any, Any] = requests.post(
             (KRAKEN_API_URL + uri_path),
             headers=headers,
             data=data
-        ).json()
+        ).json()['result']
         self.check_errors(req, data, uri_path)
-        return req['result']
+        return req
 
-    def get_address(self):
-        payload = {
+    def get_address(self) -> str:
+        """TrustedSwapService"""
+        payload: dict[str, Any] = {
             "nonce": self.get_nonce(),
             "asset": "XBT",
             "method": "Bitcoin",
         }
-        res = self.kraken_request('0/private/DepositAddresses', payload)
-        addr = res[0]['address']
+        response = self.kraken_request('0/private/DepositAddresses', payload)
+        addr: str = response[0]['address']
+        log(LOG_INFO, logs.get_address.format('kraken', addr))
         return addr
 
-    def send_onchain(self, sats, _):
-        # kraken does not use variable fee
-        payload = {
+    def send_onchain(self, sats: int, fee: int | None) -> dict[Any, Any]:
+        """TrustedSwapService"""
+        payload: dict[str, Any] = {
             "nonce": self.get_nonce(),
             "asset": "XBT",
             "key": self.creds.funding_key,
             "amount": sats / COIN_SATS
         }
-        res = self.kraken_request('0/private/Withdraw', payload)
-        return res
+        response = self.kraken_request('0/private/Withdraw', payload)
+        log(LOG_INFO, logs.send_onchain.format('kraken', sats, fee))
+        return response
 
-    def estimate_onchain_fee(self, amount: int):
-        payload = {
+    def get_onchain_fee(self, sats: int) -> int:
+        """TrustedSwapService"""
+        payload: dict[str, Any] = {
             "nonce": self.get_nonce(),
             "asset": "XBT",
             "key": self.creds.funding_key,
-            "amount": float(amount / COIN_SATS)
+            "amount": float(sats / COIN_SATS)
         }
-        res = self.kraken_request('0/private/WithdrawInfo', payload)
-        fee_quote = {
-            'amount': int(float(res['amount']) * COIN_SATS),
-            'fee': int(float(res['fee']) * COIN_SATS)
-        }
-        return fee_quote['fee']
+        response = self.kraken_request('0/private/WithdrawInfo', payload)
+        sats = int(float(response['amount']) * COIN_SATS)
+        fee = int(float(response['fee']) * COIN_SATS)
+        log(LOG_INFO, logs.get_onchain_fee.format('kraken', sats, fee))
+        return fee
 
-    def get_pending_send_sats(self):
-        sends = self.get_recent_sends()
-        pending_amt = 0
-        for w in sends:
-            if w['status'] in ['Initial', 'Pending']:
-                pending_amt += int(float(w['amount']) * COIN_SATS)
-        return pending_amt
-
-    def get_recent_sends(self):
-        payload = {
-            "nonce": self.get_nonce(),
-            "asset": "XBT"
-        }
-        res = self.kraken_request('0/private/WithdrawStatus', payload)
-        return res
-
-    def get_balance(self):
+    def get_balance(self) -> int:
+        """TrustedSwapService"""
         payload = {"nonce": self.get_nonce()}
-        res = self.kraken_request('0/private/Balance', payload)
-        balance = int(float(res['XXBT']) * COIN_SATS)
+        response = self.kraken_request('0/private/Balance', payload)
+        balance = int(float(response['XXBT']) * COIN_SATS)
+        log(LOG_INFO, logs.get_balance.format('kraken', balance))
         return balance
 
-    def get_invoice(self, sats):
-        payload = {
+    def get_invoice(self, sats: int) -> str:
+        """TrustedSwapService"""
+        payload: dict[str, Any] = {
             "nonce": self.get_nonce(),
             "asset": "XBT",
             "method": "Bitcoin Lightning",
             "new": True,
             "amount": sats / COIN_SATS
         }
-        res = self.kraken_request('0/private/DepositAddresses', payload)
-        addr = res[0]['address']
-        return addr
+        response = self.kraken_request('0/private/DepositAddresses', payload)
+        invoice: str = response[0]['address']
+        log(LOG_INFO, logs.get_invoice.format('kraken', invoice, sats))
+        return invoice
+    
+    def pay_invoice(self, invoice: str, sats: int) -> dict[Any, Any]:
+        """TrustedSwapService"""
+        #TODO implement
+        log(LOG_INFO, logs.format('kraken', invoice, sats))
+        return super().pay_invoice(invoice, sats)

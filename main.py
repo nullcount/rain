@@ -8,11 +8,11 @@ from kraken import Kraken
 from nicehash import Nicehash
 from wos import Wos
 
-def main():
-    lnd = Lnd()
+def main() -> None:
+    ln: Lnd = Lnd()
     all_config = parse_yaml('config.yml' if path.exists('config.yml') else 'config.yaml')
-    all_opened = lnd.get_open_channels()
-    all_pending = lnd.get_pending_channels()
+    all_opened = ln.get_open_channels()
+    all_pending = ln.get_pending_channels()
     for config in all_config.automated_channels:
         opened = [c for c in all_opened if c.remote_node_pub == config.peer_pubkey]
         pending = [c for c in all_pending if c.remote_node_pub == config.peer_pubkey]

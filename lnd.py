@@ -1,14 +1,11 @@
 import os
 import codecs
 import grpc
-import sys
-import re
 from grpc_generated import lightning_pb2_grpc as lnrpc, lightning_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
 from const import SAT_MSATS, MILLION, MESSAGE_SIZE_MB
 from config import get_creds, log
-def debug(message):
-    sys.stderr.write(message + "\n")
+from typing import Any
 
 class ChannelTemplate:
     def __init__(self, node_pubkey: str, local_funding_amount: int, address: str, sat_per_vbyte: int, base_fee: int, fee_rate: int, min_htlc_sat: int,
@@ -22,7 +19,7 @@ class ChannelTemplate:
         self.address = address
         self.spend_unconfirmed = spend_unconfirmed
 
-    def get_debug_str(self):
+    def get_debug_str(self) -> str:
         attrs = vars(self)
         a = []
         for key, value in attrs.items():
@@ -42,9 +39,8 @@ class ChannelTemplate:
             fee_rate=self.fee_rate
         )
 
-
 class Lnd:
-    def __init__(self):
+    def __init__(self) -> None:
         creds = get_creds("lnd")
         os.environ['GRPC_SSL_CIPHER_SUITES'] = 'HIGH+ECDSA'
         combined_credentials = self.get_credentials(
@@ -62,13 +58,13 @@ class Lnd:
         self.channels = None
         self.closed_channels = None
         self.peers = None
-        self.node_info = {}
-        self.chan_info = {}
-        self.fwdhistory = {}
-        self.peer_channels = {}
+        self.node_info: dict[Any, Any] = {}
+        self.chan_info: dict[Any, Any] = {}
+        self.fwdhistory: dict[Any, Any] = {}
+        self.peer_channels: dict[Any, Any] = {}
 
     @staticmethod
-    def get_credentials(tls_cert_path, macaroon_path):
+    def get_credentials(tls_cert_path: str, macaroon_path: str) -> str:
         tls_certificate = open(tls_cert_path, 'rb').read()
         ssl_credentials = grpc.ssl_channel_credentials(tls_certificate)
         macaroon = codecs.encode(open(macaroon_path, 'rb').read(), 'hex')
@@ -213,65 +209,9 @@ class Lnd:
             self.closed_channels = self.stub.ClosedChannels(req).channels
         return self.closed_channels
 
-    # Get all channels shared with a node
-    def get_shared_open_channels(self, peerid):
-        # See example: https://github.com/lightningnetwork/lnd/issues/3930#issuecomment-596041700
-        byte_peerid = bytes.fromhex(peerid)
-        if peerid not in self.peer_channels:
-            request = ln.ListChannelsRequest(peer=byte_peerid)
-            self.peer_channels[peerid] = self.stub.ListChannels(
-                request).channels
-        return self.peer_channels[peerid]
-
-    def get_shared_pending_channels(self, peerid):
-        return [chan for chan in self.get_pending_channels() if chan.remote_node_pub == peerid]
-
-    def min_version(self, major, minor, patch=0):
-        p = re.compile("(\d+)\.(\d+)\.(\d+).*")
-        m = p.match(self.get_info().version)
-        if m is None:
-            return False
-        if major > int(m.group(1)):
-            return False
-        if minor > int(m.group(2)):
-            return False
-        if patch > int(m.group(3)):
-            return False
-        return True
-
-    def update_chan_status(self, chanid, disable):
-        chan_info = self.get_chan_info(chanid)
-        if not chan_info:
-            return None
-        channel_point = ln.ChannelPoint(
-            funding_txid_str=chan_info.chan_point.split(':')[0],
-            output_index=int(chan_info.chan_point.split(':')[1])
-        )
-        my_policy = chan_info.node1_policy if chan_info.node1_pub == self.get_own_pubkey(
-        ) else chan_info.node2_policy
-        # ugly code, retries with 'AUTO' if channel turns out not to be active.
-        # Alternative is to iterate or index the channel list, just to get active status
-        try:
-            action = 'DISABLE' if disable else 'ENABLE'
-            self.routerstub.UpdateChanStatus(router.UpdateChanStatusRequest(
-                chan_point=channel_point,
-                action=action
-            ))
-        except:
-            action = 'DISABLE' if disable else 'AUTO'
-            self.routerstub.UpdateChanStatus(router.UpdateChanStatusRequest(
-                chan_point=channel_point,
-                action=action
-            ))
-
-    @staticmethod
-    def hex_string_to_bytes(hex_string):
-        decode_hex = codecs.getdecoder("hex_codec")
-        return decode_hex(hex_string)[0]
-
-    def decode_invoice(self, invoice_string):
-        request = ln.PayReqString(pay_req=invoice_string)
-        decoded = self.stub.DecodePayReq(request)
+    def decode_invoice(self, invoice: str) -> dict[Any, Any]:
+        request = ln.PayReqString(pay_req=invoice)
+        decoded: dict[Any, Any] = self.stub.DecodePayReq(request)
         return decoded
 
     def pay_invoice(self, invoice_string, outgoing_chan_id=None, fee_limit=60000):
@@ -286,22 +226,22 @@ class Lnd:
         #TODO self.log.info(f"LND pay invoice response: {send_response}")
         return send_response
 
-    def send_onchain(self, dest_addr, amount_sats, target_conf, sat_per_vbyte):
-        send_request = ln.SendCoinsRequest(
-            addr=dest_addr,
-            amount=amount_sats,
-            target_conf=target_conf,
-            sat_per_vbyte=sat_per_vbyte
-        )
-        send_response = self.stub.SendCoins(send_request)
+    def send_onchain(self, send_request: ln.SendCoinsRequest) -> dict[Any, Any]:
+        # send_request = ln.SendCoinsRequest(
+        #     addr=dest_addr,
+        #     amount=amount_sats,
+        #     target_conf=target_conf,
+        #     sat_per_vbyte=sat_per_vbyte
+        # )
+        send_response: dict[Any, Any] = self.stub.SendCoins(send_request)
         return send_response
 
-    def open_channel(self, channel: ChannelTemplate):
+    def open_channel(self, channel: ln.openChannelRequest) -> str:
         channel_point = None
         if not self.is_peer_with(channel.node_pubkey):
             self.add_peer(channel.node_pubkey, channel.address)
         try:
-            channel_point = self.stub.OpenChannelSync(channel.get_open_req())
+            channel_point = self.stub.OpenChannelSync(channel)
         except grpc._channel._InactiveRpcError as e:
             if "Number of pending channels exceed maximum" in e.debug_error_string():
                 return channel_point  # done for now
@@ -314,7 +254,6 @@ class Lnd:
         if (not chan_id) or (not sat_per_vbyte):
             # TODO self.log.info(f"Must provide chan_id and sat_per_vbyte to close a channel. " f"chan_id: {chan_id}, sat_per_vbyte: {sat_per_vbyte}")
             return
-
         target_channels = list(
             filter(lambda channel: channel.chan_id == chan_id, self.get_open_channels()))
         if not len(target_channels) > 0:
@@ -335,14 +274,13 @@ class Lnd:
             close_channel_request)
         return close_status_update_response
 
-    def get_onchain_balance(self):
+    def get_onchain_balance(self) -> int:
         balance_request = ln.WalletBalanceRequest()
         balance_response = self.stub.WalletBalance(balance_request)
-        confirmed = balance_response.confirmed_balance
+        return int(balance_response.confirmed_balance)
         #TODO self.log.info("LND confirmed onchain balance: {} sats".format(confirmed))
-        return confirmed
 
-    def get_onchain_address(self):
+    def get_onchain_address(self) -> str:
         """
         WITNESS_PUBKEY_HASH = 0;
         NESTED_PUBKEY_HASH = 1;
@@ -353,20 +291,19 @@ class Lnd:
         """
         new_address_request = ln.NewAddressRequest(type=2)
         new_address_response = self.stub.NewAddress(new_address_request)
-        addr = new_address_response.address
+        return str(new_address_response.address)
         #TODO self.log.info("LND generated deposit address: {}".format(addr))
-        return addr
 
-    def add_lightning_invoice(self, amount, memo=None):
+    def add_lightning_invoice(self, amount: int, memo: str) -> str:
         add_invoice_request = ln.Invoice(value=amount, memo=memo)
         invoice_response = self.stub.AddInvoice(add_invoice_request)
-        return invoice_response
+        return str(invoice_response)
 
-    def get_unconfirmed_txns(self):
+    def get_unconfirmed_txns(self) -> list[Any]:
         txs = self.get_txns(end_height=-1).transactions
         return list(filter(lambda x: x.num_confirmations == 0, txs))
 
-    def get_unconfirmed_balance(self):
+    def get_unconfirmed_balance(self) -> int:
         total = 0
         txns = self.get_unconfirmed_txns()
         if len(txns) > 0:
@@ -375,37 +312,10 @@ class Lnd:
         #TODO self.log.info("LND unconfirmed balance: {} sats".format(total))
         return total
 
-    def has_channel_with(self, peer_pubkey):
-        chans = []
-        for chan in self.channels:
-            if chan.remote_pubkey == peer_pubkey:
-                chans.append(chan)
-        return chans
-
-    def get_pending_channels(self):
+    def get_pending_channels(self) -> list[Any]:
         pending_channels_request = ln.PendingChannelsRequest()
         pending_channels_response = self.stub.PendingChannels(
             pending_channels_request)
         pending_open_channels = pending_channels_response.pending_open_channels
-        pending_open_channels = list(
+        return list(
             map(lambda x: x.channel, pending_open_channels))
-        return pending_open_channels
-
-    def get_pending_channel_open_tx_ids(self):
-        pending_channels_request = ln.PendingChannelsRequest()
-        pending_channels_response = self.stub.PendingChannels(
-            pending_channels_request)
-        pending_open_channels = pending_channels_response.pending_open_channels
-        pending_open_channel_tx_ids = [x.channel.channel_point.split(
-            ":")[0] for x in pending_open_channels]
-        return pending_open_channel_tx_ids
-
-    def should_pay_invoice(self, invoice):
-        for hint in self.decode_invoice(invoice).route_hints:
-            if hint.fee_base_msat > 1000:
-                return False
-            elif hint.fee_proportional_millionths > 1500:
-                return False
-        return True
-
-

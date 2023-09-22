@@ -4,14 +4,14 @@ import grpc
 from grpc_generated import lightning_pb2_grpc as lnrpc, lightning_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
 from const import MESSAGE_SIZE_MB
-from config import get_creds, log
+import config
 from typing import Any
 from base import BitcoinLightingNode
 from result import Result, Ok, Err
 
 class Lnd(BitcoinLightingNode):
     def __init__(self) -> None:
-        creds = get_creds("lnd")
+        creds = config.get_creds("lnd")
         os.environ['GRPC_SSL_CIPHER_SUITES'] = 'HIGH+ECDSA'
         combined_credentials = self.get_credentials(
             creds.tls_cert_path, creds.macaroon_path)
@@ -94,9 +94,9 @@ class Lnd(BitcoinLightingNode):
         return Ok(alias)
 
 
-
-
-
+"""
+BELOW IS OLD lnd.py FOR REFERENCE
+"""
     def add_peer(self, pubkey, address):
         ln_addr = ln.LightningAddress(pubkey=pubkey, host=address)
         connectRequest = ln.ConnectPeerRequest(addr=ln_addr)

@@ -1,41 +1,38 @@
-# 
-# Automated Channel Management
-#
-# use this file to describe the arrangement of channels for this node
-# set the budget for each peer and the number of channels to maintain
-# classify a node as a sink/source for active balance management
-# name each section something descriptive, it will be printed as debug
-# file is intrepreted top down so put your most critial channels first
 rain_version: 1
 
-trust_swaps:
+lightning_node: lnd
+notify_service: console
+
+trusted_swaps:
   kraken:
     limit_custody_sats: 1_000_000
     limit_onchain_fee_sats: 10_000
-
+  
+  # TODO add magma, pool, lnbig, yalls, etc
 lease:
   markets:
     - magma
   # TODO add magma
 
-maintain:
+managed_peers:
+
   kraken:
     peer:
       known_as: "Kraken Exchage"
       pubkey: 02f1a8c87607f415c8f22c00593002775941dea48869ce23096af27b0cfdcc0b69
       host: 52.13.118.208:9735
     policy:
+      num_channels: 1
       channel_capacity: 1_000_000
       base_fee: 0
       ppm_fee: 1
       cltv_delta: 144
       min_htlc_sats: 100_000
     onchain_fee:
-      # options: minimumFee|economyFee|hourFee|halfHourFee|fastestFee
-      target: hourFee
+      target: hourFee  # options: minimumFee|economyFee|hourFee|halfHourFee|fastestFee
       fee_factor: 1.00
       limit_vbyte_sats: 100
     drain:
-      from: 0.9
-      to: 0.1
+      max: 0.9
+      min: 0.1
       with_trust_swap: kraken

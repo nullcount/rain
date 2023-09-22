@@ -1,36 +1,44 @@
-from os import path
-from config import parse_yaml, log
-from lnd import Lnd
+from base import BitcoinLightingNode, AdminNotifyService
+from const import ADMIN_NOTIFY_SERVICES, BITCOIN_LIGHTNING_NODES, TRUSTED_SWAP_SERVICES
+import config
 from mempool import Mempool
+from result import Result, Ok, Err
 
-# trusted swap services
-from kraken import Kraken
-from nicehash import Nicehash
-from wos import Wos
+def main() -> Result[None, str]:
+    cfg = config.get_config()
+    node: BitcoinLightingNode = BITCOIN_LIGHTNING_NODES[cfg.lightning_node]()
+    notify: AdminNotifyService = ADMIN_NOTIFY_SERVICES[cfg.notify_service]()
+    mempool = Mempool()
 
-def main() -> None:
-    ln: Lnd = Lnd()
-    all_config = parse_yaml('config.yml' if path.exists('config.yml') else 'config.yaml')
-    all_opened = ln.get_open_channels()
-    all_pending = ln.get_pending_channels()
-    for config in all_config.automated_channels:
-        opened = [c for c in all_opened if c.remote_node_pub == config.peer_pubkey]
-        pending = [c for c in all_pending if c.remote_node_pub == config.peer_pubkey]
-        total = len(opened) + len(pending)
-        if total < config.channel_count:
-            # try to open a channel
-            continue
-        if config.automate_liquidity:
-            # create an instance of TrustedSwapService
-            trusted_swap_service = globals()[config.trusted_swap_service]()
-            for chan in opened:
+    open_channels = node.get_opened_channels()
+    pend_channels = node.get_pending_channels()
+    
+    # Maintain managed peers from config.yml
+    for peer in cfg.managed_peers:
+        peer_conf = cfg.managed_peers[peer]
+        
+        peer_open = [c for c in open_channels if c.remote_node_pub == peer_conf.peer.pubkey]
+        peer_pend = [c for c in pend_channels if c.remote_node_pub == peer_conf.peer.pubkey]
+        total_number = len(peer_open) + len(peer_pend)
+        
+        # Open channels to this peer
+        if  peer_conf.policy.num_channels < total_number:
+            # TODO: check mempool fees
+            node.open_channel() # TODO pass args
+
+        # Create inbound using this peer
+        if peer_conf.drain:
+            for chan in peer_open:
                 local_balance_ratio = chan.local_balance / chan.capacity
-                if local_balance_ratio > config.max_local_balance_ratio and config.decrease_local_balance:
-                    # try to pay a ln invoice from the swap
+                if local_balance_ratio < peer_conf.drain.max:
                     continue
-                if local_balance_ratio < config.min_local_balance_ratio and config.increase_local_balance:
-                    # try to pay your own ln invoice using the swap's balance
-                    continue
+                trust_swap = TRUSTED_SWAP_SERVICES[peer_conf.drain.with_trust_swap]()
+                drain_sats = chan.local_balance - (peer_conf.drain.min * chan.capacity)
+                trust_invoice = trust_swap.get_invoice(drain_sats)
+                node.pay_invoice(trust_invoice)
+
+    # TODO: check all trusted swaps and initiate onchain widthdraws
+    return Ok(None)
 
 
 if __name__ == "__main__":

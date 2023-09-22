@@ -7,14 +7,14 @@ import hmac
 import base64
 from base import TrustedSwapService
 from const import COIN_SATS, KRAKEN_API_URL, LOG_ERROR, LOG_INFO, LOG_TRUSTED_SWAP_SERVICE as logs
-from config import get_creds, log
+import config
 from typing import Dict
 from result import Result, Ok, Err
 from box import Box
 
 class Kraken(TrustedSwapService):
     def __init__(self) -> None:
-        self.creds = get_creds("kraken")
+        self.creds = config.get_creds("kraken")
 
     @staticmethod
     def get_kraken_signature(urlpath: str, data: Dict, secret: str) -> str:
@@ -33,7 +33,7 @@ class Kraken(TrustedSwapService):
     def check_errors(response: Dict, payload: Dict, endpoint: str) -> None:
         if response['error']:
             for err in response['error']:
-                log(LOG_ERROR, f"kraken responded with error: {err}\nendpoint: {endpoint}\npayload: {payload}")
+                config.log(LOG_ERROR, f"kraken responded with error: {err}\nendpoint: {endpoint}\npayload: {payload}")
             sys.exit()
 
     def kraken_request(self, uri_path: str, data: Dict) -> Box:
@@ -65,7 +65,7 @@ class Kraken(TrustedSwapService):
         if response.error:
             return Err(msg.err.format('kraken', response))
         addr: str = response[0].address
-        log(LOG_INFO, msg.ok.format('kraken', addr))
+        config.log(LOG_INFO, msg.ok.format('kraken', addr))
         return Ok(addr)
 
     def send_onchain(self, sats: int, fee: int) -> Result[None, str]:
@@ -82,7 +82,7 @@ class Kraken(TrustedSwapService):
         )
         if response.error:
             return Err(msg.err.format('kraken', response))
-        log(LOG_INFO, msg.ok.format('kraken', sats, fee))
+        config.log(LOG_INFO, msg.ok.format('kraken', sats, fee))
         return Ok(None)
 
     def get_onchain_fee(self, sats: int) -> Result[int, str]:
@@ -101,7 +101,7 @@ class Kraken(TrustedSwapService):
             return Err(msg.err.format('kraken', response))
         sats = int(float(response.amount) * COIN_SATS)
         fee = int(float(response.fee) * COIN_SATS)
-        log(LOG_INFO, msg.ok.format('kraken', sats, fee))
+        config.log(LOG_INFO, msg.ok.format('kraken', sats, fee))
         return Ok(fee)
 
     def get_balance(self) -> Result[int, str]:
@@ -114,7 +114,7 @@ class Kraken(TrustedSwapService):
         if response.error:
             return Err(msg.err.format('kraken', response))
         balance = int(float(response.XXBT) * COIN_SATS)
-        log(LOG_INFO, logs.get_balance.format('kraken', balance))
+        config.log(LOG_INFO, logs.get_balance.format('kraken', balance))
         return Ok(balance)
 
     def get_invoice(self, sats: int) -> Result[str, str]:
@@ -133,6 +133,6 @@ class Kraken(TrustedSwapService):
         if response.error:
             return Err(msg.err.format('kraken', response))
         invoice: str = response[0].address
-        log(LOG_INFO, msg.ok.format('kraken', invoice, sats))
+        config.log(LOG_INFO, msg.ok.format('kraken', invoice, sats))
         return Ok(invoice)
     

@@ -2,7 +2,7 @@ from result import Result
 from typing import Callable
 from box import Box
 
-class AdminChatService:
+class AdminNotifyService:
     """
     Extend with chat protocol APIs
         to notify node operator (admin) of events

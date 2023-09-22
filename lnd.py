@@ -3,43 +3,13 @@ import codecs
 import grpc
 from grpc_generated import lightning_pb2_grpc as lnrpc, lightning_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
-from const import SAT_MSATS, MILLION, MESSAGE_SIZE_MB
+from const import MESSAGE_SIZE_MB
 from config import get_creds, log
 from typing import Any
+from base import BitcoinLightingNode
+from result import Result, Ok, Err
 
-class ChannelTemplate:
-    def __init__(self, node_pubkey: str, local_funding_amount: int, address: str, sat_per_vbyte: int, base_fee: int, fee_rate: int, min_htlc_sat: int,
-                 spend_unconfirmed: bool):
-        self.node_pubkey = node_pubkey
-        self.local_funding_amount = local_funding_amount
-        self.sat_per_vbyte = sat_per_vbyte
-        self.min_htlc_sat = min_htlc_sat
-        self.base_fee = base_fee
-        self.fee_rate = fee_rate
-        self.address = address
-        self.spend_unconfirmed = spend_unconfirmed
-
-    def get_debug_str(self) -> str:
-        attrs = vars(self)
-        a = []
-        for key, value in attrs.items():
-            a.append(f'{key} = {value}')
-        return "\n".join(a)
-
-    def get_open_req(self):
-        return ln.OpenChannelRequest(
-            node_pubkey_string=self.node_pubkey,
-            local_funding_amount=self.local_funding_amount,
-            sat_per_vbyte=self.sat_per_vbyte,
-            min_htlc_msat=self.min_htlc_sat * SAT_MSATS,
-            spend_unconfirmed=self.spend_unconfirmed,
-            use_base_fee=True,
-            use_fee_rate=True,
-            base_fee=self.base_fee,
-            fee_rate=self.fee_rate
-        )
-
-class Lnd:
+class Lnd(BitcoinLightingNode):
     def __init__(self) -> None:
         creds = get_creds("lnd")
         os.environ['GRPC_SSL_CIPHER_SUITES'] = 'HIGH+ECDSA'
@@ -53,18 +23,9 @@ class Lnd:
             creds.grpc_host, combined_credentials, channel_options)
         self.stub = lnrpc.LightningStub(grpc_channel)
         self.routerstub = routerrpc.RouterStub(grpc_channel)
-        self.graph = None
-        self.info = None
-        self.channels = None
-        self.closed_channels = None
-        self.peers = None
-        self.node_info: dict[Any, Any] = {}
-        self.chan_info: dict[Any, Any] = {}
-        self.fwdhistory: dict[Any, Any] = {}
-        self.peer_channels: dict[Any, Any] = {}
-
+        
     @staticmethod
-    def get_credentials(tls_cert_path: str, macaroon_path: str) -> str:
+    def get_credentials(tls_cert_path: str, macaroon_path: str) -> Any:
         tls_certificate = open(tls_cert_path, 'rb').read()
         ssl_credentials = grpc.ssl_channel_credentials(tls_certificate)
         macaroon = codecs.encode(open(macaroon_path, 'rb').read(), 'hex')
@@ -74,43 +35,67 @@ class Lnd:
             ssl_credentials, auth_credentials)
         return combined_credentials
 
-    def get_info(self):
-        if self.info is None:
-            self.info = self.stub.GetInfo(ln.GetInfoRequest())
-        return self.info
+    def open_channel(self) -> Result[None, str]:
+        """BitcoinLightingNode"""
+        return Ok(None)
+    
+    def close_channel(self) -> Result[None, str]:
+        """BitcoinLightingNode"""
+        return Ok(None)
+    
+    def get_pending_channels(self) -> Result[Box, str]:
+        """BitcoinLightingNode"""
+        return 
+    
+    def get_opened_channels(self) -> Result[Box, str]:
+        """BitcoinLightingNode"""
+        return
+    
+    def get_invoice(self, sats: int) -> Result[str, str]:
+        """BitcoinLightingNode"""
+        invoice = ''
+        return Ok(invoice)
+    
+    def pay_invoice(self) -> Result[None, str]:
+        """BitcoinLightingNode"""
+        return Ok(None)
+    
+    def get_address(self) -> Result[str, str]:
+        """BitcoinLightingNode"""
+        addr = ''
+        return Ok(None)
+    
+    def send_onchain(self) -> Result[None, str]:
+        """BitcoinLightingNode"""
+        return Ok(None)
+    
+    def get_unconfirmed_balance(self) -> Result[int, str]:
+        """BitcoinLightingNode"""
+        unconfirmed = 0
+        return Ok(unconfirmed)
 
-    def get_node_channels(self, nodeid):
-        g = self.get_graph()
-        channels = []
-        for c in g.edges:
-            if c.node1_pub == nodeid or c.node2_pub == nodeid:
-                channels.append(c)
-        return channels
+    def get_confirmed_balance(self) -> Result[int, str]:
+        """BitcoinLightingNode"""
+        confirmed = 0
+        return Ok(confirmed)
+    
+    def decode_invoice(self, invoice: str) -> Result[Box, str]:
+        """BitcoinLightingNode"""
+        return
+    
+    def sign_message(self, message: str) -> Result[str, str]:
+        """BitcoinLightingNode"""
+        signed_message = ''
+        return Ok(signed_message)
+    
+    def get_alias(self, pubkey: str) -> Result[str, str]:
+        """BitcoinLightingNode"""
+        alias = ''
+        return Ok(alias)
 
-    def get_peers(self):
-        if self.peers is None:
-            self.peers = self.stub.ListPeers(ln.ListPeersRequest()).peers
-        return self.peers
 
-    def is_peer_with(self, peer_pubkey):
-        if self.peers is None:
-            self.get_peers()
-        for peer in self.peers:
-            if peer.pub_key == peer_pubkey:
-                return True
-        return False
 
-    def subscribe_htlc_events(self):
-        req = router.SubscribeHtlcEventsRequest()
-        return self.routerstub.SubscribeHtlcEvents(req)
 
-    def subscribe_channel_events(self):
-        req = ln.ChannelEventSubscription()
-        return self.stub.SubscribeChannelEvents(req)
-
-    def subscribe_transactions(self):
-        req = ln.Transaction.empty()
-        return self.stub.SubscribeTransactions(req)
 
     def add_peer(self, pubkey, address):
         ln_addr = ln.LightningAddress(pubkey=pubkey, host=address)
@@ -124,64 +109,6 @@ class Lnd:
             # TODO self.log.notify(f"An error occurred while adding peer: {e}")
         return res
 
-    def get_node_info(self, nodepubkey):
-        if nodepubkey not in self.node_info:
-            self.node_info[nodepubkey] = self.stub.GetNodeInfo(
-                ln.NodeInfoRequest(pub_key=nodepubkey))
-        return self.node_info[nodepubkey]
-
-    def get_chan_info(self, chanid):
-        if chanid not in self.chan_info:
-            try:
-                self.chan_info[chanid] = self.stub.GetChanInfo(
-                    ln.ChanInfoRequest(chan_id=chanid))
-            except:
-                # TODO print("Failed to lookup {}".format(chanid), file=sys.stderr)
-                return None
-        return self.chan_info[chanid]
-
-    def update_chan_policy(self, chanid, policy):
-        base_fee_msat = policy['fee_base_msat']
-        fee_ppm = policy['fee_rate_milli_msat']
-        min_htlc_msat = policy['min_htlc']
-        max_htlc_msat = policy['max_htlc_msat']
-        time_lock_delta = policy['time_lock_delta']
-
-        chan_info = self.get_chan_info(chanid)
-        if not chan_info:
-            return None
-        channel_point = ln.ChannelPoint(
-            funding_txid_str=chan_info.chan_point.split(':')[0],
-            output_index=int(chan_info.chan_point.split(':')[1])
-        )
-        my_policy = chan_info.node1_policy if chan_info.node1_pub == self.get_own_pubkey(
-        ) else chan_info.node2_policy
-        base_fee_msat = (
-            base_fee_msat if base_fee_msat is not None else my_policy.fee_base_msat)
-        fee_rate = fee_ppm if fee_ppm is not None else my_policy.fee_rate_milli_msat
-        min_htlc_msat = (
-            min_htlc_msat if min_htlc_msat is not None else my_policy.min_htlc)
-        max_htlc_msat = (
-            max_htlc_msat if max_htlc_msat is not None else my_policy.max_htlc_msat)
-        time_lock_delta = (
-            time_lock_delta if time_lock_delta is not None else my_policy.time_lock_delta)
-
-        res = self.stub.UpdateChannelPolicy(ln.Poliself.logcyUpdateRequest(
-            chan_point=channel_point,
-            base_fee_msat=base_fee_msat,
-            fee_rate=(fee_rate / MILLION),
-            min_htlc_msat=min_htlc_msat,
-            max_htlc_msat=max_htlc_msat,
-            time_lock_delta=time_lock_delta
-        ))
-        return res
-
-    def get_txns(self, start_height=None, end_height=None):
-        return self.stub.GetTransactions(ln.GetTransactionsRequest(
-            start_height=start_height,
-            end_height=end_height
-        ))
-
     def get_graph(self, refresh=False):
         if self.graph is None or refresh:
             self.graph = self.stub.DescribeGraph(
@@ -191,7 +118,7 @@ class Lnd:
     def get_own_pubkey(self):
         return self.get_info().identity_pubkey
 
-    def get_node_alias(self, pubkey):
+    def get_alias(self, pubkey):
         return self.stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=pubkey)).node.alias
 
     def get_edges(self):

@@ -1,10 +1,10 @@
 import requests
-from base import AdminChatBot
+from base import AdminChatService
 from const import TELEGRAM_API_URL
 from config import get_creds, log
 from typing import Any
 
-class Telegram(AdminChatBot):
+class Telegram(AdminChatService):
     def __init__(self) -> None:
         self.creds = get_creds('telegram')
         self.last_update_id: int = 0

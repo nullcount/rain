@@ -10,12 +10,14 @@ from base import TrustedSwapService
 from const import COIN_SATS, NICEHASH_API_URL, LOG_ERROR, LOG_INFO, LOG_TRUSTED_SWAP_SERVICE as logs
 from config import get_creds, log
 from typing import Any, Dict
+from result import Result, Ok, Err
+from box import Box
 
 class Nicehash(TrustedSwapService):
     def __init__(self) -> None:
         self.creds = get_creds('nicehash')  
 
-    def nicehash_request(self, method: str, path: str, query: str, body: Dict | None) -> dict[Any, Any]:
+    def nicehash_request(self, method: str, path: str, query: str, body: Dict | None) -> Box:
         xtime = self.get_epoch_ms_from_now()
         xnonce = str(uuid.uuid4())
         message = bytearray(self.creds.api_key, 'utf-8')
@@ -58,9 +60,7 @@ class Nicehash(TrustedSwapService):
             response = s.request(method, url, data=body_json)
         else:
             response = s.request(method, url)
-        self.check_errors(response, body, url)
-        res: dict[Any, Any] = response.json()
-        return res
+        return Box(response.json())
     
     @staticmethod
     def get_epoch_ms_from_now() -> int:
@@ -69,66 +69,83 @@ class Nicehash(TrustedSwapService):
             now.timetuple()) + now.microsecond / 1000000.0
         return int(now_ec_since_epoch * 1000)
 
-    def check_errors(self, response, body: Dict, url: str) -> None:
-        if response.content:
-            err_msg = f"Nicehash {response.status_code} {url}: {response.reason}: {response.content}"
-        else:
-            err_msg = f"Nicehash {response.status_code} {url}: {response.reason}"
-        #TODO self.log.notify(err_msg)
-        log(LOG_ERROR, err_msg)
-        sys.exit()
-
-    def get_address(self) -> str:
+    def get_address(self) -> Result[str, str]:
         """TrustedSwapService"""
-        res = self.nicehash_request("GET", 'main/api/v2/accounting/depositAddresses', 'currency=BTC&walletType=BITGO', None)
-        addr: str = res['list'][0]['address']
-        log(LOG_INFO, logs.get_address.format('nicehash', addr))
-        return addr
+        msg = logs.get_address
+        res = self.nicehash_request(
+            "GET", 
+            'main/api/v2/accounting/depositAddresses', 
+            'currency=BTC&walletType=BITGO', 
+            None # no body params
+        )
+        if res.content:
+            return Err(msg.err.format('nicehash', res))
+        addr: str = res.list[0].address
+        log(LOG_INFO, msg.ok.format('nicehash', addr))
+        return Ok(addr)
 
-    def send_onchain(self, sats: int, fee: int) -> dict[Any, Any]:
+    def send_onchain(self, sats: int, fee: int) -> Result[None, str]:
         """TrustedSwapService"""
+        msg = logs.send_onchain
         amount_sats = str(float(sats) / COIN_SATS)
         body = {
             "currency": "BTC",
             "amount": amount_sats,
             "withdrawalAddressId": self.creds.funding_key
         }
-        response: dict[Any, Any] = self.nicehash_request(
-            "POST", "main/api/v2/accounting/withdrawal", '', body)
-        log(LOG_INFO, logs.send_onchain.format('nicehash', sats, fee))
-        return response
+        res = self.nicehash_request(
+            "POST", 
+            "main/api/v2/accounting/withdrawal", 
+            '', # no url params
+            body
+        )
+        if res.content:
+            return Err(msg.err.format('nicehash', res))
+        log(LOG_INFO, msg.ok.format('nicehash', sats, fee))
+        return Ok(None)
 
-    def get_onchain_fee(self, sats: int) -> int:
+    def get_onchain_fee(self, sats: int) -> Result[int, str]:
         """TrustedSwapService"""
-        response = self.nicehash_request(
-            "GET", "main/api/v2/public/service/fee/info", '', None)
-        fee = int(float(response['withdrawal']['BITGO']['rules']['BTC']
-                  ['intervals'][0]['element']['sndValue']) * COIN_SATS)
-        log(LOG_INFO, logs.get_onchain_fee.format('nicehash', sats, fee))
-        return fee
+        msg = logs.get_onchain_fee
+        res = self.nicehash_request(
+            "GET", 
+            "main/api/v2/public/service/fee/info", 
+            '', # no url params
+            None # no body params
+        )
+        if res.content:
+            return Err(msg.err.format('nicehash', res))
+        fee = int(float(res.withdrawal.BITGO.rules.BTC.intervals[0].element.sendValue) * COIN_SATS)
+        log(LOG_INFO, msg.ok.format('nicehash', sats, fee))
+        return Ok(fee)
 
-    def get_balance(self) -> int:
+    def get_balance(self) -> Result[int, str]:
         """TrustedSwapService"""
-        response = self.nicehash_request(
-            "GET", "main/api/v2/accounting/account2/BTC", '', None)
-        balance = int(float(response['available']) * COIN_SATS)
-        log(LOG_INFO, logs.get_balance('nicehash', balance))
-        return balance
+        msg = logs.get_balance
+        res = self.nicehash_request(
+            "GET",
+            "main/api/v2/accounting/account2/BTC", 
+            '', # no url params 
+            None # no body params
+        )
+        if res.content:
+            return Err(msg.err.format('nicehash', res))
+        balance = int(float(res.available) * COIN_SATS)
+        log(LOG_INFO, msg.ok('nicehash', balance))
+        return Ok(balance)
 
-    def get_invoice(self, sats: int) -> str:
+    def get_invoice(self, sats: int) -> Result[str, str]:
         """TrustedSwapService"""
-        response = self.nicehash_request(
+        msg = logs.get_invoice
+        res = self.nicehash_request(
             "GET", 
             "main/api/v2/accounting/depositAddresses",
             f'currency=BTC&walletType=LIGHTNING&amount={float(sats) / COIN_SATS}',
-            None
+            None # no body params
         )
-        invoice: str = response['list'][0]['address']
-        log(LOG_INFO, logs.get_onchain_fee.format('nicehash', invoice, sats))
-        return invoice
-    
-    def pay_invoice(self, invoice: str, sats: int) -> dict[Any, Any]:
-        """TrustedSwapService"""
-        #TODO implement
-        log(LOG_INFO, logs.pay_invoice('nicehash', invoice, sats))
-        return super().pay_invoice(invoice, sats)
+        if res.content:
+            return Err(msg.err.format('nicehash', res))
+        invoice: str = res.list[0].address
+        log(LOG_INFO, msg.ok.format('nicehash', invoice, sats))
+        return Ok(invoice)
+  

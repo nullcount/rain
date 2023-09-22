@@ -6,50 +6,36 @@
 # classify a node as a sink/source for active balance management
 # name each section something descriptive, it will be printed as debug
 # file is intrepreted top down so put your most critial channels first
-rain_config_version: 1
+rain_version: 1
 
-trusted_swap_services:
+trust_swaps:
   kraken:
-    enabled: false
-    max_custody_sats: 1_000_000
-    max_custody_minutes: 60
-    max_widthdraw_fee_sats: 10_000
+    limit_custody_sats: 1_000_000
+    limit_onchain_fee_sats: 10_000
 
-automated_channels:
+lease:
+  markets:
+    - magma
+  # TODO add magma
 
-  - node_label: Kraken
-    # connection info
-    peer_pubkey: 02f1a8c87607f415c8f22c00593002775941dea48869ce23096af27b0cfdcc0b69
-    peer_host: 52.13.118.208:9735 
-
-    # automate channel opens
-    #     automator will try to open channels 
-    #     to this node with onchain funds
-    capacity_sats: 1_000_000
-    channel_count: 2
-    
-    # the onchain fee priority as recommended by your mempool connection
-    #     options: minimumFee|economyFee|hourFee|halfHourFee|fastestFee
-    mempool_feerate_priority: fastestFee
-
-    # channel opening will abort if mempool's 
-    #     feerate is greater than this limit
-    max_channel_vbyte_sats: 200
-
-    # initial channel policy
-    base_fee: 0
-    fee_ppm: 1
-    cltv_delta: 144
-    min_htlc_sat: 100_000
-
-    # automate channel liquidity
-    #     When your local balance
-    automate_liquidity: true
-
-    # automate liquidty using a trusted off-chain/on-chain swap
-    #     options: Kraken|Nicehash|Wos
-    trusted_swap_service: Kraken
-    decrease_local_balance: true
-    increase_local_balance: false
-    max_local_balance_ratio: 0.8
-    min_local_balance_ratio: 0.1
+maintain:
+  kraken:
+    peer:
+      known_as: "Kraken Exchage"
+      pubkey: 02f1a8c87607f415c8f22c00593002775941dea48869ce23096af27b0cfdcc0b69
+      host: 52.13.118.208:9735
+    policy:
+      channel_capacity: 1_000_000
+      base_fee: 0
+      ppm_fee: 1
+      cltv_delta: 144
+      min_htlc_sats: 100_000
+    onchain_fee:
+      # options: minimumFee|economyFee|hourFee|halfHourFee|fastestFee
+      target: hourFee
+      fee_factor: 1.00
+      limit_vbyte_sats: 100
+    drain:
+      from: 0.9
+      to: 0.1
+      with_trust_swap: kraken

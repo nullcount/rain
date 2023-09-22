@@ -17,10 +17,28 @@ LOG_ERROR = "ERROR"
 LOG_INFO = "INFO " # pad with space
 
 LOG_TRUSTED_SWAP_SERVICE = Box({
-    "get_address": "{}    get_address     \{trusted_deposit_address\: {} \}",
-    "send_onchain": "{}    send_onchain     \{sats\: {}, fee\: {}\}",
-    "get_balance": "{}    get_balance    \{trusted_balance\: {}\}",
-    "pay_invoice": "{}    pay_invoice    \{invoice\: {} sats\: {}\}",
-    "get_invoice": "{}    get_invoice    \{invoice\: {}, sats\: {}\}",
-    "get_onchain_fee": "{}    get_onchain_fee    \{sats\: {}, fee\: {}\}"
+    "get_address": {
+        "ok": "{}    get_address     \{trusted_deposit_address\: {} \}",
+        "err": "{}      {}"
+    },
+    "send_onchain": {
+        "ok": "{}    send_onchain     \{sats\: {}, fee\: {}\}",
+        "err": "{}      {}"
+    },
+    "get_balance": {
+        "ok": "{}    get_balance    \{trusted_balance\: {}\}",
+        "err": "{}      {}"
+    },
+    "pay_invoice": {
+        "ok": "{}    pay_invoice    \{invoice\: {} sats\: {}\}",
+        "err": "{}      {}"
+    },
+    "get_invoice": {
+        "ok": "{}    get_invoice    \{invoice\: {}, sats\: {}\}",
+        "err": "{}      {}"
+    }, 
+     "get_onchain_fee": {
+        "ok": "{}    get_onchain_fee    \{sats\: {}, fee\: {}\}",
+        "err": "{}      {}"
+    },
 })

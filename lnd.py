@@ -146,9 +146,11 @@ class Lnd(BitcoinLightingNode):
     def decode_invoice(self, invoice: str) -> Result[DecodedInvoice, str]:
         """BitcoinLightingNode"""
         request = ln.PayReqString(pay_req=invoice)
-        decoded = self.stub.DecodePayReq(request)
-        # TODO return DecodedInvoice class instance
-        return 
+        decoded:ln.PayReq = self.stub.DecodePayReq(request)
+        return Ok(DecodedInvoice(decoded.destination,
+                                 decoded.payment_hash,
+                                 decoded.num_satoshis,
+                                 decoded.description))
 
     def sign_message(self, message: str) -> Result[str, str]:
         """BitcoinLightingNode"""

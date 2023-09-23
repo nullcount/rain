@@ -21,6 +21,7 @@ class OpenChannelRequest:
     def __init__(
             self, 
             peer_pubkey: str, 
+            peer_host: str,
             channel_capacity: int, 
             base_fee: int,
             ppm_fee: int,
@@ -31,6 +32,7 @@ class OpenChannelRequest:
             is_unannounced: bool,
         ) -> None:
         self.peer_pubkey = peer_pubkey
+        self.peer_host = peer_host
         self.channel_capacity = channel_capacity
         self.base_fee = base_fee
         self.ppm_fee = ppm_fee

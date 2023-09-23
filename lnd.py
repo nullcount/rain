@@ -54,6 +54,7 @@ class Lnd(BitcoinLightingNode):
     def get_invoice(self, sats: int) -> Result[str, str]:
         """BitcoinLightingNode"""
         invoice = ''
+        raise NotImplementedError
         return Ok(invoice)
     
     def pay_invoice(self) -> Result[None, str]:
@@ -62,26 +63,41 @@ class Lnd(BitcoinLightingNode):
     
     def get_address(self) -> Result[str, str]:
         """BitcoinLightingNode"""
-        addr = ''
-        return Ok(None)
+        new_address_request = ln.NewAddressRequest(type=5) # get unused taproot pubkey type
+        new_address_response = self.stub.NewAddress(new_address_request)
+        #TODO self.log.info("LND generated deposit address: {}".format(addr)
+        return Ok(new_address_response.address)
     
     def send_onchain(self) -> Result[None, str]:
         """BitcoinLightingNode"""
+        raise NotImplementedError
         return Ok(None)
     
     def get_unconfirmed_balance(self) -> Result[int, str]:
         """BitcoinLightingNode"""
-        unconfirmed = 0
-        return Ok(unconfirmed)
+        total = 0
+        txs = self.get_txns(end_height=-1).transactions
+        txns = list(filter(lambda x: x.num_confirmations == 0, txs))
+        txns = self.get_unconfirmed_txns()
+        if len(txns) > 0:
+            for tx in txns:
+                total += tx.amount
+        #TODO self.log.info("LND unconfirmed balance: {} sats".format(total))
+        return Ok(total)
 
     def get_confirmed_balance(self) -> Result[int, str]:
         """BitcoinLightingNode"""
-        confirmed = 0
+        balance_request = ln.WalletBalanceRequest()
+        balance_response = self.stub.WalletBalance(balance_request)
+        confirmed = int(balance_response.confirmed_balance)
         return Ok(confirmed)
     
     def decode_invoice(self, invoice: str) -> Result[Box, str]:
         """BitcoinLightingNode"""
-        return
+        request = ln.PayReqString(pay_req=invoice)
+        decoded = self.stub.DecodePayReq(request)
+        # TODO return DecodedInvoice class instance
+        return 
     
     def sign_message(self, message: str) -> Result[str, str]:
         """BitcoinLightingNode"""
@@ -90,7 +106,7 @@ class Lnd(BitcoinLightingNode):
     
     def get_alias(self, pubkey: str) -> Result[str, str]:
         """BitcoinLightingNode"""
-        alias = ''
+        alias = self.stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=pubkey)).node.alias
         return Ok(alias)
 
 
@@ -232,6 +248,8 @@ BELOW IS OLD lnd.py FOR REFERENCE
 
     def get_unconfirmed_balance(self) -> int:
         total = 0
+        txns = self.get_txns(end_height=-1).transactions
+        txns = list(filter(lambda x: x.num_confirmations == 0, txs))
         txns = self.get_unconfirmed_txns()
         if len(txns) > 0:
             for tx in txns:

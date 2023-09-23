@@ -90,17 +90,20 @@ class Lnd(BitcoinLightingNode):
             return Ok(close_status_update_response)
         else:
             return open_channels_res
+        
     def get_pending_open_channels(self) -> Result[List[PendingOpenChannel], str]:
         """BitcoinLightingNode"""
         pending_channels_request = ln.PendingChannelsRequest()
         pending_channels_response:ln.PendingChannelsResponse = self.stub.PendingChannels(pending_channels_request)
         pending_open_channels = pending_channels_response.pending_open_channels
+        # TODO convert channel list to PendingOpenChannel list
         return Ok(list(map(lambda x: x.channel, pending_open_channels)))
 
     def get_opened_channels(self) -> Result[List[ActiveOpenChannel], str]:
         """BitcoinLightingNode"""
         request = ln.ListChannelsRequest()
         response: ln.ListChannelsResponse = self.stub.ListChannels(request)
+        # TODO convert to ActiveOpenChannel list
         return Ok(response.channels)
 
     def get_invoice(self, sats: int) -> Result[str, str]:

@@ -198,10 +198,6 @@ BELOW IS OLD lnd.py FOR REFERENCE
             self.closed_channels = self.stub.ClosedChannels(req).channels
         return self.closed_channels
 
-    def decode_invoice(self, invoice: str) -> dict[Any, Any]:
-        request = ln.PayReqString(pay_req=invoice)
-        decoded: dict[Any, Any] = self.stub.DecodePayReq(request)
-        return decoded
 
     def pay_invoice(self, invoice_string, outgoing_chan_id=None, fee_limit=60000):
         #TODO self.log.info(f"LND found invoice to pay: {invoice_string}")

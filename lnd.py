@@ -152,7 +152,11 @@ class Lnd(BitcoinLightingNode):
 
     def sign_message(self, message: str) -> Result[str, str]:
         """BitcoinLightingNode"""
-        signed_message = ''
+        request = ln.SignMessageRequest(
+            msg=message.encode('utf-8')
+        )
+        response = self.stub.SignMessage(request)
+        signed_message = response.signature
         return Ok(signed_message)
 
     def get_alias(self, pubkey: str) -> Result[str, str]:

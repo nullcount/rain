@@ -362,10 +362,10 @@ class LightningStub(object):
                 request_serializer=lightning__pb2.ListAliasesRequest.SerializeToString,
                 response_deserializer=lightning__pb2.ListAliasesResponse.FromString,
                 )
-        self.LookupHtlc = channel.unary_unary(
-                '/lnrpc.Lightning/LookupHtlc',
-                request_serializer=lightning__pb2.LookupHtlcRequest.SerializeToString,
-                response_deserializer=lightning__pb2.LookupHtlcResponse.FromString,
+        self.LookupHtlcResolution = channel.unary_unary(
+                '/lnrpc.Lightning/LookupHtlcResolution',
+                request_serializer=lightning__pb2.LookupHtlcResolutionRequest.SerializeToString,
+                response_deserializer=lightning__pb2.LookupHtlcResolutionResponse.FromString,
                 )
 
 
@@ -497,8 +497,10 @@ class LightningServicer(object):
 
     def VerifyMessage(self, request, context):
         """lncli: `verifymessage`
-        VerifyMessage verifies a signature over a msg. The signature must be
-        zbase32 encoded and signed by an active node in the resident node's
+        VerifyMessage verifies a signature over a message and recovers the signer's
+        public key. The signature is only deemed valid if the recovered public key
+        corresponds to a node key in the public Lightning network. The signature
+        must be zbase32 encoded and signed by an active node in the resident node's
         channel database. In addition to returning the validity of the signature,
         VerifyMessage also returns the recovered pubkey from the signature.
         """
@@ -1121,8 +1123,12 @@ class LightningServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def LookupHtlc(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+    def LookupHtlcResolution(self, request, context):
+        """
+        LookupHtlcResolution retrieves a final htlc resolution from the database.
+        If the htlc has no final resolution yet, a NotFound grpc status code is
+        returned.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -1460,10 +1466,10 @@ def add_LightningServicer_to_server(servicer, server):
                     request_deserializer=lightning__pb2.ListAliasesRequest.FromString,
                     response_serializer=lightning__pb2.ListAliasesResponse.SerializeToString,
             ),
-            'LookupHtlc': grpc.unary_unary_rpc_method_handler(
-                    servicer.LookupHtlc,
-                    request_deserializer=lightning__pb2.LookupHtlcRequest.FromString,
-                    response_serializer=lightning__pb2.LookupHtlcResponse.SerializeToString,
+            'LookupHtlcResolution': grpc.unary_unary_rpc_method_handler(
+                    servicer.LookupHtlcResolution,
+                    request_deserializer=lightning__pb2.LookupHtlcResolutionRequest.FromString,
+                    response_serializer=lightning__pb2.LookupHtlcResolutionResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -2616,7 +2622,7 @@ class Lightning(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def LookupHtlc(request,
+    def LookupHtlcResolution(request,
             target,
             options=(),
             channel_credentials=None,
@@ -2626,8 +2632,8 @@ class Lightning(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/lnrpc.Lightning/LookupHtlc',
-            lightning__pb2.LookupHtlcRequest.SerializeToString,
-            lightning__pb2.LookupHtlcResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/lnrpc.Lightning/LookupHtlcResolution',
+            lightning__pb2.LookupHtlcResolutionRequest.SerializeToString,
+            lightning__pb2.LookupHtlcResolutionResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

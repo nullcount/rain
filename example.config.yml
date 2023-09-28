@@ -18,7 +18,6 @@ managed_peers:
 
   kraken:
     peer:
-      known_as: "Kraken Exchage"
       pubkey: 02f1a8c87607f415c8f22c00593002775941dea48869ce23096af27b0cfdcc0b69
       host: 52.13.118.208:9735
     policy:

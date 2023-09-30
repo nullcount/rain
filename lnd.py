@@ -164,9 +164,8 @@ class Lnd(BitcoinLightningNode):
         args = {'payment_request': pay_invoice_req.invoice, 'fee_limit': ln.FeeLimit(fixed=pay_invoice_req.fee_limit_sats)}
         if pay_invoice_req.outgoing_channel_id != 0:
             args['outgoing_chan_id'] = pay_invoice_req.outgoing_channel_id
-        send_response = self.stub.SendPaymentSync(ln.SendRequest(**args))
-        print("INVOICE PAY RESPONSE")
-        print(send_response)
+        send_response = self.stub.SendPaymentSync(ln.SendRequest(**args)) # TODO: argument to SendRequest incompatible type
+        # TODO having issues paying invoices -- no_route error
         if send_response.payment_error:
             config.log(LOG_ERROR, msg.err.format('lnd', send_response.payment_error, pay_invoice_req))
             return Err(send_response.payment_error)
@@ -186,6 +185,7 @@ class Lnd(BitcoinLightningNode):
 
     def send_onchain(self, send_onchain_req: SendOnchainRequest) -> Result[str, str]:
         """BitcoinLightingNode"""
+        #TODO test sending to another node's address, check confirmed balance and unconfirmed to verify
         msg = logs.send_onchain
         send_request = ln.SendCoinsRequest(
             addr=send_onchain_req.dest_addr,

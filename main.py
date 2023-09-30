@@ -1,18 +1,21 @@
-from base import BitcoinLightingNode, AdminNotifyService, OpenChannelRequest
-from const import LOG_INFO, LOG_GAP, LOG_ERROR, ADMIN_NOTIFY_SERVICES, BITCOIN_LIGHTNING_NODES, TRUSTED_SWAP_SERVICES
-import config
+from base import BitcoinLightningNode, AdminNotifyService, OpenChannelRequest
+from const import LOG_INFO, LOG_GAP, LOG_ERROR
+from exports import ADMIN_NOTIFY_SERVICES, BITCOIN_LIGHTNING_NODES, TRUSTED_SWAP_SERVICES
+from config import config
 from mempool import Mempool
 from result import Result, Ok, Err
 
 def main() -> Result[None, str]:
-    cfg = config.get_config()
-    node: BitcoinLightingNode = BITCOIN_LIGHTNING_NODES[cfg.lightning_node]()
-    notify: AdminNotifyService = ADMIN_NOTIFY_SERVICES[cfg.notify_service]()
-    mempool = Mempool()
+    creds_path = 'creds.yml'
+    config_path = 'config.yml'
+    cfg = config.get_config(config_path)
+    node: BitcoinLightningNode = BITCOIN_LIGHTNING_NODES[cfg.lightning_node](creds_path)
+    notify: AdminNotifyService = ADMIN_NOTIFY_SERVICES[cfg.notify_service](creds_path)
+    mempool = Mempool(creds_path)
     fee_estimate = mempool.get_fee()
 
     open_channels = node.get_opened_channels()
-    pend_channels = node.get_pending_channels()
+    pend_channels = node.get_pending_open_channels()
     
     # Maintain managed peers from config.yml
     for peer in cfg.managed_peers:
@@ -35,14 +38,12 @@ def main() -> Result[None, str]:
                     node.open_channel(OpenChannelRequest(
                         peer_pubkey=peer_conf.peer.pubkey, 
                         peer_host=peer_conf.peer.host,
-                        channel_capacity=peer_conf.policy.channel_capacity, 
+                        capacity=peer_conf.policy.channel_capacity, 
                         base_fee=peer_conf.policy.base_fee,
                         ppm_fee=peer_conf.policy.ppm_fee,
                         cltv_delta=peer_conf.policy.cltv_delta,
                         min_htlc_sats=peer_conf.policy.min_htlc_sats,
                         vbyte_sats=vbyte_sats,
-                        is_spend_unconfirmed=True,
-                        is_unannounced=False, 
                     ))
 
         # create inbound using this peer
@@ -56,7 +57,7 @@ def main() -> Result[None, str]:
                     continue
                 
                 # do a trusted swap
-                trust_swap = TRUSTED_SWAP_SERVICES[peer_conf.drain.with_trust_swap]()
+                trust_swap = TRUSTED_SWAP_SERVICES[peer_conf.drain.with_trust_swap](creds_path)
                 drain_sats = chan.local_balance - (peer_conf.drain.min * chan.capacity)
                 trust_invoice = trust_swap.get_invoice(drain_sats)
                 #TODO log what you about to do
@@ -68,7 +69,7 @@ def main() -> Result[None, str]:
         trust_conf = cfg.trusted_swaps[trusted_swap]
 
         # check custody balance is within limit
-        trust_swap = TRUSTED_SWAP_SERVICES[trusted_swap]()
+        trust_swap = TRUSTED_SWAP_SERVICES[trusted_swap](creds_path)
         trusted_balance = trust_swap.get_balance()
         if trusted_balance < trust_conf.limit_custody_sats:
             config.log(LOG_INFO, LOG_GAP.join(["rain", trusted_swap, "balance limit not reached"]))

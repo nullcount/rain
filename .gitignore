@@ -6,6 +6,9 @@ config.yml
 config.yaml
 creds.yml
 creds.yaml
+# testing
+test*
+!test.py
 # linter
 pyproject.toml
 # cache

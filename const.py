@@ -1,13 +1,4 @@
 from box import Box
-# trusted swap services
-from kraken import Kraken
-from nicehash import Nicehash
-from wos import Wos
-# bitcoin lightning nodes
-from lnd import Lnd 
-# admin chat services
-from telegram import Telegram
-from console import Console
 
 COIN_SATS = 100_000_000
 MILLION = 1_000_000
@@ -22,21 +13,6 @@ WOS_API_URL = "https://www.livingroomofsatoshi.com/"
 TELEGRAM_API_URL = "https://api.telegram.org/"
 MEMPOOL_API_URL = "https://mempool.space/api/v1/"
 
-BITCOIN_LIGHTNING_NODES = Box({
-    "lnd": Lnd
-})
-
-TRUSTED_SWAP_SERVICES = Box({
-    "kraken": Kraken,
-    "nicehash": Nicehash,
-    "wos": Wos
-})
-
-ADMIN_NOTIFY_SERVICES = Box({
-    "telegram": Telegram,
-    "console": Console
-})
-
 LOG_ERROR = "ERROR " # pad with space
 LOG_INFO = "INFO  " 
 LOG_NOTIFY = "NOTIFY"
@@ -46,82 +22,82 @@ LOG_GAP = " " * 4
 
 LOG_TRUSTED_SWAP_SERVICE = Box({
     "get_address": {
-        "ok": LOG_GAP.join(["{}", "get_address", "\{trusted_deposit_address\: {} \}"]),
+        "ok": LOG_GAP.join(["{}", "get_address", "trusted_deposit_address: {}"]),
         "err": LOG_GAP.join(["{}", "get_address", "{}"])
     },
     "send_onchain": {
-        "ok": LOG_GAP.join(["{}", "send_onchain", "\{sats\: {}, fee\: {}\}"]),
+        "ok": LOG_GAP.join(["{}", "send_onchain", "sats: {}, fee: {}"]),
         "err": LOG_GAP.join(["{}", "send_onchain", "{}"])
     },
     "get_balance": {
-        "ok": LOG_GAP.join(["{}", "get_balance", "\{trusted_balance\: {}\}"])
+        "ok": LOG_GAP.join(["{}", "get_balance", "trusted_balance: {}"]),
         "err": LOG_GAP.join(["{}", "get_balance", "{}"])
     },
     "pay_invoice": {
-        "ok": LOG_GAP.join(["{}", "pay_invoice", "\{invoice\: {} sats\: {}\}"]),
+        "ok": LOG_GAP.join(["{}", "pay_invoice", "invoice: {} sats: {}"]),
         "err": LOG_GAP.join(["{}", "pay_invoice", "{}"])
     },
     "get_invoice": {
-        "ok": LOG_GAP.join(["{}", "get_invoice", "\{invoice\: {}, sats\: {}\}"]),
+        "ok": LOG_GAP.join(["{}", "get_invoice", "invoice: {}, sats: {}"]),
         "err": LOG_GAP.join(["{}", "get_invoice", "{}"])
     }, 
      "get_onchain_fee": {
-        "ok": LOG_GAP.join(["{}", "get_onchain_fee", "\{sats\: {}, fee\: {}\}"]),
+        "ok": LOG_GAP.join(["{}", "get_onchain_fee", "sats: {}, fee: {}"]),
         "err": LOG_GAP.join(["{}", "get_onchain_fee", "{}"])
     },
 })
 
 LOG_BITCOIN_LIGHTNING_NODE = Box({
     "open_channel": {
-        "ok": LOG_GAP.join(["{}", "open_channel", "\{OpenChannelRequest\: {} \}"]),
+        "ok": LOG_GAP.join(["{}", "open_channel", "OpenChannelRequest: {}"]),
         "err": LOG_GAP.join(["{}", "open_channel", "{}"])
     },
     "close_channel": {
-        "ok": LOG_GAP.join(["{}", "close_channel", "\{CloseInvoiceRequest\: {} \}"]),
+        "ok": LOG_GAP.join(["{}", "close_channel", "CloseInvoiceRequest: {}"]),
         "err": LOG_GAP.join(["{}", "close_channel", "{}"])
     },
     "get_pending_open_channels": {
-        "ok": LOG_GAP.join(["{}", "get_pending_open_channels", "\{PendingOpenChannels\: {} \}"]),
+        "ok": LOG_GAP.join(["{}", "get_pending_open_channels", "PendingOpenChannels: {}"]),
         "err": LOG_GAP.join(["{}", "get_pending_open_channels", "{}"])
     },
     "get_opened_channels": {
-        "ok": LOG_GAP.join(["{}", "get_opened_channels", "\{ActiveOpenChannels\: {} \}"]),
+        "ok": LOG_GAP.join(["{}", "get_opened_channels", "ActiveOpenChannels: {}"]),
         "err": LOG_GAP.join(["{}", "get_opened_channels", "{}"])
     },
     "get_invoice": {
-        "ok": LOG_GAP.join(["{}", "get_invoice", "\{sats\: {}, invoice: {} \}"]),
+        "ok": LOG_GAP.join(["{}", "get_invoice", "sats: {}, invoice: {}"]),
         "err": LOG_GAP.join(["{}", "get_invoice", "{}"])
     },
     "pay_invoice": {
-        "ok": LOG_GAP.join(["{}", "pay_invoice", "\{PayInvoiceRequest\: {}\}"]),
-        "err": LOG_GAP.join(["{}", "pay_invoice", "{}"])
+        "ok": LOG_GAP.join(["{}", "pay_invoice", "PayInvoiceRequest: {}"]),
+        "err": LOG_GAP.join(["{}", "pay_invoice", "{}", "{}"])
     },
     "get_address": {
-        "ok": LOG_GAP.join(["{}", "get_address", "\{address\: {}\}"]),
+        "ok": LOG_GAP.join(["{}", "get_address", "address: {}"]),
         "err": LOG_GAP.join(["{}", "get_address", "{}"])
     }, 
     "send_onchain": {
-        "ok": LOG_GAP.join(["{}", "send_onchain", "\{\: {}\}"]), #TODO: add send onchain details
+        "ok": LOG_GAP.join(["{}", "send_onchain", "SendOnchainRequest: {}, txid: {}"]),
         "err": LOG_GAP.join(["{}", "send_onchain", "{}"])
     },
     "get_unconfirmed_balance": {
-        "ok": LOG_GAP.join(["{}", "get_unconfirmed_balance", "\{unconfirmed_balance_sats\: {}\}"]),
+        "ok": LOG_GAP.join(["{}", "get_unconfirmed_balance", "unconfirmed_balance_sats: {}"]),
         "err": LOG_GAP.join(["{}", "get_unconfirmed_balance", "{}"])
     },
     "get_confirmed_balance": {
-        "ok": LOG_GAP.join(["{}", "get_confirmed_balance", "\{confirmed_balance_sats\: {}\}"]),
+        "ok": LOG_GAP.join(["{}", "get_confirmed_balance", "confirmed_balance_sats: {}"]),
         "err": LOG_GAP.join(["{}", "get_confirmed_balance", "{}"])
     },
     "decode_invoice": {
-        "ok": LOG_GAP.join(["{}", "decode_invoice", "\{invoice\: {}, decoded_invoice: {}\}"]),
+        "ok": LOG_GAP.join(["{}", "decode_invoice", "invoice: {}, decoded_invoice: {}"]),
         "err": LOG_GAP.join(["{}", "decode_invoice", "{}"])
     },
     "sign_message": {
-        "ok": LOG_GAP.join(["{}", "sign_message", "\{message\: {}, signed_message: {}\}"]),
+        "ok": LOG_GAP.join(["{}", "sign_message", "message: {}, signed_message: {}"]),
         "err": LOG_GAP.join(["{}", "sign_message", "{}"])
     },
     "get_alias": {
-        "ok": LOG_GAP.join(["{}", "get_alias", "\{pubkey\: {}, alias: {}\}"]),
+        "ok": LOG_GAP.join(["{}", "get_alias", "pubkey: {}, alias: {}"]),
         "err": LOG_GAP.join(["{}", "get_alias", "{}"])
     }
 })

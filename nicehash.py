@@ -7,14 +7,14 @@ import json
 from hashlib import sha256
 from base import TrustedSwapService
 from const import COIN_SATS, NICEHASH_API_URL, LOG_ERROR, LOG_INFO, LOG_TRUSTED_SWAP_SERVICE as logs
-import config
+from config import config
 from typing import Any, Dict
 from result import Result, Ok, Err
 from box import Box
 
 class Nicehash(TrustedSwapService):
-    def __init__(self) -> None:
-        self.creds = config.get_creds('nicehash')  
+    def __init__(self, creds_path: str) -> None:
+        self.creds = config.get_creds(creds_path, 'nicehash')  
 
     def nicehash_request(self, method: str, path: str, query: str, body: Dict | None) -> Box:
         xtime = self.get_epoch_ms_from_now()

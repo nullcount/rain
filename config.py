@@ -1,30 +1,21 @@
 from datetime import datetime
-from os import path
 from box import Box
 
-def parse_yaml(path: str) -> Box:
-    return Box().from_yaml(filename=path)
-
-class Config:
+class config:
 
     @staticmethod
-    def get_creds(key: str) -> Box:
-        f = "creds.yml" if not path.exists("creds.yaml") else "creds.yaml"
-        yml = parse_yaml(f)
-        return yml[key]
+    def get_creds(creds_path: str, key: str) -> Box:
+        return Box().from_yaml(filename=creds_path)[key]
     
     @staticmethod
-    def get_config() -> Box:
-        f = 'config.yml' if path.exists('config.yml') else 'config.yaml'
-        yml = parse_yaml(f)
-        return yml
+    def get_config(config_path: str) -> Box:
+        return Box().from_yaml(filename=config_path)
     
     @staticmethod
-    def set_creds(key: str, new_box: Box) -> None:
-        f = "creds.yml" if not path.exists("creds.yaml") else "creds.yaml"
-        creds = parse_yaml(f)
+    def set_creds(creds_path: str, key: str, new_box: Box) -> None:
+        creds = Box().from_yaml(filename=creds_path)
         creds[key] = new_box
-        creds.to_yaml(filename=f)
+        creds.to_yaml(filename=creds_path)
 
     @staticmethod
     def log(level: str, message: str ) -> None:

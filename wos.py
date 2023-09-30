@@ -4,20 +4,20 @@ import hmac
 import hashlib
 from base import TrustedSwapService
 from const import COIN_SATS, WOS_API_URL, LOG_INFO, LOG_TRUSTED_SWAP_SERVICE as logs
-import config
+from config import config
 from typing import Any
 from box import Box
 from result import Result, Ok, Err
 
 class Wos(TrustedSwapService):
-    def __init__(self) -> None:
+    def __init__(self, creds_path: str) -> None:
         self.session = requests.Session()
-        self.creds = self.wos_register()
+        self.creds = self.wos_register(creds_path)
         self.onchain_fee = 0
         self.session.headers.update({"api-token": self.creds.api_token})
     
-    def wos_register(self) -> Box:
-        creds: Box = config.get_creds('wos')
+    def wos_register(self, creds_path: str) -> Box:
+        creds: Box = config.get_creds(creds_path, 'wos')
         if not creds.api_secret == "YOUR_WOS_API_SECRET":
             return creds
         ext = "api/v1/wallet/account"
@@ -30,7 +30,7 @@ class Wos(TrustedSwapService):
             'lightning_address_generated': json['lightningAddress'],
             'lnd_node_onchain_address': creds.lnd_node_onchain_address
         })
-        config.set_creds('wos', creds)
+        config.set_creds(creds_path, 'wos', creds)
         return creds
 
     def wos_request(self, ext: str, data_str: str, sign: bool) -> Box:

@@ -7,14 +7,14 @@ import hmac
 import base64
 from base import TrustedSwapService
 from const import COIN_SATS, KRAKEN_API_URL, LOG_ERROR, LOG_INFO, LOG_TRUSTED_SWAP_SERVICE as logs
-import config
+from config import config
 from typing import Dict
 from result import Result, Ok, Err
 from box import Box
 
 class Kraken(TrustedSwapService):
-    def __init__(self) -> None:
-        self.creds = config.get_creds("kraken")
+    def __init__(self, creds_path: str) -> None:
+        self.creds = config.get_creds(creds_path, "kraken")
 
     @staticmethod
     def get_kraken_signature(urlpath: str, data: Dict, secret: str) -> str:

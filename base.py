@@ -14,6 +14,23 @@ class AdminNotifyService:
     def await_confirm(self, prompt: str, callback: Callable) -> Result[None, str]:
         raise NotImplementedError
 
+class SendOnchainRequest:
+    """
+    Used in BitcoinLightningNode.send_onchain()
+    """
+    def __init__(
+            self,
+            dest_addr: str,
+            amount_sats: int,
+            vbyte_sats: int
+    ) -> None:
+        self.dest_addr = dest_addr
+        self.amount_sats = amount_sats
+        self.vbyte_sats = vbyte_sats
+    
+    def __str__(self) -> str:
+        return f"SendOnchainRequest(dest_addr={self.dest_addr}, amount_sats={self.amount_sats}, vbyte_sats={self.vbyte_sats})"
+
 class OpenChannelRequest:
     """
     Used in BitcoinLightningNode.open_channel() 
@@ -22,18 +39,18 @@ class OpenChannelRequest:
             self, 
             peer_pubkey: str, 
             peer_host: str,
-            channel_capacity: int, 
+            capacity: int, 
             base_fee: int,
             ppm_fee: int,
             cltv_delta: int,
             min_htlc_sats: int,
             vbyte_sats: int,
-            is_spend_unconfirmed: bool,
-            is_unannounced: bool,
+            is_spend_unconfirmed: bool = True,
+            is_unannounced: bool = False,
         ) -> None:
         self.peer_pubkey = peer_pubkey
         self.peer_host = peer_host
-        self.channel_capacity = channel_capacity
+        self.capacity = capacity
         self.base_fee = base_fee
         self.ppm_fee = ppm_fee
         self.cltv_delta = cltv_delta
@@ -41,6 +58,9 @@ class OpenChannelRequest:
         self.vbyte_sats = vbyte_sats
         self.is_spend_unconfirmed = is_spend_unconfirmed
         self.is_unannounced = is_unannounced
+
+    def __str__(self) -> str:
+        return f"OpenChannelRequest(peer_pubkey={self.peer_pubkey}, peer_host={self.peer_host}, channel_capacity={self.capacity}, base_fee={self.base_fee}, ppm_fee={self.ppm_fee}, cltv_delta={self.cltv_delta}, min_htlc_sats={self.min_htlc_sats}, vbyte_sats={self.vbyte_sats}, is_spend_unconfirmed={self.is_spend_unconfirmed}, is_unannounced={self.is_unannounced})"
 
 class CloseChannelRequest:
     """
@@ -50,11 +70,14 @@ class CloseChannelRequest:
             self, 
             channel_point: str, 
             vbyte_sats: int,
-            is_force: bool,
+            is_force: bool = False,
         ) -> None:
         self.channel_point = channel_point
         self.vbyte_sats = vbyte_sats
         self.is_force = is_force
+
+    def __str__(self) -> str:
+        return f"CloseChannelRequest(channel_point={self.channel_point}, vbyte_sats={self.vbyte_sats}, is_force={self.is_force})"
 
 class PayInvoiceRequest:
     """
@@ -62,13 +85,16 @@ class PayInvoiceRequest:
     """
     def __init__(
             self,
-            outgoing_channel_id: str,
             invoice: str,
-            fee_limit_sats: int
+            fee_limit_sats: int,
+            outgoing_channel_id: int | None = None,
     ) -> None:
         self.outgoing_channel_id = outgoing_channel_id
         self.invoice = invoice
         self.fee_limit_sats = fee_limit_sats
+    
+    def __str__(self) -> str:
+        return f"PayInvoiceRequest(outgoing_channel_id={self.outgoing_channel_id}, invoice={self.invoice}, fee_limit_sats={self.fee_limit_sats})"
 
 class PendingOpenChannel:
     """
@@ -80,15 +106,14 @@ class PendingOpenChannel:
             channel_point: str,
             capacity: int,
             local_balance: int,
-            initiator: str,
-            private: bool,
     ) -> None:
         self.peer_pubkey = peer_pubkey
         self.channel_point = channel_point
         self.capacity = capacity
         self.local_balance = local_balance
-        self.initiator = initiator
-        self.private = private
+    
+    def __str__(self) -> str:
+        return f"PendingOpenChannel(peer_pubkey={self.peer_pubkey}, channel_point={self.channel_point}, capacity={self.capacity}, local_balance={self.local_balance})"
 
 class ActiveOpenChannel:
     """
@@ -96,23 +121,20 @@ class ActiveOpenChannel:
     """
     def __init__(
             self,
-            active: bool,
             channel_id: str,
             peer_pubkey: str,
             channel_point: str,
             capacity: int,
             local_balance: int,
-            initiator: str,
-            private: bool,
     ) -> None:
-        self.active = active
         self.channel_id = channel_id
         self.peer_pubkey = peer_pubkey
         self.channel_point = channel_point
         self.capacity = capacity
         self.local_balance = local_balance
-        self.initiator = initiator
-        self.private = private
+    
+    def __str__(self) -> str:
+        return f"ActiveOpenChannel(channel_id={self.channel_id}, peer_pubkey={self.peer_pubkey}, channel_point={self.channel_point}, capacity={self.capacity}, local_balance={self.local_balance})"
 
 class DecodedInvoice:
     """
@@ -128,9 +150,12 @@ class DecodedInvoice:
         self.dest_pubkey = dest_pubkey
         self.payment_hash = payment_hash
         self.amount_sats = amount_sats
-        self.description = description    
+        self.description = description
 
-class BitcoinLightingNode:
+    def __str__(self) -> str:
+        return f"DecodedInvoice(dest_pubkey={self.dest_pubkey}, payment_hash={self.payment_hash}, amount_sats={self.amount_sats}, description={self.description})"
+
+class BitcoinLightningNode:
     """
     Extend with gRPC or API calls to a node
     """
@@ -155,7 +180,7 @@ class BitcoinLightingNode:
     def get_address(self) -> Result[str, str]:
         raise NotImplementedError
     
-    def send_onchain(self) -> Result[None, str]:
+    def send_onchain(self, req: SendOnchainRequest) -> Result[None, str]:
         raise NotImplementedError
     
     def get_unconfirmed_balance(self) -> Result[int, str]:

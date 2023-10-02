@@ -49,8 +49,8 @@ LOG_TRUSTED_SWAP_SERVICE = Box({
 
 LOG_BITCOIN_LIGHTNING_NODE = Box({
     "open_channel": {
-        "ok": LOG_GAP.join(["{}", "open_channel", "OpenChannelRequest: {}"]),
-        "err": LOG_GAP.join(["{}", "open_channel", "{}"])
+        "ok": LOG_GAP.join(["{}", "open_channel", "OpenChannelRequest: {}, funding_txid: {}"]),
+        "err": LOG_GAP.join(["{}", "open_channel", "{}", "OpenChannelRequest: {}"])
     },
     "close_channel": {
         "ok": LOG_GAP.join(["{}", "close_channel", "CloseInvoiceRequest: {}"]),
@@ -69,8 +69,8 @@ LOG_BITCOIN_LIGHTNING_NODE = Box({
         "err": LOG_GAP.join(["{}", "get_invoice", "{}"])
     },
     "pay_invoice": {
-        "ok": LOG_GAP.join(["{}", "pay_invoice", "PayInvoiceRequest: {}"]),
-        "err": LOG_GAP.join(["{}", "pay_invoice", "{}", "{}"])
+        "ok": LOG_GAP.join(["{}", "pay_invoice", "PayInvoiceRequest: {}, preimage: {}"]),
+        "err": LOG_GAP.join(["{}", "pay_invoice", "{}", "PayInvoiceRequest: {}"])
     },
     "get_address": {
         "ok": LOG_GAP.join(["{}", "get_address", "address: {}"]),

@@ -1,7 +1,7 @@
 import os
 import codecs
 import grpc
-from grpc_generated import lightning_pb2_grpc as lnrpc, lightning_pb2 as ln
+from grpc_generated import lightning_pb2_grpc, lightning_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
 from const import MESSAGE_SIZE_MB, LOG_ERROR, LOG_INFO, LOG_BITCOIN_LIGHTNING_NODE as logs
 from config import config
@@ -22,8 +22,8 @@ class Lnd(BitcoinLightningNode):
         ]
         grpc_channel = grpc.secure_channel(
             creds.grpc_host, combined_credentials, channel_options)
-        self.stub = lnrpc.LightningStub(grpc_channel) #TODO handle Call to untyped function "LightningStub" in typed context
-        self.routerstub = routerrpc.RouterStub(grpc_channel) #TODO handle Call to untyped function "RouterStub" in typed context
+        self.stub = lightning_pb2_grpc.LightningStub(grpc_channel)  # type: ignore
+        self.routerstub = routerrpc.RouterStub(grpc_channel)  # type: ignore
 
     @staticmethod
     def get_credentials(tls_cert_path: str, macaroon_path: str) -> grpc.ChannelCredentials:
@@ -65,57 +65,53 @@ class Lnd(BitcoinLightningNode):
             return is_peered
         if not is_peered.unwrap():
             self.add_peer(open_req.peer_pubkey, open_req.peer_host)
-
-        response = self.stub.OpenChannelSync(
-            ln.OpenChannelRequest(
-                node_pubkey_string=open_req.peer_pubkey,
-                local_funding_amount=open_req.capacity,
-                sat_per_vbyte=open_req.vbyte_sats,
-                min_htlc_msat=open_req.min_htlc_sats * SAT_MSATS,
-                spend_unconfirmed=open_req.is_spend_unconfirmed,
-                use_base_fee=True,
-                use_fee_rate=True,
-                base_fee=open_req.base_fee,
-                fee_rate=open_req.ppm_fee
+        response = None
+        try:
+            response = self.stub.OpenChannelSync(
+                ln.OpenChannelRequest(
+                    node_pubkey_string=open_req.peer_pubkey,
+                    local_funding_amount=open_req.capacity,
+                    sat_per_vbyte=open_req.vbyte_sats,
+                    min_htlc_msat=open_req.min_htlc_sats * SAT_MSATS,
+                    spend_unconfirmed=open_req.is_spend_unconfirmed,
+                    use_base_fee=True,
+                    use_fee_rate=True,
+                    base_fee=open_req.base_fee,
+                    fee_rate=open_req.ppm_fee
+                )
             )
-        )
-        #TODO handle errors like "insufficient balance"
-        print("OPEN CHANNEL RESPONSE")
-        print(response)
-               
-        config.log(LOG_INFO, msg.ok.format('lnd', open_req))
+        except Exception as e:
+            if e.details: # type: ignore
+                config.log(LOG_ERROR, msg.err.format('lnd', e.details(), open_req)) # type: ignore
+                return Err(e.details()) # type: ignore
+            config.log(LOG_ERROR, msg.err.format('lnd', e, open_req))
+            return Err(e)
+        config.log(LOG_INFO, msg.ok.format('lnd', open_req, response.funding_txid_bytes.hex()))
         return Ok(response)
     
     def close_channel(self, close_channel_req: CloseChannelRequest) -> Result[ln.ClosedChannelsResponse, str]:
-        #TODO: test the close channel method
         """BitcoinLightingNode"""
-        msg = logs.close_channel
-        channel_point = close_channel_req.channel_point
-        sat_per_vbyte = close_channel_req.vbyte_sats
-        if (not channel_point) or (not sat_per_vbyte):
-            return Err("Must provide chan_id and sat_per_vbyte to close a channel.")
-        
-        open_channels_res = self.get_opened_channels()
-        if not isinstance(open_channels_res, Ok):
-            return open_channels_res
-        
-        open_channels = open_channels_res.unwrap()
-        target_channels = list(filter(lambda channel: channel.channel_point == channel_point,open_channels))
-        if not len(target_channels) > 0:
-            return Err(f"The channel id provided does not exist:  {channel_point}")
-        
-        target_channel = target_channels[0]
-        channel_point_str = target_channel.channel_point
-        funding_txid_str, output_index = channel_point_str.split(':')
-        close_channel_request = ln.CloseChannelRequest(
-            channel_point=ln.ChannelPoint(
-                funding_txid_str=funding_txid_str, output_index=int(output_index)),
-            sat_per_vbyte=sat_per_vbyte,
-            force=close_channel_req.is_force,
-        )
-        close_status_update_response = self.stub.CloseChannel(close_channel_request)
+        msg = logs.close_channel    
+        funding_txid_str, output_index = close_channel_req.channel_point.split(':')
+        response = None
+        try:
+            response = self.stub.CloseChannel(
+                ln.CloseChannelRequest(
+                    channel_point=ln.ChannelPoint(
+                        funding_txid_str=funding_txid_str, output_index=int(output_index)),
+                    sat_per_vbyte=close_channel_req.vbyte_sats,
+                    force=close_channel_req.is_force,
+                )
+            )
+        except Exception as e:
+            if e.details: # type: ignore
+                config.log(LOG_ERROR, msg.err.format('lnd', e.details(), close_channel_req)) # type: ignore
+                return Err(e.details()) # type: ignore
+            config.log(LOG_ERROR, msg.err.format('lnd', e, close_channel_req))
+            return Err(e)
+        print(response.result())
         config.log(LOG_INFO, msg.ok.format('lnd', close_channel_req))
-        return Ok(close_status_update_response)
+        return Ok(response) # TODO return txid 
       
     def get_pending_open_channels(self) -> Result[List[PendingOpenChannel], str]:
         """BitcoinLightingNode"""
@@ -125,10 +121,10 @@ class Lnd(BitcoinLightningNode):
         chans = []
         for chan in response.pending_open_channels:
             chans.append(PendingOpenChannel(
-                peer_pubkey=chan.remote_pubkey,
-                channel_point=chan.channel_point,
-                capacity=chan.capacity,
-                local_balance=chan.local_balance
+                peer_pubkey=chan.channel.remote_node_pub,
+                channel_point=chan.channel.channel_point,
+                capacity=chan.channel.capacity,
+                local_balance=chan.channel.local_balance
             ))
         config.log(LOG_INFO, msg.ok.format('lnd', len(chans)))
         return Ok(chans)
@@ -158,21 +154,27 @@ class Lnd(BitcoinLightningNode):
         config.log(LOG_INFO, msg.ok.format('lnd', sats, invoice))
         return Ok(invoice)
 
-    def pay_invoice(self, pay_invoice_req: PayInvoiceRequest) -> Result[None, str]:
+    def pay_invoice(self, pay_invoice_req: PayInvoiceRequest) -> Result[str, str]:
         """BitcoinLightingNode"""
         msg = logs.pay_invoice
         args = {'payment_request': pay_invoice_req.invoice, 'fee_limit': ln.FeeLimit(fixed=pay_invoice_req.fee_limit_sats)}
-        if pay_invoice_req.outgoing_channel_id != 0:
+        if pay_invoice_req.outgoing_channel_id:
             args['outgoing_chan_id'] = pay_invoice_req.outgoing_channel_id
-        send_response = self.stub.SendPaymentSync(ln.SendRequest(**args)) # TODO: argument to SendRequest incompatible type
-        # TODO having issues paying invoices -- no_route error
-        if send_response.payment_error:
-            config.log(LOG_ERROR, msg.err.format('lnd', send_response.payment_error, pay_invoice_req))
-            return Err(send_response.payment_error)
-
-        # TODO return something useful besides None
-        config.log(LOG_INFO, msg.ok.format('lnd', pay_invoice_req))
-        return Ok(None)
+        response = None
+        try:
+            response = self.stub.SendPaymentSync(ln.SendRequest(**args)) # type: ignore
+        except Exception as e:
+            if e.details: # type: ignore
+                config.log(LOG_ERROR, msg.err.format('lnd', e.details(), pay_invoice_req)) # type: ignore
+                return Err(e.details()) # type: ignore
+            config.log(LOG_ERROR, msg.err.format('lnd', e, pay_invoice_req))
+            return Err(e)
+        if response.payment_error:
+            config.log(LOG_ERROR, msg.err.format('lnd', response.payment_error, pay_invoice_req))
+            return Err(response.payment_error)
+        preimage = response.payment_preimage
+        config.log(LOG_INFO, msg.ok.format('lnd', pay_invoice_req, preimage))
+        return Ok(preimage)
 
     def get_address(self) -> Result[str, str]:
         """BitcoinLightingNode"""
@@ -185,7 +187,6 @@ class Lnd(BitcoinLightningNode):
 
     def send_onchain(self, send_onchain_req: SendOnchainRequest) -> Result[str, str]:
         """BitcoinLightingNode"""
-        #TODO test sending to another node's address, check confirmed balance and unconfirmed to verify
         msg = logs.send_onchain
         send_request = ln.SendCoinsRequest(
             addr=send_onchain_req.dest_addr,

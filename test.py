@@ -27,19 +27,19 @@ unconfirmed = node.get_unconfirmed_balance()
 addr = node.get_address()
 
 # Send onchain
-send_onchain_req = SendOnchainRequest(amount_sats=1000, dest_addr=addr.unwrap(), vbyte_sats=1)
-node.send_onchain(send_onchain_req)
+#send_onchain_req = SendOnchainRequest(amount_sats=1000, dest_addr="bcrt1pp4m4dkldnss3thlcqzuyaj8368u3t9jc8mrpt7glsta7yepwalfqzlfqq9", vbyte_sats=1)
+#node.send_onchain(send_onchain_req)
 
 # Get invoice
 new_invoice = node.get_invoice(sats=10)
 
 # Pay invoice
-inv = "lnbcrt10n1pj3sazwpp57tane46qnu5432h38xsrrx45guckuxrgrcw2jsycvn2tmwm3mxlsdqqcqzpgxqyz5vqsp5u0sjxfd2snh825hkqj3r5jt0t78hqd5fkn5prv4ch932guw0lmwq9qyyssq402y8uajklwhse96rjjfrs5wt73309a7664njnsqy9tp9pu6pgpn425nf5kr5xdumy572psn0v6g5uafgmvkzemt9u27t8knulmgqfqpu3suyt"
+inv = "lnbcrt10u1pj35xgusp5ukxahk59n2ufwn2pjkxug47fp5y4zzeegg9mky87t70d32zrv7nspp5dmx5eahjfek8f6k76mtdgc5hv588yczqjw7mvj8qwqm2nl266uwsdp92phkcctjypykuan0d93k2grxdaezqcmpwfhkcxqyjw5qcqp2rzjqv476yjr3gz9rvedq4a5d7exjf8a39pkxfcnxcydh738a9y05uj97qqqhqqqqqsqqqqqqqlgqqqqqqgq9q9qyysgqmzuvrtu2vrk4sgcancyezjfk4lmc6yvrue30rtqmkjc09fgucl09aumappqe0dnf0n0v5ej8700pdvrsurc4v2rah7h2vc7596tvswspx8cgpv"
 pay_req = PayInvoiceRequest(invoice=inv, fee_limit_sats=10)
 paid_invoice = node.pay_invoice(pay_req)
 
 # Get opened channels
-node.get_opened_channels()
+open_chans = node.get_opened_channels().unwrap()
 
 # Get pending open channels
 node.get_pending_open_channels()
@@ -59,5 +59,5 @@ node.open_channel(open_req)
 
 # Close channel
 chan_point = "" #TODO test closing channel
-close_req = CloseChannelRequest(channel_point=chan_point, vbyte_sats=1, is_force=False)
+close_req = CloseChannelRequest(channel_point=open_chans[0].channel_point, vbyte_sats=1, is_force=False)
 node.close_channel(close_req)

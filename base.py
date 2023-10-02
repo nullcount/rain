@@ -11,7 +11,7 @@ class AdminNotifyService:
     def send_message(self, message: str) -> Result[None, str]:
         raise NotImplementedError
     
-    def await_confirm(self, prompt: str, callback: Callable) -> Result[None, str]:
+    def await_confirm(self, prompt: str, callback: Callable) -> Result[None, str]: # type: ignore
         raise NotImplementedError
 
 class SendOnchainRequest:
@@ -174,13 +174,15 @@ class BitcoinLightningNode:
     def get_invoice(self, sats: int) -> Result[str, str]:
         raise NotImplementedError
     
-    def pay_invoice(self, req: PayInvoiceRequest) -> Result[None, str]:
+    def pay_invoice(self, req: PayInvoiceRequest) -> Result[str, str]:
+        """Ok(preimage)"""
         raise NotImplementedError
     
     def get_address(self) -> Result[str, str]:
         raise NotImplementedError
     
-    def send_onchain(self, req: SendOnchainRequest) -> Result[None, str]:
+    def send_onchain(self, req: SendOnchainRequest) -> Result[str, str]:
+        """Ok(transaction_id)"""
         raise NotImplementedError
     
     def get_unconfirmed_balance(self) -> Result[int, str]:

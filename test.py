@@ -1,11 +1,15 @@
 from lnd import Lnd
 from base import SendOnchainRequest, PayInvoiceRequest, OpenChannelRequest, CloseChannelRequest
+from mempool import BitcoinCore
 
 config_path = 'test.config.yml'
 creds_path = 'test.creds.yml'
 
 node = Lnd(creds_path)
+core = BitcoinCore(creds_path)
 
+res = core.rpc_request('generatetoaddress', [2, "bcrt1p5w2f4u6tuj2wwhnyx35yy543kr86q8fjeaq56w6smn3shsttruzs7tltms"])
+print(res)
 # Get the alias of the node
 pub_key = "02c7580426685e367d804fa227d5510e4b7d89fb5ff6e09ecc6666f233e4c3fa1b"
 alias = node.get_alias(pub_key).unwrap()

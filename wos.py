@@ -1,4 +1,4 @@
-import requests
+import requests # type: ignore
 import time
 import hmac
 import hashlib
@@ -111,7 +111,7 @@ class Wos(TrustedSwapService):
         """TrustedSwapService"""
         msg = logs.send_onchain
         if not self.onchain_fee:
-            self.estimate_onchain_fee(sats)
+            self.get_onchain_fee(sats)
         amt = (sats - self.onchain_fee) / COIN_SATS
         ext = "api/v1/wallet/payment"
         data_str = '{{"address":"{}","currency":"BTC","amount":{:.7e},"sendMaxLightning":true,"description":null}}'.format(

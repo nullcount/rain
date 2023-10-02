@@ -49,19 +49,19 @@ LOG_TRUSTED_SWAP_SERVICE = Box({
 
 LOG_BITCOIN_LIGHTNING_NODE = Box({
     "open_channel": {
-        "ok": LOG_GAP.join(["{}", "open_channel", "OpenChannelRequest: {}, funding_txid: {}"]),
-        "err": LOG_GAP.join(["{}", "open_channel", "{}", "OpenChannelRequest: {}"])
+        "ok": LOG_GAP.join(["{}", "open_channel", "request: {}, funding_txid: {}"]),
+        "err": LOG_GAP.join(["{}", "open_channel", "{}", "request: {}"])
     },
     "close_channel": {
-        "ok": LOG_GAP.join(["{}", "close_channel", "CloseInvoiceRequest: {}"]),
+        "ok": LOG_GAP.join(["{}", "close_channel", "request: {}"]),
         "err": LOG_GAP.join(["{}", "close_channel", "{}"])
     },
     "get_pending_open_channels": {
-        "ok": LOG_GAP.join(["{}", "get_pending_open_channels", "PendingOpenChannels: {}"]),
+        "ok": LOG_GAP.join(["{}", "get_pending_open_channels", "request: {}"]),
         "err": LOG_GAP.join(["{}", "get_pending_open_channels", "{}"])
     },
     "get_opened_channels": {
-        "ok": LOG_GAP.join(["{}", "get_opened_channels", "ActiveOpenChannels: {}"]),
+        "ok": LOG_GAP.join(["{}", "get_opened_channels", "request: {}"]),
         "err": LOG_GAP.join(["{}", "get_opened_channels", "{}"])
     },
     "get_invoice": {
@@ -69,15 +69,15 @@ LOG_BITCOIN_LIGHTNING_NODE = Box({
         "err": LOG_GAP.join(["{}", "get_invoice", "{}"])
     },
     "pay_invoice": {
-        "ok": LOG_GAP.join(["{}", "pay_invoice", "PayInvoiceRequest: {}, preimage: {}"]),
-        "err": LOG_GAP.join(["{}", "pay_invoice", "{}", "PayInvoiceRequest: {}"])
+        "ok": LOG_GAP.join(["{}", "pay_invoice", "request: {}, preimage: {}"]),
+        "err": LOG_GAP.join(["{}", "pay_invoice", "{}", "request: {}"])
     },
     "get_address": {
         "ok": LOG_GAP.join(["{}", "get_address", "address: {}"]),
         "err": LOG_GAP.join(["{}", "get_address", "{}"])
     }, 
     "send_onchain": {
-        "ok": LOG_GAP.join(["{}", "send_onchain", "SendOnchainRequest: {}, txid: {}"]),
+        "ok": LOG_GAP.join(["{}", "send_onchain", "request: {}, txid: {}"]),
         "err": LOG_GAP.join(["{}", "send_onchain", "{}"])
     },
     "get_unconfirmed_balance": {

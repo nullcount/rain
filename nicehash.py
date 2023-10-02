@@ -2,7 +2,7 @@ from datetime import datetime
 from time import mktime
 import uuid
 import hmac
-import requests
+import requests # type: ignore
 import json
 from hashlib import sha256
 from base import TrustedSwapService
@@ -16,7 +16,7 @@ class Nicehash(TrustedSwapService):
     def __init__(self, creds_path: str) -> None:
         self.creds = config.get_creds(creds_path, 'nicehash')  
 
-    def nicehash_request(self, method: str, path: str, query: str, body: Dict | None) -> Box:
+    def nicehash_request(self, method: str, path: str, query: str, body: Dict | None) -> Box: # type: ignore
         xtime = self.get_epoch_ms_from_now()
         xnonce = str(uuid.uuid4())
         message = bytearray(self.creds.api_key, 'utf-8')

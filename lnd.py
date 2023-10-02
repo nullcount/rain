@@ -109,7 +109,7 @@ class Lnd(BitcoinLightningNode):
                 return Err(e.details()) # type: ignore
             config.log(LOG_ERROR, msg.err.format('lnd', e, close_channel_req))
             return Err(e)
-        print(response.result())
+        print(response)
         config.log(LOG_INFO, msg.ok.format('lnd', close_channel_req))
         return Ok(response) # TODO return txid 
       

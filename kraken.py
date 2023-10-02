@@ -1,6 +1,6 @@
 import sys
 import time
-import requests
+import requests # type: ignore
 import urllib.parse
 import hashlib
 import hmac
@@ -17,7 +17,7 @@ class Kraken(TrustedSwapService):
         self.creds = config.get_creds(creds_path, "kraken")
 
     @staticmethod
-    def get_kraken_signature(urlpath: str, data: Dict, secret: str) -> str:
+    def get_kraken_signature(urlpath: str, data: Dict, secret: str) -> str: # type: ignore
         postdata = urllib.parse.urlencode(data)
         encoded = (str(data['nonce']) + postdata).encode()
         message = urlpath.encode() + hashlib.sha256(encoded).digest()
@@ -30,13 +30,13 @@ class Kraken(TrustedSwapService):
         return str(int(1000 * time.time()))
 
     @staticmethod
-    def check_errors(response: Dict, payload: Dict, endpoint: str) -> None:
+    def check_errors(response: Dict, payload: Dict, endpoint: str) -> None: # type: ignore
         if response['error']:
             for err in response['error']:
                 config.log(LOG_ERROR, f"kraken responded with error: {err}\nendpoint: {endpoint}\npayload: {payload}")
             sys.exit()
 
-    def kraken_request(self, uri_path: str, data: Dict) -> Box:
+    def kraken_request(self, uri_path: str, data: Dict) -> Box: # type: ignore
         headers = {}
         headers['API-Key'] = self.creds.api_key
         headers['API-Sign'] = self.get_kraken_signature(

@@ -7,9 +7,11 @@ from result import Result, Ok, Err
 
 
 class Mempool:
-    def __init__(self, creds_path: str) -> None:
-        creds = config.get_creds(creds_path, 'mempool')
+    # TODO make a base class for mempool/block explorer api generalized
+    def __init__(self, creds_path: str, whoami: str = 'mempool') -> None:
+        creds = config.get_creds(creds_path, whoami)
         self.api_url = f"{creds.api_url}/api/v1" if creds.api_url else  MEMPOOL_API_URL
+        self.whoami = whoami
 
     def mempool_request(self, uri_path: str) -> Result[Box, str]:
         res = Box(requests.get(
@@ -19,6 +21,7 @@ class Mempool:
         return Ok(res)
    
     def get_fee(self) -> Result[Box, str]:
+        # TODO LOG_INFO
         return self.mempool_request("fees/recommended")
     
 

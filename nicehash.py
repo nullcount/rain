@@ -13,8 +13,9 @@ from result import Result, Ok, Err
 from box import Box
 
 class Nicehash(TrustedSwapService):
-    def __init__(self, creds_path: str) -> None:
-        self.creds = config.get_creds(creds_path, 'nicehash')  
+    def __init__(self, creds_path: str, whoami: str = 'nicehash') -> None:
+        self.creds = config.get_creds(creds_path, whoami)  
+        self.whoami = whoami
 
     def nicehash_request(self, method: str, path: str, query: str, body: Dict | None) -> Box: # type: ignore
         xtime = self.get_epoch_ms_from_now()
@@ -78,9 +79,9 @@ class Nicehash(TrustedSwapService):
             None # no body params
         )
         if res.content:
-            return Err(msg.err.format('nicehash', res))
+            return Err(msg.err.format(self.whoami, res))
         addr: str = res.list[0].address
-        config.log(LOG_INFO, msg.ok.format('nicehash', addr))
+        config.log(LOG_INFO, msg.ok.format(self.whoami, addr))
         return Ok(addr)
 
     def send_onchain(self, sats: int, fee: int) -> Result[None, str]:
@@ -99,8 +100,8 @@ class Nicehash(TrustedSwapService):
             body
         )
         if res.content:
-            return Err(msg.err.format('nicehash', res))
-        config.log(LOG_INFO, msg.ok.format('nicehash', sats, fee))
+            return Err(msg.err.format(self.whoami, res))
+        config.log(LOG_INFO, msg.ok.format(self.whoami, sats, fee))
         return Ok(None)
 
     def get_onchain_fee(self, sats: int) -> Result[int, str]:
@@ -113,9 +114,9 @@ class Nicehash(TrustedSwapService):
             None # no body params
         )
         if res.content:
-            return Err(msg.err.format('nicehash', res))
+            return Err(msg.err.format(self.whoami, res))
         fee = int(float(res.withdrawal.BITGO.rules.BTC.intervals[0].element.sendValue) * COIN_SATS)
-        config.log(LOG_INFO, msg.ok.format('nicehash', sats, fee))
+        config.log(LOG_INFO, msg.ok.format(self.whoami, sats, fee))
         return Ok(fee)
 
     def get_balance(self) -> Result[int, str]:
@@ -128,9 +129,9 @@ class Nicehash(TrustedSwapService):
             None # no body params
         )
         if res.content:
-            return Err(msg.err.format('nicehash', res))
+            return Err(msg.err.format(self.whoami, res))
         balance = int(float(res.available) * COIN_SATS)
-        config.log(LOG_INFO, msg.ok('nicehash', balance))
+        config.log(LOG_INFO, msg.ok(self.whoami, balance))
         return Ok(balance)
 
     def get_invoice(self, sats: int) -> Result[str, str]:
@@ -143,8 +144,8 @@ class Nicehash(TrustedSwapService):
             None # no body params
         )
         if res.content:
-            return Err(msg.err.format('nicehash', res))
+            return Err(msg.err.format(self.whoami, res))
         invoice: str = res.list[0].address
-        config.log(LOG_INFO, msg.ok.format('nicehash', invoice, sats))
+        config.log(LOG_INFO, msg.ok.format(self.whoami, invoice, sats))
         return Ok(invoice)
   

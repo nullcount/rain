@@ -10,14 +10,16 @@ from box import Box
 from result import Result, Ok, Err
 
 class Wos(TrustedSwapService):
-    def __init__(self, creds_path: str) -> None:
+    def __init__(self, creds_path: str, whoami: str = 'wos') -> None:
         self.session = requests.Session()
-        self.creds = self.wos_register(creds_path)
+        self.creds = self.wos_register(creds_path, whoami)
+        self.whoami = whoami
         self.onchain_fee = 0
         self.session.headers.update({"api-token": self.creds.api_token})
     
-    def wos_register(self, creds_path: str) -> Box:
-        creds: Box = config.get_creds(creds_path, 'wos')
+    def wos_register(self, creds_path: str, whoami: str) -> Box:
+        creds: Box = config.get_creds(creds_path, self.whoami)
+        # TODO check if creds.whoami exists 
         if not creds.api_secret == "YOUR_WOS_API_SECRET":
             return creds
         ext = "api/v1/wallet/account"
@@ -30,7 +32,7 @@ class Wos(TrustedSwapService):
             'lightning_address_generated': json['lightningAddress'],
             'lnd_node_onchain_address': creds.lnd_node_onchain_address
         })
-        config.set_creds(creds_path, 'wos', creds)
+        config.set_creds(creds_path, self.whoami, creds)
         return creds
 
     def wos_request(self, ext: str, data_str: str, sign: bool) -> Box:
@@ -65,7 +67,7 @@ class Wos(TrustedSwapService):
         msg = logs.get_address
         addr = str(self.creds.deposit_address_generated)
         # TODO: handle errors
-        config.log(LOG_INFO, msg.ok.format('wos', addr))
+        config.log(LOG_INFO, msg.ok.format(self.whoami, addr))
         return Ok(addr)
 
     def get_balance(self) -> Result[int, str]:
@@ -75,7 +77,7 @@ class Wos(TrustedSwapService):
         res = self.session.get(WOS_API_URL + ext)
                 # TODO: handle errors
         balance = int(res.btc * COIN_SATS)
-        config.log(LOG_INFO, msg.ok.format('wos', balance))
+        config.log(LOG_INFO, msg.ok.format(self.whoami, balance))
         return Ok(balance)
 
     def get_invoice(self, sats: int) -> Result[str, str]:
@@ -87,7 +89,7 @@ class Wos(TrustedSwapService):
         res = self.wos_request(ext, data_str, sign=True)
                 # TODO: handle errors
         invoice: str = res.invoice
-        config.log(LOG_INFO, msg.ok.format('wos', invoice, sats))
+        config.log(LOG_INFO, msg.ok.format(self.whoami, invoice, sats))
         return Ok(invoice)
 
     def get_onchain_fee(self, sats: int) -> Result[int, str]:
@@ -104,7 +106,7 @@ class Wos(TrustedSwapService):
                 # TODO: handle errors
         fee = int(round(fee * COIN_SATS))
         self.onchain_fee = fee
-        config.log(LOG_INFO, msg.ok.format('wos', sats, fee))
+        config.log(LOG_INFO, msg.ok.format(self.whoami, sats, fee))
         return Ok(fee)
 
     def send_onchain(self, sats: int, fee: int) -> Result[None, str]:
@@ -118,5 +120,5 @@ class Wos(TrustedSwapService):
             self.creds.lnd_node_onchain_address, amt)
         res: dict[Any, Any] = self.wos_request(ext, str(data_str), sign=True)
                # TODO: handle errors
-        config.log(LOG_INFO, msg.ok.format('wos', sats, fee))
+        config.log(LOG_INFO, msg.ok.format(self.whoami, sats, fee))
         return Ok(None)

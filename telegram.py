@@ -1,4 +1,4 @@
-import requests
+import requests # type: ignore
 from base import AdminNotifyService
 from const import TELEGRAM_API_URL
 from config import config
@@ -9,8 +9,9 @@ class Telegram(AdminNotifyService):
     Use telegram bot to notify of events
         or seek approval for actions
     """
-    def __init__(self, creds_path: str) -> None:
-        self.creds = config.get_creds(creds_path, 'telegram')
+    def __init__(self, creds_path: str, whoami: str = 'telegram') -> None:
+        self.creds = config.get_creds(creds_path, whoami)
+        self.whoami = whoami
         self.last_update_id: int = 0
 
     def telegram_request(self, endpoint: str, params: str) -> dict[Any, Any] | None:

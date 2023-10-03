@@ -1,4 +1,4 @@
-import config
+from config import config
 from const import LOG_NOTIFY, LOG_INPUT
 from base import AdminNotifyService
 from result import Result, Ok, Err
@@ -12,7 +12,7 @@ class Console(AdminNotifyService):
     def send_message(self, message: str) -> Result[None, str]:
         config.log(LOG_NOTIFY, message)
     
-    def await_confirm(self, prompt: str, callback: Callable) -> Result[None, str]:
+    def await_confirm(self, prompt: str, callback: Callable) -> Result[None, str]: # type: ignore
         config.log(LOG_INPUT, f"getting user input...")
         confirm = input(f"{prompt}: ")
         if confirm.capitalize() not in ['Y', 'YES']:

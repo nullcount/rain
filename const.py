@@ -53,7 +53,7 @@ LOG_BITCOIN_LIGHTNING_NODE = Box({
         "err": LOG_GAP.join(["{}", "open_channel", "{}", "request: {}"])
     },
     "close_channel": {
-        "ok": LOG_GAP.join(["{}", "close_channel", "request: {}"]),
+        "ok": LOG_GAP.join(["{}", "close_channel", "request: {}, closing_txid: {}"]),
         "err": LOG_GAP.join(["{}", "close_channel", "{}"])
     },
     "get_pending_open_channels": {
@@ -95,6 +95,10 @@ LOG_BITCOIN_LIGHTNING_NODE = Box({
     "sign_message": {
         "ok": LOG_GAP.join(["{}", "sign_message", "message: {}, signed_message: {}"]),
         "err": LOG_GAP.join(["{}", "sign_message", "{}"])
+    },
+    "get_pubkey": {
+        "ok": LOG_GAP.join(["{}", "get_pubkey", "pubkey: {}"]),
+        "err": LOG_GAP.join(["{}", "get_pubkey", "{}"])
     },
     "get_alias": {
         "ok": LOG_GAP.join(["{}", "get_alias", "pubkey: {}, alias: {}"]),

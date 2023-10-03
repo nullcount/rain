@@ -13,8 +13,9 @@ from result import Result, Ok, Err
 from box import Box
 
 class Kraken(TrustedSwapService):
-    def __init__(self, creds_path: str) -> None:
-        self.creds = config.get_creds(creds_path, "kraken")
+    def __init__(self, creds_path: str, whoami: str = 'kraken') -> None:
+        self.creds = config.get_creds(creds_path, whoami)
+        self.whoami = whoami
 
     @staticmethod
     def get_kraken_signature(urlpath: str, data: Dict, secret: str) -> str: # type: ignore
@@ -63,9 +64,9 @@ class Kraken(TrustedSwapService):
             }
         )
         if response.error:
-            return Err(msg.err.format('kraken', response))
+            return Err(msg.err.format(self.whoami, response))
         addr: str = response[0].address
-        config.log(LOG_INFO, msg.ok.format('kraken', addr))
+        config.log(LOG_INFO, msg.ok.format(self.whoami, addr))
         return Ok(addr)
 
     def send_onchain(self, sats: int, fee: int) -> Result[None, str]:
@@ -81,8 +82,8 @@ class Kraken(TrustedSwapService):
             }
         )
         if response.error:
-            return Err(msg.err.format('kraken', response))
-        config.log(LOG_INFO, msg.ok.format('kraken', sats, fee))
+            return Err(msg.err.format(self.whoami, response))
+        config.log(LOG_INFO, msg.ok.format(self.whoami, sats, fee))
         return Ok(None)
 
     def get_onchain_fee(self, sats: int) -> Result[int, str]:
@@ -98,10 +99,10 @@ class Kraken(TrustedSwapService):
             }
         )
         if response.error:
-            return Err(msg.err.format('kraken', response))
+            return Err(msg.err.format(self.whoami, response))
         sats = int(float(response.amount) * COIN_SATS)
         fee = int(float(response.fee) * COIN_SATS)
-        config.log(LOG_INFO, msg.ok.format('kraken', sats, fee))
+        config.log(LOG_INFO, msg.ok.format(self.whoami, sats, fee))
         return Ok(fee)
 
     def get_balance(self) -> Result[int, str]:
@@ -112,9 +113,9 @@ class Kraken(TrustedSwapService):
             {"nonce": self.get_nonce()}
         )
         if response.error:
-            return Err(msg.err.format('kraken', response))
+            return Err(msg.err.format(self.whoami, response))
         balance = int(float(response.XXBT) * COIN_SATS)
-        config.log(LOG_INFO, logs.get_balance.format('kraken', balance))
+        config.log(LOG_INFO, logs.get_balance.format(self.whoami, balance))
         return Ok(balance)
 
     def get_invoice(self, sats: int) -> Result[str, str]:
@@ -131,8 +132,8 @@ class Kraken(TrustedSwapService):
             }
         )
         if response.error:
-            return Err(msg.err.format('kraken', response))
+            return Err(msg.err.format(self.whoami, response))
         invoice: str = response[0].address
-        config.log(LOG_INFO, msg.ok.format('kraken', invoice, sats))
+        config.log(LOG_INFO, msg.ok.format(self.whoami, invoice, sats))
         return Ok(invoice)
     

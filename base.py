@@ -197,6 +197,9 @@ class BitcoinLightningNode:
     def sign_message(self, message: str) -> Result[str, str]:
         raise NotImplementedError
     
+    def get_own_pubkey(self) -> Result[str, str]:
+        raise NotImplementedError
+
     def get_alias(self, pubkey: str) -> Result[str, str]:
         raise NotImplementedError
     

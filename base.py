@@ -160,9 +160,11 @@ class BitcoinLightningNode:
     Extend with gRPC or API calls to a node
     """
     def open_channel(self, req: OpenChannelRequest) -> Result[None, str]:
+        """Ok(funding_txid)"""
         raise NotImplementedError
     
     def close_channel(self, req: CloseChannelRequest) -> Result[None, str]:
+        """Ok(closing_txid)"""
         raise NotImplementedError
     
     def get_pending_open_channels(self) -> Result[List[PendingOpenChannel], str]:

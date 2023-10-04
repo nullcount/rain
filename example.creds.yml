@@ -30,14 +30,9 @@ nicehash:
 
 wos:
 # automate a wallet of satoshi account directly with the API
-#   to create an account and get credentials, simply use the Wos TrustedSwapService
-#   your credentials will be generated and saved here automatically
-  api_secret_generated: YOUR_WOS_API_SECRET_WILL_BE_GENERATED_ON_FIRST_RUN
-  api_token_generated: YOUR_WOS_API_TOKEN_WILL_BE_GENERATED_ON_FIRST_RUN
-  lightning_address_generated: YOUR_WOS_LIGHTNING_ADDRESS_WILL_BE_GENERATED_ON_FIRST_RUN
-  deposit_address_generated: YOUR_WOS_ONCHAIN_DEPOSIT_ADDRESS_WILL_BE_GENERATED_ON_FIRST_RUN
-  # you must generate an address from LND and put it here
-  lnd_node_onchain_address: YOUR_LND_NODE_ONCHAIN_ADDRESS_FOR_RECIEVE_FROM_WOS
+#   you only need to provide an onchain address for WoS to send to (usually your node's address)
+#   your WoS credentials will be generated and saved here automatically on first use
+  node_onchain_address: YOUR_LND_NODE_ONCHAIN_ADDRESS_FOR_RECIEVE_FROM_WOS
 
 telegram:
 # send yourself a telegram updates about your node using a bot

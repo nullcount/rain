@@ -111,17 +111,17 @@ def test_bitcoin_lightning_node() -> None:
 
 def test_trusted_swap_service() -> None:
     swap = Wos(creds_path)
-
     swap.get_address()
-    swap.get_balance()
-    swap.get_onchain_fee(sats=10_000)
-    swap.get_invoice(20)
-    # TODO test pay invoice
+    balance = swap.get_balance().unwrap()
+    fee = swap.get_onchain_fee(sats=balance).unwrap()
+    #swap.get_invoice(13_041_904)
+    #swap.pay_invoice(invoice="adsf")
     # TODO test send_onchain
-
+    #swap.send_onchain(sats=balance, fee=fee)
+    swap.pay_invoice(invoice="lnbc10u1pj3u23qpp5paav59ldev4qzf0hw20l7vvy7sj4rprlr3mr0dl57z3l3vme9qdsdp8fe5kxetgv9eksgzyv4cx7umfwssyjmnkda5kxegcqzysxqr8pqsp5qq3mapdksuqrmfx4smdpe4duw35e5casd3y8zy7ph7eq5hz7d27q9qyyssqrfedel2cygt4r834j3emgqxhhdatllzfdq0vrc7lwxcqvgf5mknna0dz0ulwm738hzh58hjaejlgpjud3srgdn8rvek0kqv000m3a2cqlt29ps")
 
 def main() -> None:
-   #test_bitcoin_lightning_node()   
+   #test_bitcoin_lightning_node()
     test_trusted_swap_service()
 
 if __name__ == "__main__":

@@ -48,7 +48,7 @@ class Wos(TrustedSwapService):
         if data_str and method == "GET":
             args['params'] = json.loads(data_str)
         if data_str and method == "POST":
-            args['data'] = data_str
+            args['data'] = data_str.encode("utf-8")
         if method == "GET":
             res = self.session.get(**args)
         else: 

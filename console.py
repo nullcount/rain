@@ -1,3 +1,9 @@
+"""
+console.py
+---
+Use the current console (command line) as an AdminNotifyService
+usage: for testing AdminNotifyService
+"""
 from config import config
 from const import LOG_NOTIFY, LOG_INPUT
 from base import AdminNotifyService
@@ -9,7 +15,7 @@ class Console(AdminNotifyService):
     Use the terminal/command line to notify events
         or seek approval for actions
     """
-    def send_message(self, message: str) -> Result[None, str]:
+    def send_message(self, message: str) -> None:
         config.log(LOG_NOTIFY, message)
     
     def await_confirm(self, prompt: str, callback: Callable) -> Result[None, str]: # type: ignore

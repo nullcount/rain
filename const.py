@@ -1,10 +1,14 @@
+"""
+const.py
+---
+Constants 
+usage: for the things that never change
+"""
 from box import Box
 
 COIN_SATS = 100_000_000
 MILLION = 1_000_000
 SAT_MSATS = 1_000
-
-MESSAGE_SIZE_MB = 50 * 1024 * 1024
 
 KRAKEN_API_URL = "https://api.kraken.com/"
 NICEHASH_API_URL = "https://api2.nicehash.com/"
@@ -21,6 +25,10 @@ LOG_INPUT = "INPUT "
 LOG_GAP = " " * 4
 
 LOG_TRUSTED_SWAP_SERVICE = Box({
+    "api_request": { # A trusted swap service usually has a dedicated method for making requests
+        "ok": LOG_GAP.join(["{}", "api_request", "response_code: {}, url: {}, body: {}, response: {}"]),
+        "err": LOG_GAP.join(["{}", "api_request", "response_code: {}, url: {}, body: {}, response: {}"]),
+    },
     "get_address": {
         "ok": LOG_GAP.join(["{}", "get_address", "trusted_deposit_address: {}"]),
         "err": LOG_GAP.join(["{}", "get_address", "{}"])

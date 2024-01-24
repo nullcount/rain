@@ -1,3 +1,9 @@
+"""
+telegram.py
+---
+An implementation of Telegram Bot as an AdminNotifyService
+usage: add your telegram creds to creds.yml
+"""
 import requests # type: ignore
 from base import AdminNotifyService
 from const import TELEGRAM_API_URL
@@ -23,8 +29,8 @@ class Telegram(AdminNotifyService):
         return None
         # TODO self.log.warning(f"Telegram failed !!! {endpoint}{params}")
 
-    def send_message(self, message: str) -> dict[Any, Any] | None:
-        return self.telegram_request('sendMessage', f'?chat_id={self.creds.chat_id}&text={message}&parse_mode=Markdown')
+    def send_message(self, message: str) ->  None:
+        self.telegram_request('sendMessage', f'?chat_id={self.creds.chat_id}&text={message}&parse_mode=Markdown')
     
     def get_updates(self) -> dict[Any, Any] | None:
         return self.telegram_request('getUpdates', f'?chat_id={self.creds.chat_id}&offset={self.last_update_id}')

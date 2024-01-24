@@ -1,3 +1,10 @@
+"""
+exports.py
+---
+Contains mappings of classes which are instances of the same base class
+Usage: import the mappings to use the appropriate class from a key
+"""
+
 from box import Box
 # trusted swap services
 from kraken import Kraken
@@ -20,6 +27,6 @@ TRUSTED_SWAP_SERVICES = Box({
 })
 
 ADMIN_NOTIFY_SERVICES = Box({
-    "telegram": Telegram,
+    "telegram": Telegram,   
     "console": Console
 })

@@ -1,3 +1,9 @@
+"""
+mempool.py
+---
+An implementation of Mempool.space API as a TrustedSwapService
+usage: add your mempool credentials in creds.yml to use a self-hosted instance
+"""
 import requests # type: ignore
 from const import MEMPOOL_API_URL
 from config import config
@@ -23,17 +29,3 @@ class Mempool:
     def get_fee(self) -> Result[Box, str]:
         # TODO LOG_INFO
         return self.mempool_request("fees/recommended")
-    
-
-class BitcoinCore:
-    def __init__(self, creds_path: str) -> None:
-        self.creds = config.get_creds(creds_path, 'bitcoincore')
-
-    def rpc_request(self, method: str, params: List) -> Result[Box, str]: # type: ignore
-        url = f"http://{self.creds.rpc_user}:{self.creds.rpc_password}@{self.creds.rpc_host}:{self.creds.rpc_port}"
-        payload = { 'method': method, 'params': params, 'jsonrpc': '2.0', 'id': '1' }
-        response = requests.post(url, json=payload)
-        response_json = response.json()
-        if 'error' in response_json and response_json['error'] != None:
-            return Err(response_json['error'])        
-        return Box(response_json)

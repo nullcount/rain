@@ -1,9 +1,15 @@
+"""
+lnd.py
+---
+An implementation of Lightning Network Daemon (LND) gRPC as a BitcoinLightningNode
+usage: add your lnd credentials in creds.yml
+"""
 import os
 import codecs
 import grpc
 from grpc_generated import lightning_pb2_grpc, lightning_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
-from const import MESSAGE_SIZE_MB, LOG_ERROR, LOG_INFO, LOG_BITCOIN_LIGHTNING_NODE as logs
+from const import LOG_ERROR, LOG_INFO, LOG_BITCOIN_LIGHTNING_NODE as logs
 from config import config
 from typing import List
 from base import BitcoinLightningNode, OpenChannelRequest, CloseChannelRequest, PendingOpenChannel, ActiveOpenChannel, DecodedInvoice, PayInvoiceRequest, SendOnchainRequest
@@ -12,6 +18,7 @@ from const import SAT_MSATS
 
 class Lnd(BitcoinLightningNode):
     def __init__(self, creds_path: str, whoami: str = 'lnd') -> None:
+        MESSAGE_SIZE_MB = 50 * 1024 * 1024
         creds = config.get_creds(creds_path, whoami)
         os.environ['GRPC_SSL_CIPHER_SUITES'] = 'HIGH+ECDSA'
         combined_credentials = self.get_credentials(
@@ -86,11 +93,11 @@ class Lnd(BitcoinLightningNode):
                 config.log(LOG_ERROR, msg.err.format(self.whoami, e.details(), open_req)) # type: ignore
                 return Err(e.details()) # type: ignore
             config.log(LOG_ERROR, msg.err.format(self.whoami, e, open_req))
-            return Err(e)
+            return Err(str(e))
         config.log(LOG_INFO, msg.ok.format(self.whoami, open_req, response.funding_txid_bytes.hex()))
         return Ok(response)
     
-    def close_channel(self, close_channel_req: CloseChannelRequest) -> Result[ln.ClosedChannelsResponse, str]:
+    def close_channel(self, close_channel_req: CloseChannelRequest) -> Result[str, str]:
         """BitcoinLightingNode"""
         msg = logs.close_channel    
         funding_txid_str, output_index = close_channel_req.channel_point.split(':')
@@ -100,17 +107,18 @@ class Lnd(BitcoinLightningNode):
         else:
             args['sat_per_vbyte'] = close_channel_req.vbyte_sats
             args['force'] = False
+        txid = ''
         try:
             for response in self.stub.CloseChannel(ln.CloseChannelRequest(**args)): # type: ignore
                 txid = response.close_pending.txid.hex()
                 config.log(LOG_INFO, msg.ok.format(self.whoami, close_channel_req, txid))
-                return Ok(txid)
         except Exception as e:
             if 'details' in e: # type: ignore
                 config.log(LOG_ERROR, msg.err.format(self.whoami, e.details(), close_channel_req)) # type: ignore
                 return Err(e.details()) # type: ignore
             config.log(LOG_ERROR, msg.err.format(self.whoami, e, close_channel_req))
-            return Err(e)
+            return Err(str(e))
+        return Ok(txid)
       
     def get_pending_open_channels(self) -> Result[List[PendingOpenChannel], str]:
         """BitcoinLightingNode"""
@@ -167,7 +175,7 @@ class Lnd(BitcoinLightningNode):
                 config.log(LOG_ERROR, msg.err.format(self.whoami, e.details(), pay_invoice_req)) # type: ignore
                 return Err(e.details()) # type: ignore
             config.log(LOG_ERROR, msg.err.format(self.whoami, e, pay_invoice_req))
-            return Err(e)
+            return Err(str(e))
         if response.payment_error:
             config.log(LOG_ERROR, msg.err.format(self.whoami, response.payment_error, pay_invoice_req))
             return Err(response.payment_error)

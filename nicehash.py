@@ -1,3 +1,9 @@
+"""
+nicehash.py
+---
+An implementation of Nicehash Wallet API as a TrustedSwapService
+usage: add your nicehash credentials in creds.yml
+"""
 from datetime import datetime
 from time import mktime
 import uuid

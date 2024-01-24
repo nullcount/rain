@@ -1,11 +1,34 @@
+"""
+test.py
+---
+A playground for devs to test. One day, will include unit tests...
+usage: create a test.creds.yml with testing credentials
+"""
 import time
+import requests # type: ignore
 from lnd import Lnd
 from base import SendOnchainRequest, PayInvoiceRequest, OpenChannelRequest, CloseChannelRequest
-from mempool import BitcoinCore
 from config import config
 from wos import Wos
+from result import Ok, Err
+from box import Box
 
-config_path = 'test.config.yml'
+class BitcoinCore:
+    """
+    Used to mine blocks on regtest
+    """
+    def __init__(self, creds_path: str) -> None:
+        self.creds = config.get_creds(creds_path, 'bitcoincore')
+
+    def rpc_request(self, method: str, params: List) -> Result[Box, str]: # type: ignore
+        url = f"http://{self.creds.rpc_user}:{self.creds.rpc_password}@{self.creds.rpc_host}:{self.creds.rpc_port}"
+        payload = { 'method': method, 'params': params, 'jsonrpc': '2.0', 'id': '1' }
+        response = requests.post(url, json=payload)
+        response_json = response.json()
+        if 'error' in response_json and response_json['error'] != None:
+            return Err(response_json['error'])        
+        return Ok(Box(response_json))
+
 creds_path = 'test.creds.yml'
 
 def test_bitcoin_lightning_node() -> None:

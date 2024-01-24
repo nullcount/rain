@@ -12,17 +12,17 @@ def main() -> Result[None, str]:
     node: BitcoinLightningNode = BITCOIN_LIGHTNING_NODES[cfg.lightning_node](creds_path)
     notify: AdminNotifyService = ADMIN_NOTIFY_SERVICES[cfg.notify_service](creds_path)
     mempool = Mempool(creds_path)
-    fee_estimate = mempool.get_fee()
+    fee_estimate = mempool.get_fee().unwrap()
 
-    open_channels = node.get_opened_channels()
-    pend_channels = node.get_pending_open_channels()
+    open_channels = node.get_opened_channels().unwrap()
+    pend_channels = node.get_pending_open_channels().unwrap()
     
     # Maintain managed peers from config.yml
     for peer in cfg.managed_peers:
         peer_conf = cfg.managed_peers[peer]
         
-        peer_open = [c for c in open_channels if c.remote_node_pub == peer_conf.peer.pubkey]
-        peer_pend = [c for c in pend_channels if c.remote_node_pub == peer_conf.peer.pubkey]
+        peer_open = [c for c in open_channels if c.peer_pubkey == peer_conf.peer.pubkey]
+        peer_pend = [c for c in pend_channels if c.peer_pubkey == peer_conf.peer.pubkey]
         total_number = len(peer_open) + len(peer_pend)
         
         # check if there are enough channels with peer
@@ -30,8 +30,8 @@ def main() -> Result[None, str]:
             # check calculated fee is within limit
             vbyte_sats = fee_estimate[peer_conf.onchain_fee.target] * peer_conf.onchain_fee.fee_factor
             if vbyte_sats > peer_conf.onchain_fee.limit_vbyte_sats:
-                confirmed_sats = node.get_confirmed_balance()
-                unconfirmed_sats = node.get_unconfirmed_balance()
+                confirmed_sats = node.get_confirmed_balance().unwrap()
+                unconfirmed_sats = node.get_unconfirmed_balance().unwrap()
                 # check if there are enough sats onchain to fund channel of required capacity
                 if confirmed_sats + unconfirmed_sats > peer_conf.policy.channel_capacity:
                     # open the channel
@@ -53,7 +53,7 @@ def main() -> Result[None, str]:
                 
                 # check if inbound ratio within limits
                 if local_balance_ratio < peer_conf.drain.max:
-                    config.log(LOG_ERROR, LOG_GAP.join(["rain", peer, f"{chan.id} has local balance ratio of {local_balance_ratio}"]))
+                    config.log(LOG_ERROR, LOG_GAP.join(["rain", peer, f"{chan.channel_id} has local balance ratio of {local_balance_ratio}"]))
                     continue
                 
                 # do a trusted swap

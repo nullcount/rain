@@ -1,3 +1,9 @@
+"""
+base.py
+---
+Base classes that other classes inherit. Also classes used for Typing.
+usage: import and use anywhere
+"""
 from result import Result
 from typing import Callable, List
 from box import Box
@@ -8,7 +14,7 @@ class AdminNotifyService:
         to notify node operator (admin) of events
         and ask for approval/confirmation of actions
     """
-    def send_message(self, message: str) -> Result[None, str]:
+    def send_message(self, message: str) -> None:
         raise NotImplementedError
     
     def await_confirm(self, prompt: str, callback: Callable) -> Result[None, str]: # type: ignore
@@ -16,7 +22,7 @@ class AdminNotifyService:
 
 class SendOnchainRequest:
     """
-    Used in BitcoinLightningNode.send_onchain()
+    Type used in BitcoinLightningNode.send_onchain()
     """
     def __init__(
             self,
@@ -33,7 +39,7 @@ class SendOnchainRequest:
 
 class OpenChannelRequest:
     """
-    Used in BitcoinLightningNode.open_channel() 
+    Type used in BitcoinLightningNode.open_channel() 
     """
     def __init__(
             self, 
@@ -64,7 +70,7 @@ class OpenChannelRequest:
 
 class CloseChannelRequest:
     """
-    Used in BitcoinLightningNode.close_channel() 
+    Type used in BitcoinLightningNode.close_channel() 
     """
     def __init__(
             self, 
@@ -81,7 +87,7 @@ class CloseChannelRequest:
 
 class PayInvoiceRequest:
     """
-    Used in BitcoinLightningNode.pay_invoice() 
+    Type used in BitcoinLightningNode.pay_invoice() 
     """
     def __init__(
             self,
@@ -98,7 +104,7 @@ class PayInvoiceRequest:
 
 class PendingOpenChannel:
     """
-    Used in BitcoinLightningNode.get_pending_open_channels() 
+    Type used in BitcoinLightningNode.get_pending_open_channels() 
     """
     def __init__(
             self,
@@ -117,7 +123,7 @@ class PendingOpenChannel:
 
 class ActiveOpenChannel:
     """
-    Used in BitcoinLightningNode.get_open_channels() 
+    Tyep used in BitcoinLightningNode.get_open_channels() 
     """
     def __init__(
             self,
@@ -138,7 +144,7 @@ class ActiveOpenChannel:
 
 class DecodedInvoice:
     """
-    Used in BitcoinLightningNode.decode_invoice() 
+    Type used in BitcoinLightningNode.decode_invoice() 
     """
     def __init__(
         self,
@@ -163,7 +169,7 @@ class BitcoinLightningNode:
         """Ok(funding_txid)"""
         raise NotImplementedError
     
-    def close_channel(self, req: CloseChannelRequest) -> Result[None, str]:
+    def close_channel(self, req: CloseChannelRequest) -> Result[str, str]:
         """Ok(closing_txid)"""
         raise NotImplementedError
     

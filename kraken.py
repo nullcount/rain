@@ -1,3 +1,9 @@
+"""
+kraken.py
+---
+An implementation of Kraken Wallet API as a TrustedSwapService
+usage: add your kraken credentials in creds.yml
+"""
 import sys
 import time
 import requests # type: ignore

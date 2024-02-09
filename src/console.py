@@ -1,30 +1,33 @@
 """
 console.py
 ---
-Use the current console (command line) as an AdminNotifyService
-usage: for testing AdminNotifyService
+Use stdout a.k.a. print() to log and read input from user
+usage: anywhere
 """
-from config import config
 from const import LOG_NOTIFY, LOG_INPUT
-from base import AdminNotifyService
 from result import Result, Ok, Err
 from typing import Callable
+from datetime import datetime
 
-class Console(AdminNotifyService):
+class console:
     """
     Use the terminal/command line to notify events
         or seek approval for actions
     """
+    @staticmethod
+    def log(level: str, message: str ) -> None:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {level.upper()}: {message}")
+    
     def send_message(self, message: str) -> None:
-        config.log(LOG_NOTIFY, message)
+        self.log(LOG_NOTIFY, message)
     
     def await_confirm(self, prompt: str, callback: Callable) -> Result[None, str]: # type: ignore
-        config.log(LOG_INPUT, f"getting user input...")
+        self.log(LOG_INPUT, f"getting user input...")
         confirm = input(f"{prompt}: ")
         if confirm.capitalize() not in ['Y', 'YES']:
-            config.log(LOG_INPUT, "input results in canceled action")
+            self.log(LOG_INPUT, "input results in canceled action")
             return Err('Action was not confirmed.')
-        config.log(LOG_INPUT, "input confirmed!")
+        self.log(LOG_INPUT, "input confirmed!")
         callback()
         return Ok(None)
 

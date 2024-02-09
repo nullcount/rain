@@ -1,19 +1,7 @@
-# LND auth
-admin.macaroon
-tls.cert
-# Rain config
-config.yml
-config.yaml
-creds.yml
-creds.yaml
-# testing
-test*
-!test.py
-# linter
-pyproject.toml
 # cache
 *__pycache__/
 venv
 .venv
 /.idea/*
 .vscode/
+.mypy_cache

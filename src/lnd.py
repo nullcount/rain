@@ -2,24 +2,32 @@
 lnd.py
 ---
 An implementation of Lightning Network Daemon (LND) gRPC as a BitcoinLightningNode
-usage: add your lnd credentials in creds.yml
+usage: add your lnd credentials
 """
 import os
 import codecs
 import grpc
 from grpc_generated import lightning_pb2_grpc, lightning_pb2 as ln
 from grpc_generated import router_pb2_grpc as routerrpc, router_pb2 as router
-from const import LOG_ERROR, LOG_INFO, LOG_BITCOIN_LIGHTNING_NODE as logs
-from config import config
+from const import SAT_MSATS, LOG_ERROR, LOG_INFO
 from typing import List
-from base import BitcoinLightningNode, OpenChannelRequest, CloseChannelRequest, PendingOpenChannel, ActiveOpenChannel, DecodedInvoice, PayInvoiceRequest, SendOnchainRequest
+from bitcoin_lightning_node import BitcoinLightningNode, OpenChannelRequest, CloseChannelRequest, PendingOpenChannel, ActiveOpenChannel, DecodedInvoice, PayInvoiceRequest, SendOnchainRequest
 from result import Result, Ok, Err
-from const import SAT_MSATS
+
+class LndCreds:
+    """
+    connect an LND node using an admin macaroon, tls cert, and grpc host:port
+        if connecting a remote lnd, you may need to add extratls=<IP_OF_LND> to your lnd.conf
+    """
+    def __init__(self, tls_cert_path: str = 'tls.cert', macaroon_path: str = 'admin.macroon', grpc_host: str = '127.0.0.1:10009') -> None:
+        self.grpc_host = grpc_host
+        self.macaroon_path = macaroon_path
+        self.tls_cert_path = tls_cert_path
 
 class Lnd(BitcoinLightningNode):
-    def __init__(self, creds_path: str, whoami: str = 'lnd') -> None:
+    def __init__(self, creds: LndCreds) -> None:
+        super().__init__() # init logger from parent class
         MESSAGE_SIZE_MB = 50 * 1024 * 1024
-        creds = config.get_creds(creds_path, whoami)
         os.environ['GRPC_SSL_CIPHER_SUITES'] = 'HIGH+ECDSA'
         combined_credentials = self.get_credentials(
             creds.tls_cert_path, creds.macaroon_path)
@@ -31,7 +39,7 @@ class Lnd(BitcoinLightningNode):
             creds.grpc_host, combined_credentials, channel_options)
         self.stub = lightning_pb2_grpc.LightningStub(grpc_channel)  # type: ignore
         self.routerstub = routerrpc.RouterStub(grpc_channel)  # type: ignore
-        self.whoami = whoami
+        self.alias = self.get_alias(self.get_pubkey().unwrap()).unwrap()
 
     @staticmethod
     def get_credentials(tls_cert_path: str, macaroon_path: str) -> grpc.ChannelCredentials:
@@ -67,7 +75,6 @@ class Lnd(BitcoinLightningNode):
 
     def open_channel(self, open_req: OpenChannelRequest) -> Result[None, str]:
         """BitcoinLightingNode"""
-        msg = logs.open_channel
         is_peered = self.is_peer_with(open_req.peer_pubkey)
         if isinstance(is_peered, Err):
             return is_peered
@@ -90,16 +97,15 @@ class Lnd(BitcoinLightningNode):
             )
         except Exception as e:
             if e.details: # type: ignore
-                config.log(LOG_ERROR, msg.err.format(self.whoami, e.details(), open_req)) # type: ignore
+                self.log(LOG_ERROR, self.logs.open_channel.err.format(self.alias, e.details(), open_req)) # type: ignore
                 return Err(e.details()) # type: ignore
-            config.log(LOG_ERROR, msg.err.format(self.whoami, e, open_req))
+            self.log(LOG_ERROR, self.logs.open_channel.err.format(self.alias, e, open_req))
             return Err(str(e))
-        config.log(LOG_INFO, msg.ok.format(self.whoami, open_req, response.funding_txid_bytes.hex()))
+        self.log(LOG_INFO, self.logs.open_channel.ok.format(self.alias, open_req, response.funding_txid_bytes.hex()))
         return Ok(response)
     
     def close_channel(self, close_channel_req: CloseChannelRequest) -> Result[str, str]:
         """BitcoinLightingNode"""
-        msg = logs.close_channel    
         funding_txid_str, output_index = close_channel_req.channel_point.split(':')
         args = {'channel_point': ln.ChannelPoint(funding_txid_str=funding_txid_str, output_index=int(output_index)), 'max_fee_per_vbyte': 1000}
         if close_channel_req.is_force:
@@ -111,18 +117,17 @@ class Lnd(BitcoinLightningNode):
         try:
             for response in self.stub.CloseChannel(ln.CloseChannelRequest(**args)): # type: ignore
                 txid = response.close_pending.txid.hex()
-                config.log(LOG_INFO, msg.ok.format(self.whoami, close_channel_req, txid))
+                self.log(LOG_INFO, self.logs.close_channel.ok.format(self.alias, close_channel_req, txid))
         except Exception as e:
             if 'details' in e: # type: ignore
-                config.log(LOG_ERROR, msg.err.format(self.whoami, e.details(), close_channel_req)) # type: ignore
+                self.log(LOG_ERROR, self.logs.close_channel.err.format(self.alias, e.details(), close_channel_req)) # type: ignore
                 return Err(e.details()) # type: ignore
-            config.log(LOG_ERROR, msg.err.format(self.whoami, e, close_channel_req))
+            self.log(LOG_ERROR, self.logs.close_channel.err.format(self.alias, e, close_channel_req))
             return Err(str(e))
         return Ok(txid)
       
     def get_pending_open_channels(self) -> Result[List[PendingOpenChannel], str]:
         """BitcoinLightingNode"""
-        msg = logs.get_pending_open_channels
         request = ln.PendingChannelsRequest()
         response: ln.PendingChannelsResponse = self.stub.PendingChannels(request)
         chans = []
@@ -133,12 +138,11 @@ class Lnd(BitcoinLightningNode):
                 capacity=chan.channel.capacity,
                 local_balance=chan.channel.local_balance
             ))
-        config.log(LOG_INFO, msg.ok.format(self.whoami, len(chans)))
+        self.log(LOG_INFO, self.logs.get_pending_open_channels.ok.format(self.alias, len(chans)))
         return Ok(chans)
 
     def get_opened_channels(self) -> Result[List[ActiveOpenChannel], str]:
         """BitcoinLightingNode"""
-        msg = logs.get_opened_channels
         request = ln.ListChannelsRequest()
         response: ln.ListChannelsResponse = self.stub.ListChannels(request)
         chans = []
@@ -150,20 +154,18 @@ class Lnd(BitcoinLightningNode):
                 capacity=chan.capacity,
                 local_balance=chan.local_balance,
             ))
-        config.log(LOG_INFO, msg.ok.format(self.whoami, len(chans)))
+        self.log(LOG_INFO, self.logs.get_opened_channels.ok.format(self.alias, len(chans)))
         return Ok(chans)
 
     def get_invoice(self, sats: int) -> Result[str, str]:
         """BitcoinLightingNode"""
-        msg = logs.get_invoice
         invoice_response = self.stub.AddInvoice(ln.Invoice(value=sats))
         invoice = invoice_response.payment_request
-        config.log(LOG_INFO, msg.ok.format(self.whoami, sats, invoice))
+        self.log(LOG_INFO, self.logs.get_invoiceg.ok.format(self.alias, sats, invoice))
         return Ok(invoice)
 
     def pay_invoice(self, pay_invoice_req: PayInvoiceRequest) -> Result[str, str]:
         """BitcoinLightingNode"""
-        msg = logs.pay_invoice
         args = {'payment_request': pay_invoice_req.invoice, 'fee_limit': ln.FeeLimit(fixed=pay_invoice_req.fee_limit_sats)}
         if pay_invoice_req.outgoing_channel_id:
             args['outgoing_chan_id'] = pay_invoice_req.outgoing_channel_id
@@ -172,29 +174,27 @@ class Lnd(BitcoinLightningNode):
             response = self.stub.SendPaymentSync(ln.SendRequest(**args)) # type: ignore
         except Exception as e:
             if e.details: # type: ignore
-                config.log(LOG_ERROR, msg.err.format(self.whoami, e.details(), pay_invoice_req)) # type: ignore
+                self.log(LOG_ERROR, msg.err.format(self.alias, e.details(), pay_invoice_req)) # type: ignore
                 return Err(e.details()) # type: ignore
-            config.log(LOG_ERROR, msg.err.format(self.whoami, e, pay_invoice_req))
+            self.log(LOG_ERROR, self.logs.pay_invoice.err.format(self.alias, e, pay_invoice_req))
             return Err(str(e))
         if response.payment_error:
-            config.log(LOG_ERROR, msg.err.format(self.whoami, response.payment_error, pay_invoice_req))
+            self.log(LOG_ERROR, self.logs.pay_invoice.err.format(self.alias, response.payment_error, pay_invoice_req))
             return Err(response.payment_error)
         preimage = response.payment_preimage.hex()
-        config.log(LOG_INFO, msg.ok.format(self.whoami, pay_invoice_req, preimage))
+        self.log(LOG_INFO, self.logs.pay_invoice.ok.format(self.alias, pay_invoice_req, preimage))
         return Ok(preimage)
 
     def get_address(self) -> Result[str, str]:
         """BitcoinLightingNode"""
-        msg = logs.get_address
         new_address_request = ln.NewAddressRequest(type=ln.AddressType.UNUSED_TAPROOT_PUBKEY)
         new_address_response = self.stub.NewAddress(new_address_request)
         address = new_address_response.address
-        config.log(LOG_INFO, msg.ok.format(self.whoami, address))
+        self.log(LOG_INFO, self.logs.get_address.ok.format(self.alias, address))
         return Ok(address)
 
     def send_onchain(self, send_onchain_req: SendOnchainRequest) -> Result[str, str]:
         """BitcoinLightingNode"""
-        msg = logs.send_onchain
         send_request = ln.SendCoinsRequest(
             addr=send_onchain_req.dest_addr,
             amount=send_onchain_req.amount_sats,
@@ -202,32 +202,29 @@ class Lnd(BitcoinLightningNode):
         )
         send_response = self.stub.SendCoins(send_request)
         txid: str = send_response.txid
-        config.log(LOG_INFO, msg.ok.format(self.whoami, send_onchain_req, txid))
+        self.log(LOG_INFO, self.logs.send_onchain.ok.format(self.alias, send_onchain_req, txid))
         return Ok(txid)
 
     def get_unconfirmed_balance(self) -> Result[int, str]:
         """BitcoinLightingNode"""
-        msg = logs.get_unconfirmed_balance
         unconfirmed = 0
         txs = self.get_txns(start_height=0, end_height=-1).unwrap().transactions
         txns = list(filter(lambda x: x.num_confirmations == 0, txs))
         for tx in txns:
             unconfirmed += tx.amount
-        config.log(LOG_INFO, msg.ok.format(self.whoami, unconfirmed))
+        self.log(LOG_INFO, self.logs.get_unconfirmed_balance.ok.format(self.alias, unconfirmed))
         return Ok(unconfirmed)
 
     def get_confirmed_balance(self) -> Result[int, str]:
         """BitcoinLightingNode"""
-        msg = logs.get_confirmed_balance
         balance_request = ln.WalletBalanceRequest()
         balance_response = self.stub.WalletBalance(balance_request)
         confirmed = int(balance_response.confirmed_balance)
-        config.log(LOG_INFO, msg.ok.format(self.whoami, confirmed))
+        self.log(LOG_INFO, self.logs.get_confirmed_balance.ok.format(self.alias, confirmed))
         return Ok(confirmed)
 
     def decode_invoice(self, invoice: str) -> Result[DecodedInvoice, str]:
         """BitcoinLightingNode"""
-        msg = logs.decode_invoice
         request = ln.PayReqString(pay_req=invoice)
         decoded_req:ln.PayReq = self.stub.DecodePayReq(request)
         decoded = DecodedInvoice(
@@ -236,30 +233,27 @@ class Lnd(BitcoinLightningNode):
             decoded_req.num_satoshis,
             decoded_req.description
         )
-        config.log(LOG_INFO, msg.ok.format(self.whoami, invoice, decoded))
+        self.log(LOG_INFO, self.logs.decode_invoice.ok.format(self.alias, invoice, decoded))
         return Ok(decoded)
 
     def sign_message(self, message: str) -> Result[str, str]:
         """BitcoinLightingNode"""
-        msg = logs.sign_message
         request = ln.SignMessageRequest(
             msg=message.encode('utf-8')
         )
         response = self.stub.SignMessage(request)
         signed_message = response.signature
-        config.log(LOG_INFO, msg.ok.format(self.whoami, message, signed_message))
+        self.log(LOG_INFO, self.logs.sign_message.ok.format(self.alias, message, signed_message))
         return Ok(signed_message)
 
     def get_pubkey(self) -> Result[str, str]:
         """BitcoinLightningNode"""
-        msg = logs.get_pubkey
         info = self.stub.GetInfo(ln.GetInfoRequest())
-        config.log(LOG_INFO, msg.ok.format(self.whoami, info.identity_pubkey))
+        self.log(LOG_INFO, self.logs.get_pubkey.ok.format('LND', info.identity_pubkey))
         return Ok(info.identity_pubkey)
 
     def get_alias(self, pubkey: str) -> Result[str, str]:
         """BitcoinLightingNode"""
-        msg = logs.get_alias
         alias = self.stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=pubkey)).node.alias
-        config.log(LOG_INFO, msg.ok.format(self.whoami, pubkey, alias))
+        self.log(LOG_INFO, self.logs.get_alias.ok.format(alias, pubkey, alias))
         return Ok(alias)

@@ -2,7 +2,7 @@
 kraken.py
 ---
 An implementation of Kraken Wallet API as a TrustedSwapService
-usage: add your kraken credentials in creds.yml
+usage: add your kraken credentials
 """
 import sys
 import time
@@ -11,17 +11,31 @@ import urllib.parse
 import hashlib
 import hmac
 import base64
-from base import TrustedSwapService
-from const import COIN_SATS, KRAKEN_API_URL, LOG_ERROR, LOG_INFO, LOG_TRUSTED_SWAP_SERVICE as logs
-from config import config
+from trusted_swap_service import TrustedSwapService
+from const import COIN_SATS, LOG_ERROR, LOG_INFO
 from typing import Dict
 from result import Result, Ok, Err
 from box import Box
 
+KRAKEN_API_URL = "https://api.kraken.com/"
+
+class KrakenCreds:
+    """
+    create a kraken API key with funding permissions
+        go to the onchain bitcoin widthdraw page on kraken.com and 
+        add a new withdraw address, give it a description/name and use that 
+        same description/name for the `funding_key` below
+    """
+    def __init__(self, api_key: str, api_secret: str, funding_key: str):
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.funding_key = funding_key
+
 class Kraken(TrustedSwapService):
-    def __init__(self, creds_path: str, whoami: str = 'kraken') -> None:
-        self.creds = config.get_creds(creds_path, whoami)
-        self.whoami = whoami
+    def __init__(self, creds: KrakenCreds) -> None:
+        super().__init__() # init logger from parent class
+        self.creds = creds
+        self.alias = f"kraken-{creds.api_key[:5]}"
 
     @staticmethod
     def get_kraken_signature(urlpath: str, data: Dict, secret: str) -> str: # type: ignore
@@ -36,11 +50,10 @@ class Kraken(TrustedSwapService):
     def get_nonce() -> str:
         return str(int(1000 * time.time()))
 
-    @staticmethod
-    def check_errors(response: Dict, payload: Dict, endpoint: str) -> None: # type: ignore
+    def check_errors(self, response: Dict, payload: Dict, endpoint: str) -> None: # type: ignore
         if response['error']:
             for err in response['error']:
-                config.log(LOG_ERROR, f"kraken responded with error: {err}\nendpoint: {endpoint}\npayload: {payload}")
+                self.log(LOG_ERROR, f"kraken responded with error: {err}\nendpoint: {endpoint}\npayload: {payload}")
             sys.exit()
 
     def kraken_request(self, uri_path: str, data: Dict) -> Box: # type: ignore
@@ -60,7 +73,6 @@ class Kraken(TrustedSwapService):
 
     def get_address(self) -> Result[str, str]:
         """TrustedSwapService"""
-        msg = logs.get_address
         response = self.kraken_request(
             '0/private/DepositAddresses', 
             {
@@ -70,14 +82,13 @@ class Kraken(TrustedSwapService):
             }
         )
         if response.error:
-            return Err(msg.err.format(self.whoami, response))
+            return Err(self.logs.get_address.err.format(self.alias, response))
         addr: str = response[0].address
-        config.log(LOG_INFO, msg.ok.format(self.whoami, addr))
+        self.log(LOG_INFO, self.logs.get_address.ok.format(self.alias, addr))
         return Ok(addr)
 
     def send_onchain(self, sats: int, fee: int) -> Result[None, str]:
         """TrustedSwapService"""
-        msg = logs.send_onchain
         response = self.kraken_request(
             '0/private/Withdraw', 
             {
@@ -88,13 +99,12 @@ class Kraken(TrustedSwapService):
             }
         )
         if response.error:
-            return Err(msg.err.format(self.whoami, response))
-        config.log(LOG_INFO, msg.ok.format(self.whoami, sats, fee))
+            return Err(self.logs.send_onchain.err.format(self.alias, response))
+        self.log(LOG_INFO, self.logs.send_onchain.ok.format(self.alias, sats, fee))
         return Ok(None)
 
     def get_onchain_fee(self, sats: int) -> Result[int, str]:
         """TrustedSwapService"""
-        msg = logs.get_onchain_fee
         response = self.kraken_request(
             '0/private/WithdrawInfo', 
             {
@@ -105,28 +115,26 @@ class Kraken(TrustedSwapService):
             }
         )
         if response.error:
-            return Err(msg.err.format(self.whoami, response))
+            return Err(self.logs.get_onchain_fee.err.format(self.alias, response))
         sats = int(float(response.amount) * COIN_SATS)
         fee = int(float(response.fee) * COIN_SATS)
-        config.log(LOG_INFO, msg.ok.format(self.whoami, sats, fee))
+        self.log(LOG_INFO, self.logs.get_onchain_fee.ok.format(self.alias, sats, fee))
         return Ok(fee)
 
     def get_balance(self) -> Result[int, str]:
         """TrustedSwapService"""
-        msg = logs.get_balance
         response = self.kraken_request(
             '0/private/Balance', 
             {"nonce": self.get_nonce()}
         )
         if response.error:
-            return Err(msg.err.format(self.whoami, response))
+            return Err(self.logs.get_balance.err.format(self.alias, response))
         balance = int(float(response.XXBT) * COIN_SATS)
-        config.log(LOG_INFO, logs.get_balance.format(self.whoami, balance))
+        self.log(LOG_INFO, self.logs.get_balance.format(self.alias, balance))
         return Ok(balance)
 
     def get_invoice(self, sats: int) -> Result[str, str]:
         """TrustedSwapService"""
-        msg = logs.get_invoice
         response = self.kraken_request(
             '0/private/DepositAddresses', 
             {
@@ -138,8 +146,8 @@ class Kraken(TrustedSwapService):
             }
         )
         if response.error:
-            return Err(msg.err.format(self.whoami, response))
+            return Err(self.logs.get_invoice.err.format(self.alias, response))
         invoice: str = response[0].address
-        config.log(LOG_INFO, msg.ok.format(self.whoami, invoice, sats))
+        self.log(LOG_INFO, self.logs.get_invoice.ok.format(self.alias, invoice, sats))
         return Ok(invoice)
     

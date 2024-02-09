@@ -2,43 +2,50 @@
 wos.py
 ---
 An implementation of WoS API as a TrustedSwapService
-usage: add your wos credentials in creds.yml
+usage: add your wos credentials
 """
 import requests # type: ignore
 import time
 import hmac
 import json
 import hashlib
-from base import TrustedSwapService
-from const import COIN_SATS, SAT_MSATS, WOS_API_URL, LOG_INFO, LOG_ERROR, LOG_TRUSTED_SWAP_SERVICE as logs
-from config import config
+from trusted_swap_service import TrustedSwapService
+from const import COIN_SATS, SAT_MSATS, LOG_INFO
 from box import Box
-from result import Result, Ok, Err
+from result import Result, Ok
+
+WOS_API_URL = "https://www.livingroomofsatoshi.com/"
+
+class WosCreds:
+    def __init__(self, api_key: str, api_secret: str, onchain_address: str, lightning_address: str, external_onchain_address: str):
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.onchain_address = onchain_address
+        self.lightning_address = lightning_address
+        self.external_onchain_address = external_onchain_address
+    
+    def __str__(self) -> str:
+        return f"WosCreds(api_key={self.api_key}, api_secret={self.api_secret}, onchain_address={self.onchain_address}, lightning_address={self.lightning_address}, external_onchain_address={self.external_onchain_address})"
 
 class Wos(TrustedSwapService):
-    def __init__(self, creds_path: str, whoami: str = 'wos') -> None:
+    def __init__(self, creds: WosCreds) -> None:
+        super().__init__() # init logger from parent class
         self.session = requests.Session()
-        self.creds = self.wos_register(creds_path, whoami)
-        self.whoami = whoami
-        self.session.headers.update({"api-token": self.creds.api_token_generated})
+        self.creds = self.wos_register(creds)
+        self.alias = f"WOS-{creds.api_key[:5]}"
+        self.session.headers.update({"api-token": self.creds.api_key})
  
     @staticmethod
-    def wos_register(creds_path: str, whoami: str) -> Box:
-        creds = config.get_creds(creds_path, whoami)
-        if any(key in creds for key in ['api_secret_generated', 'api_token_generated', 'deposit_address_generated']):
+    def wos_register(creds: WosCreds) -> WosCreds:
+        if any(hasattr(creds, key) for key in ['api_secret', 'api_key', 'onchain_address']):
+            return creds
+        if not creds.external_onchain_address:
+            print("Init WoS with an external_onchain_address")
             return creds
         ext = "api/v1/wallet/account"
         data = {"referrer": "walletofsatoshi"}
         json = requests.post(WOS_API_URL + ext, json=data).json()
-        creds = Box({
-            'api_secret_generated': json['apiSecret'],
-            'api_token_generated': json['apiToken'],
-            'deposit_address_generated': json['btcDepositAddress'],
-            'lightning_address_generated': json['lightningAddress'],
-            'node_onchain_address': creds.node_onchain_address
-        })
-        config.set_creds(creds_path, whoami, creds)
-        return creds
+        return WosCreds(api_key=json['apiSecret'], api_secret=json['apiToken'], onchain_address=json['btcDepositAddress'], lightning_address=json['lightningAddress'], external_onchain_address=creds.external_onchain_address)
 
     def wos_request(self, method: str, ext: str, data_str: str = "", sign: bool = False) -> Box:
         path_url = WOS_API_URL + ext
@@ -48,7 +55,7 @@ class Wos(TrustedSwapService):
         if data_str and method == "GET":
             args['params'] = json.loads(data_str)
         if data_str and method == "POST":
-            args['data'] = data_str.encode("utf-8")
+            args['data'] = data_str.encode("utf-8") # type: ignore
         if method == "GET":
             res = self.session.get(**args)
         else: 
@@ -61,8 +68,8 @@ class Wos(TrustedSwapService):
 
     def sign_session(self, ext: str, params: str) -> None:
         nonce = str(int(time.time() * 1000))
-        api_token = self.creds.api_token_generated
-        api_secret = self.creds.api_secret_generated
+        api_token = self.creds.api_key
+        api_secret = self.creds.api_secret
         m = f"/{ext}{nonce}{api_token}{params}"
         hmac_key = api_secret.encode("utf-8")
         signature = hmac.new(hmac_key, m.encode("utf-8"),
@@ -79,51 +86,46 @@ class Wos(TrustedSwapService):
 
     def get_address(self) -> Result[str, str]:
         """TrustedSwapService"""
-        msg = logs.get_address
-        addr = str(self.creds.deposit_address_generated)
-        config.log(LOG_INFO, msg.ok.format(self.whoami, addr))
+        addr = str(self.creds.onchain_address)
+        self.log(LOG_INFO, self.logs.get_address.ok.format(self.alias, addr))
         return Ok(addr)
 
     def get_balance(self) -> Result[int, str]:
-        msg = logs.get_balance
         """TrustedSwapService"""
         res = self.wos_request("GET", "api/v1/wallet/walletData")
         # TODO: handle errors
         balance = int(res.btc * COIN_SATS)
-        config.log(LOG_INFO, msg.ok.format(self.whoami, balance))
+        self.log(LOG_INFO, self.logs.get_balance.ok.format(self.alias, balance))
         return Ok(balance)
 
     def get_invoice(self, sats: int) -> Result[str, str]:
         """TrustedSwapService"""
-        msg = logs.get_invoice
-        user, url = self.creds.lightning_address_generated.split('@')
+        user, url = self.creds.lightning_address.split('@')
         res = self.session.get(f"https://{url}/.well-known/lnurlp/{user}").json()
         res2 = self.session.get(f"{res['callback']}?amount={sats * SAT_MSATS}").json()
         # TODO: check errors
-        config.log(LOG_INFO, msg.ok.format(self.whoami, res2['pr'], sats))
+        self.log(LOG_INFO, self.logs.get_invoice.ok.format(self.alias, res2['pr'], sats))
         return Ok(res2['pr'])
 
     def get_onchain_fee(self, sats: int) -> Result[int, str]:
         """TrustedSwapService"""
-        msg = logs.get_onchain_fee
         res = self.wos_request(
             "GET",
             "api/v1/wallet/feeEstimate",
             data_str=json.dumps({
-                "address": self.creds.node_onchain_address,
+                "address": self.creds.external_onchain_address,
                 "amount": sats / COIN_SATS,
             })
         )
         # TODO: handle errors
         fee = int(round(res.btcFixedFee * COIN_SATS))
-        config.log(LOG_INFO, msg.ok.format(self.whoami, sats, fee))
+        self.log(LOG_INFO, self.logs.get_onchain_fee.ok.format(self.alias, sats, fee))
         return Ok(fee)
 
     def send_onchain(self, sats: int, fee: int) -> Result[None, str]:
         """TrustedSwapService"""
-        msg = logs.send_onchain
         amt = sats / COIN_SATS
-        data_str = '{{"address":"{}","currency":"BTC","amount":{:.7e},"sendMaxLightning":true,"description":null}}'.format(self.creds.node_onchain_address, amt)
+        data_str = '{{"address":"{}","currency":"BTC","amount":{:.7e},"sendMaxLightning":false,"description":null}}'.format(self.creds.external_onchain_address, amt)
         
         res = self.wos_request(
             "POST",
@@ -136,12 +138,12 @@ class Wos(TrustedSwapService):
         print(res)
         print("\n\n\n")
         # TODO: handle errors
-        config.log(LOG_INFO, msg.ok.format(self.whoami, sats, fee))
+        self.log(LOG_INFO, self.logs.send_onchain.ok.format(self.alias, sats, fee))
         return Ok(None)
     
     def pay_invoice(self, invoice: str) -> Result[str, str]:
         """TrustedSwapService"""
-        data_str = '{{"address":"{}","currency":"LIGHTNING","amount":{:.7e},"sendMaxLightning":true,"description":null}}'.format(invoice, 1000/COIN_SATS)
+        data_str = '{{"address":"{}","currency":"LIGHTNING","amount":{:.7e},"sendMaxLightning":false,"description":null}}'.format(invoice, 1000/COIN_SATS)
         res = self.wos_request(
             "POST",
             "api/v1/wallet/payment",
@@ -153,7 +155,7 @@ class Wos(TrustedSwapService):
         print(res)
         print("\n\n\n")
 
-        #config.log(LOG_ERROR, logs.pay_invoice.err.format(self.whoami, "WOS PAY INVOICE FAILURE - TrustedSwapService.pay_invocie is not implemented"))
+        #config.log(LOG_ERROR, logs.pay_invoice.err.format(self.alias, "WOS PAY INVOICE FAILURE - TrustedSwapService.pay_invocie is not implemented"))
         preimage = ""
 
         return Ok(preimage)

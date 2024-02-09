@@ -1,24 +1,14 @@
 """
-base.py
+bitcoin_lighting_node.py
 ---
-Base classes that other classes inherit. Also classes used for Typing.
-usage: import and use anywhere
+A lightning node with admin controls
+usage: a base class for lightning node implementation wrappers
 """
-from result import Result
-from typing import Callable, List
 from box import Box
-
-class AdminNotifyService:
-    """
-    Extend with chat protocol APIs
-        to notify node operator (admin) of events
-        and ask for approval/confirmation of actions
-    """
-    def send_message(self, message: str) -> None:
-        raise NotImplementedError
-    
-    def await_confirm(self, prompt: str, callback: Callable) -> Result[None, str]: # type: ignore
-        raise NotImplementedError
+from result import Result
+from typing import List
+from console import console
+from const import LOG_GAP
 
 class SendOnchainRequest:
     """
@@ -165,6 +155,67 @@ class BitcoinLightningNode:
     """
     Extend with gRPC or API calls to a node
     """
+    def __init__(self) -> None:
+        self.log = console.log
+        self.logs = Box({
+            "open_channel": {
+                "ok": LOG_GAP.join(["{}", "open_channel", "response: {}, funding_txid: {}"]),
+                "err": LOG_GAP.join(["{}", "open_channel", "{}", "response: {}"])
+            },
+            "close_channel": {
+                "ok": LOG_GAP.join(["{}", "close_channel", "response: {}, closing_txid: {}"]),
+                "err": LOG_GAP.join(["{}", "close_channel", "{}"])
+            },
+            "get_pending_open_channels": {
+                "ok": LOG_GAP.join(["{}", "get_pending_open_channels", "response: {}"]),
+                "err": LOG_GAP.join(["{}", "get_pending_open_channels", "{}"])
+            },
+            "get_opened_channels": {
+                "ok": LOG_GAP.join(["{}", "get_opened_channels", "response: {}"]),
+                "err": LOG_GAP.join(["{}", "get_opened_channels", "{}"])
+            },
+            "get_invoice": {
+                "ok": LOG_GAP.join(["{}", "get_invoice", "sats: {}, invoice: {}"]),
+                "err": LOG_GAP.join(["{}", "get_invoice", "{}"])
+            },
+            "pay_invoice": {
+                "ok": LOG_GAP.join(["{}", "pay_invoice", "response: {}, preimage: {}"]),
+                "err": LOG_GAP.join(["{}", "pay_invoice", "{}", "response: {}"])
+            },
+            "get_address": {
+                "ok": LOG_GAP.join(["{}", "get_address", "address: {}"]),
+                "err": LOG_GAP.join(["{}", "get_address", "{}"])
+            }, 
+            "send_onchain": {
+                "ok": LOG_GAP.join(["{}", "send_onchain", "response: {}, txid: {}"]),
+                "err": LOG_GAP.join(["{}", "send_onchain", "{}"])
+            },
+            "get_unconfirmed_balance": {
+                "ok": LOG_GAP.join(["{}", "get_unconfirmed_balance", "unconfirmed_balance_sats: {}"]),
+                "err": LOG_GAP.join(["{}", "get_unconfirmed_balance", "{}"])
+            },
+            "get_confirmed_balance": {
+                "ok": LOG_GAP.join(["{}", "get_confirmed_balance", "confirmed_balance_sats: {}"]),
+                "err": LOG_GAP.join(["{}", "get_confirmed_balance", "{}"])
+            },
+            "decode_invoice": {
+                "ok": LOG_GAP.join(["{}", "decode_invoice", "invoice: {}, decoded_invoice: {}"]),
+                "err": LOG_GAP.join(["{}", "decode_invoice", "{}"])
+            },
+            "sign_message": {
+                "ok": LOG_GAP.join(["{}", "sign_message", "message: {}, signed_message: {}"]),
+                "err": LOG_GAP.join(["{}", "sign_message", "{}"])
+            },
+            "get_pubkey": {
+                "ok": LOG_GAP.join(["{}", "get_pubkey", "pubkey: {}"]),
+                "err": LOG_GAP.join(["{}", "get_pubkey", "{}"])
+            },
+            "get_alias": {
+                "ok": LOG_GAP.join(["{}", "get_alias", "pubkey: {}, alias: {}"]),
+                "err": LOG_GAP.join(["{}", "get_alias", "{}"])
+            }
+        })
+
     def open_channel(self, req: OpenChannelRequest) -> Result[None, str]:
         """Ok(funding_txid)"""
         raise NotImplementedError
@@ -209,32 +260,4 @@ class BitcoinLightningNode:
         raise NotImplementedError
 
     def get_alias(self, pubkey: str) -> Result[str, str]:
-        raise NotImplementedError
-    
-
-class TrustedSwapService:
-    """
-    Extend with exchange/wallet APIs 
-        to programatically give trusted nodes your sats
-        and to automate widthdraws back to your node
-    """
-    def get_address(self) -> Result[str, str]:
-        # returns onchain address string to deposit into the third-party wallet/account balance
-        raise NotImplementedError
-
-    def send_onchain(self, sats: int, fee: int) -> Result[None, str]:
-        # initiate a widthdrawl request for number of `sats` sent with `fee` sats/vbyte
-        # not every api supports user-suggested feerates so `fee` may be unused
-        raise NotImplementedError
-
-    def get_balance(self) -> Result[int, str]:
-        # returns total wallet/account balance in sats
-        raise NotImplementedError
-
-    def get_invoice(self, sats: int) -> Result[str, str]:
-        # returns bolt11 invoice string requesting number of `sats`
-        raise NotImplementedError
-
-    def get_onchain_fee(self, sats: int) -> Result[int, str]:
-        # returns the total fee in satoshis to widthdraw `sats` from balance
         raise NotImplementedError

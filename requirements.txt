@@ -3,5 +3,4 @@ grpcio==1.51.1
 python-box==7.0.1
 requests==2.31.0
 result==0.13.1
-ruamel.yaml==0.17.32
 typing==3.7.4.3

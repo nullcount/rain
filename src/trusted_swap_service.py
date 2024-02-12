@@ -35,7 +35,7 @@ class TrustedSwapService:
                 "err": LOG_GAP.join(["{}", "get_balance", "{}"])
             },
             "pay_invoice": {
-                "ok": LOG_GAP.join(["{}", "pay_invoice", "invoice: {} sats: {}"]),
+                "ok": LOG_GAP.join(["{}", "pay_invoice", "invoice: {} sats: {}, fee: {}"]),
                 "err": LOG_GAP.join(["{}", "pay_invoice", "{}"])
             },
             "get_invoice": {
@@ -67,4 +67,8 @@ class TrustedSwapService:
 
     def get_onchain_fee(self, sats: int) -> Result[int, str]:
         # returns the total fee in satoshis to widthdraw `sats` from balance
+        raise NotImplementedError
+    
+    def pay_invoice(self, sats: int, invoice: str) -> Result[str, str]:
+        # returns the total fees to pay the invoice
         raise NotImplementedError

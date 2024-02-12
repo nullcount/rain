@@ -17,7 +17,7 @@ from typing import Any, Dict
 from result import Result, Ok, Err
 from box import Box
 
-NICEHASH_API_URL = "https://api2.nicehash.com/"
+NICEHASH_API_URL = "https://api2.nicehash.com"
 
 class NicehashCreds:
     """
@@ -39,19 +39,7 @@ class Nicehash(TrustedSwapService):
         self.creds = creds 
         self.alias = f"NICEHASH-{creds.api_key[:5]}"
 
-    def nicehash_request(self, method, path, query, body):
-        xtime = str(json.loads(requests.get('https://api2.nicehash.com/api/v2/time').text)['serverTime'])
-        print(xtime)
-        xnonce = str(uuid.uuid4())
-        inpt = '{}\00{}\00{}\00\00{}\00\00{}\00{}\00{}'.format(self.creds.api_key, xtime, xnonce, self.creds.org_id, method, path, query)
-        sig = hmac.new(self.creds.api_secret.encode(), inpt.encode(), sha256).hexdigest()
-        xauth = '{}:{}'.format(self.creds.api_key, sig)
-        r = requests.get('{}{}?{}'.format(NICEHASH_API_URL, path, query), headers={'X-Time': xtime, 'X-Nonce': xnonce, 'X-Organization-Id': self.creds.org_id, 'X-Request-Id': xnonce, 'X-Auth': xauth})
-        data = json.loads(r.text)
-        print(data)
-
-
-    def nicehash_old_request(self, method: str, path: str, query: str, body: Dict | None) -> Box: # type: ignore
+    def nicehash_request(self, method: str, path: str, query: str, body: Dict | None) -> Box: # type: ignore
         xtime = self.get_epoch_ms_from_now()
         xnonce = str(uuid.uuid4())
         message = bytearray(self.creds.api_key, 'utf-8')
@@ -107,11 +95,11 @@ class Nicehash(TrustedSwapService):
         """TrustedSwapService"""
         res = self.nicehash_request(
             "GET", 
-            'main/api/v2/accounting/depositAddresses', 
+            '/main/api/v2/accounting/depositAddresses', 
             'currency=BTC&walletType=BITGO', 
             None # no body params
         )
-        if res.content:
+        if hasattr(res, "content"):
             return Err(self.logs.get_address.err.format(self.alias, res))
         addr: str = res.list[0].address
         self.log(LOG_INFO, self.logs.get_address.ok.format(self.alias, addr))
@@ -127,11 +115,11 @@ class Nicehash(TrustedSwapService):
         }
         res = self.nicehash_request(
             "POST", 
-            "main/api/v2/accounting/withdrawal", 
+            "/main/api/v2/accounting/withdrawal", 
             '', # no url params
             body
         )
-        if res.content:
+        if hasattr(res, "content"):
             return Err(self.logs.send_onchain.err.format(self.alias, res))
         self.log(LOG_INFO, self.logs.send_onchain.ok.format(self.alias, sats, fee))
         return Ok(None)
@@ -140,11 +128,11 @@ class Nicehash(TrustedSwapService):
         """TrustedSwapService"""
         res = self.nicehash_request(
             "GET", 
-            "main/api/v2/public/service/fee/info", 
+            "/main/api/v2/public/service/fee/info", 
             '', # no url params
             None # no body params
         )
-        if res.content:
+        if hasattr(res, "content"):
             return Err(self.logs.get_onchain_fee.err.format(self.alias, res))
         fee = int(float(res.withdrawal.BITGO.rules.BTC.intervals[0].element.sendValue) * COIN_SATS)
         self.log(LOG_INFO, self.logs.get_onchain_fee.ok.format(self.alias, sats, fee))
@@ -154,28 +142,57 @@ class Nicehash(TrustedSwapService):
         """TrustedSwapService"""
         res = self.nicehash_request(
             "GET",
-            "main/api/v2/accounting/account2/BTC", 
+            "/main/api/v2/accounting/account2/BTC", 
             '', # no url params 
             None # no body params
         )
-        print(res)
-        if res.content:
+        if hasattr(res, 'content'):
             return Err(self.logs.get_balance.err.format(self.alias, res))
         balance = int(float(res.available) * COIN_SATS)
-        self.log(LOG_INFO, self.logs.get_balance.ok(self.alias, balance))
+        self.log(LOG_INFO, self.logs.get_balance.ok.format(self.alias, balance))
         return Ok(balance)
 
     def get_invoice(self, sats: int) -> Result[str, str]:
         """TrustedSwapService"""
         res = self.nicehash_request(
             "GET", 
-            "main/api/v2/accounting/depositAddresses",
+            "/main/api/v2/accounting/depositAddresses",
             f'currency=BTC&walletType=LIGHTNING&amount={float(sats) / COIN_SATS}',
             None # no body params
         )
-        if res.content:
+        if hasattr(res, "content"):
             return Err(self.logs.get_invoice.err.format(self.alias, res))
-        invoice: str = res.list[0].address
+        invoice: str = res.list[0].address.split(":")[1]
         self.log(LOG_INFO, self.logs.get_invoice.ok.format(self.alias, invoice, sats))
         return Ok(invoice)
   
+    def pay_invoice(self, sats: int, invoice: str) -> Result[str, str]:
+        """TrustedSwapService"""
+        body1 = {
+            "address": invoice,
+            "currency": "BTC",
+            "name": "Lightning Invoice code",
+            "type": "LIGHTNING"
+        }
+        res1 = self.nicehash_request("POST", "/main/api/v2/accounting/withdrawalAddress", '', body1)
+        if not hasattr(res1, 'id'):
+            return Err(self.logs.pay_invoice.err.format(self.alias, res1))
+        amount_sats = str(float(sats) / COIN_SATS)
+        body2 = {
+            "currency": "BTC",
+            "amount": amount_sats,
+            "withdrawalAddressId": res1.id,
+            "walletType": "LIGHTNING"
+        }
+        res2 = self.nicehash_request(
+            "POST", 
+            "/main/api/v2/accounting/withdrawal", 
+            '', # no url params
+            body2
+        )
+        if hasattr(res2, "content"):
+            return Err(self.logs.pay_invoice.err.format(self.alias, res2))
+        res3 = self.nicehash_request("GET", f"/main/api/v2/accounting/withdrawal2/BTC/{res2.id}", "", {})
+        fee = int((res3.amount - res3.amountReceived) * COIN_SATS)
+        self.log(LOG_INFO, self.logs.pay_invoice.ok.format(self.alias, invoice, sats, fee))
+        return Ok(None)

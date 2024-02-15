@@ -161,7 +161,7 @@ class Lnd(BitcoinLightningNode):
         """BitcoinLightingNode"""
         invoice_response = self.stub.AddInvoice(ln.Invoice(value=sats))
         invoice = invoice_response.payment_request
-        self.log(LOG_INFO, self.logs.get_invoiceg.ok.format(self.alias, sats, invoice))
+        self.log(LOG_INFO, self.logs.get_invoice.ok.format(self.alias, sats, invoice))
         return Ok(invoice)
 
     def pay_invoice(self, pay_invoice_req: PayInvoiceRequest) -> Result[str, str]:
